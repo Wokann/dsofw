@@ -30,6 +30,9 @@
 
 # Executables
 *.exe
+!tools/armips/armips.exe
+!tools/dsfwtool/dsfwtool.exe
+!tools/crc/flashmecrc.exe
 *.out
 *.app
 *.i*86
@@ -54,4 +57,6 @@ extracted
 resource
 *.bin
 temp
+tmp
 build
+docs/

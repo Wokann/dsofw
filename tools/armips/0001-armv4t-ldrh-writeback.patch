@@ -1,0 +1,51 @@
+From 62adab4ef30da765f5cf22a451eb08a59c54dc8b Mon Sep 17 00:00:00 2001
+Subject: [PATCH] ARM: accept pre-indexed halfword-transfer writeback
+
+armips v0.11's ARM table omits several valid ARMv4T pre-indexed
+halfword-transfer forms with writeback. Add the immediate and
+register-offset forms for LDRH, LDRSB and LDRSH.
+
+Keep every immediate form after its non-writeback twin: optional operand
+matching would otherwise select W for ordinary immediate loads.
+
+The current dsofw sources only require LDRH Rd,[Rn,#imm]!, but accepting
+the complete load family makes the ARMv4T parser consistent and lets
+future readable sources use the documented spellings without raw opcodes.
+
+---
+ Archs/ARM/ArmOpcodes.cpp | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/Archs/ARM/ArmOpcodes.cpp b/Archs/ARM/ArmOpcodes.cpp
+index c3a3bca..8507395 100644
+--- a/Archs/ARM/ArmOpcodes.cpp
++++ b/Archs/ARM/ArmOpcodes.cpp
+@@ -183,19 +183,28 @@ const tArmOpcode ArmOpcodes[] = {
+ 	{ "strCh",	"d0,[/#j\x08]",			0x01CF00B0,	ARM_TYPE10,	ARM_D|ARM_LOAD|ARM_ABSIMM|ARM_IMMEDIATE },
+ 
+ 	{ "ldrCh",	"d0,[n0,m1]",			0x019000B0,	ARM_TYPE10,	ARM_D|ARM_N|ARM_REGISTER|ARM_M },
++	{ "ldrCh",	"d0,[n0,vm1]W",		0x01B000B0,	ARM_TYPE10,	ARM_D|ARM_N|ARM_REGISTER|ARM_M|ARM_SIGN },
+ 	{ "ldrCh",	"d0,[n0],/#j\x08",		0x00D000B0,	ARM_TYPE10,	ARM_D|ARM_N|ARM_IMMEDIATE|ARM_ABS },
+ 	{ "ldrCh",	"d0,[n0]",				0x01D000B0,	ARM_TYPE10,	ARM_D|ARM_N },
+ 	{ "ldrCh",	"d0,[n0,/#j\x08]",		0x01D000B0,	ARM_TYPE10,	ARM_D|ARM_N|ARM_IMMEDIATE|ARM_ABS },
++	// ARMv4T permits pre-indexed halfword loads with writeback. Keep this
++	// after the non-writeback form: optional parsing otherwise picks it for
++	// every immediate LDRH and would set W unconditionally.
++	{ "ldrCh",	"d0,[n0,/#j\x08]W",	0x01F000B0,	ARM_TYPE10,	ARM_D|ARM_N|ARM_IMMEDIATE|ARM_ABS },
+ 	{ "ldrCsb",	"d0,[n0,m1]",			0x019000D0,	ARM_TYPE10,	ARM_D|ARM_N|ARM_REGISTER|ARM_M },
++	{ "ldrCsb",	"d0,[n0,vm1]W",		0x01B000D0,	ARM_TYPE10,	ARM_D|ARM_N|ARM_REGISTER|ARM_M|ARM_SIGN },
+ 	{ "ldrCsb",	"d0,[n0],/#j\x08",		0x00D000D0,	ARM_TYPE10,	ARM_D|ARM_N|ARM_IMMEDIATE|ARM_ABS },
+ 	{ "ldrCsb",	"d0,[n0]",				0x01D000D0,	ARM_TYPE10,	ARM_D|ARM_N },
+ 	{ "ldrCsb",	"d0,[n0,/#j\x08]",		0x01D000D0,	ARM_TYPE10,	ARM_D|ARM_N|ARM_IMMEDIATE|ARM_ABS },
++	{ "ldrCsb",	"d0,[n0,/#j\x08]W",	0x01F000D0,	ARM_TYPE10,	ARM_D|ARM_N|ARM_IMMEDIATE|ARM_ABS },
+ 	{ "ldCsb",	"d0,[n0,m1]",			0x019000D0,	ARM_TYPE10,	ARM_D|ARM_N|ARM_REGISTER|ARM_M },
+ 	{ "ldCsb",	"d0,[n0]",				0x01D000D0,	ARM_TYPE10,	ARM_D|ARM_N },
+ 	{ "ldCsb",	"d0,[n0,/#j\x08]",		0x01D000D0,	ARM_TYPE10,	ARM_D|ARM_N|ARM_IMMEDIATE|ARM_ABS },
+ 	{ "ldrCsh",	"d0,[n0,m1]",			0x019000F0,	ARM_TYPE10,	ARM_D|ARM_N|ARM_REGISTER|ARM_M },
++	{ "ldrCsh",	"d0,[n0,vm1]W",		0x01B000F0,	ARM_TYPE10,	ARM_D|ARM_N|ARM_REGISTER|ARM_M|ARM_SIGN },
+ 	{ "ldrCsh",	"d0,[n0]",				0x01D000F0,	ARM_TYPE10,	ARM_D|ARM_N },
+ 	{ "ldrCsh",	"d0,[n0,/#j\x08]",		0x01D000F0,	ARM_TYPE10,	ARM_D|ARM_N|ARM_IMMEDIATE|ARM_ABS },
++	{ "ldrCsh",	"d0,[n0,/#j\x08]W",	0x01F000F0,	ARM_TYPE10,	ARM_D|ARM_N|ARM_IMMEDIATE|ARM_ABS },
+ 	{ "ldCsh",	"d0,[n0,m1]",			0x019000F0,	ARM_TYPE10,	ARM_D|ARM_N|ARM_REGISTER|ARM_M },
+ 	{ "ldCsh",	"d0,[n0]",				0x01D000F0,	ARM_TYPE10,	ARM_D|ARM_N },
+ 	{ "ldCsh",	"d0,[n0,/#j\x08]",		0x01D000F0,	ARM_TYPE10,	ARM_D|ARM_N|ARM_IMMEDIATE|ARM_ABS },
