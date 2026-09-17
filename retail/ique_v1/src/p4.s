@@ -951,6 +951,7 @@ loc_02300808:
 	bx r3	; 02300824
 .endfunc
 	.byte 0x00, 0x00	; 02300828
+P4_PxiCallback_02300828:
 	push {r4,lr}	; 02300828
 	add r4,r1,#0x0	; 0230082A
 	cmp r2,#0x0	; 0230082C
@@ -1236,7 +1237,7 @@ loc_023009FC:
 	.word 0x0000151C	; 023009FC
 pool_02300A00:
 loc_02300A00:
-	.word 0x02300829	; 02300A00
+	.word P4_PxiCallback_02300828 + 1	; 02300A00
 
 ; ===== function loc_02300A04 =====
 loc_02300A04:
@@ -1325,7 +1326,7 @@ loc_02300A58:
 	bx r12	; 02300A5C
 pool_02300A60:
 loc_02300A60:
-	.word loc_0380200C + 1	; 02300A60
+	.word P2_SetPxiReceiveCallback + 1	; 02300A60
 .thumb
 
 ; ===== function loc_02300A64 =====

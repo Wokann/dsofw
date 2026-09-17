@@ -881,6 +881,7 @@ loc_023007C4:
 	pop {r3}	; 023007DE
 	bx r3	; 023007E0
 	.byte 0x00, 0x00	; 023007E4
+P4_PxiCallback_023007E4:
 	push {r4,lr}	; 023007E4
 	add r4,r1,#0x0	; 023007E6
 	cmp r2,#0x0	; 023007E8
@@ -1161,7 +1162,7 @@ loc_023009B8:
 	.word 0x0000151C	; 023009B8
 pool_023009BC:
 loc_023009BC:
-	.word 0x023007E5	; 023009BC
+	.word P4_PxiCallback_023007E4 + 1	; 023009BC
 
 ; ===== function loc_023009C0 =====
 loc_023009C0:
@@ -1250,7 +1251,7 @@ loc_02300A14:
 	bx r12	; 02300A18
 pool_02300A1C:
 loc_02300A1C:
-	.word loc_037FFAA0 + 1	; 02300A1C
+	.word P2_SetPxiReceiveCallback + 1	; 02300A1C
 .thumb
 
 ; ===== function loc_02300A20 =====

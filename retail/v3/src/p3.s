@@ -39113,6 +39113,7 @@ loc_02370120:
 	.word FirmwareSystemWorkAddress + SystemWorkWirelessCallbackControlOffset	; 02370120
 
 ; ===== function loc_02370124 =====
+P3_PxiCallback_02370124:
 	push {r4,r5,r6,r7,lr}	; 02370124
 	sub sp,#0x4	; 02370126
 	add r5,r1,#0x0	; 02370128
@@ -39576,7 +39577,7 @@ loc_02370458:
 	bl loc_0237010C	; 02370464
 	mov r0,#0xa	; 02370468
 	mov r1,#0x0	; 0237046A
-	bl loc_0232E8C8	; 0237046C
+	bl P1_SetPxiReceiveCallback	; 0237046C
 	mov r0,#0x0	; 02370470
 	ldr r1,[pool_02370480]	; 02370472
 	str r0,[r1,#0x0]	; 02370474
@@ -39725,7 +39726,7 @@ loc_02370578:
 	blt loc_02370578	; 02370588
 	mov r0,#0xa	; 0237058A
 	ldr r1,[pool_023705C8]	; 0237058C
-	bl loc_0232E8C8	; 0237058E
+	bl P1_SetPxiReceiveCallback	; 0237058E
 	mov r0,#0x0	; 02370592
 	add sp,#0x4	; 02370594
 	pop {r4,r5,r6,r7}	; 02370596
@@ -39766,7 +39767,7 @@ loc_023705C4:
 	.word 0x02398CA0	; 023705C4
 pool_023705C8:
 loc_023705C8:
-	.word 0x02370125	; 023705C8
+	.word P3_PxiCallback_02370124 + 1	; 023705C8
 
 ; ===== function loc_023705CC =====
 loc_023705CC:

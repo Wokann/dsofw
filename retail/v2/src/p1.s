@@ -17186,6 +17186,7 @@ loc_02327AE8:
 	bx lr	; 02327AF4
 	.byte 0x1E, 0xFF, 0x2F, 0xE1	; 02327AFC
 .thumb
+P1_PxiCallback_02327AFC:
 	ldr r0,[pool_02327B98]	; 02327AFC
 	add r3,r1,#0x0	; 02327AFE
 	and r3,r0	; 02327B00
@@ -17933,7 +17934,7 @@ loc_02328014:
 	ldr r6,[pool_02328090]	; 0232801A
 	mov r0,#0x4	; 0232801C
 	ldr r1,[pool_02328094]	; 0232801E
-	bl loc_0232EE58	; 02328020
+	bl P1_SetPxiReceiveCallback	; 02328020
 	ldr r0,[pool_02328098]	; 02328024
 	ldr r0,[r0,#0x0]	; 02328026
 	mov r1,#0x80	; 02328028
@@ -17989,7 +17990,7 @@ loc_02328090:
 	.word 0x023565E0	; 02328090
 pool_02328094:
 loc_02328094:
-	.word 0x02327AFD	; 02328094
+	.word P1_PxiCallback_02327AFC + 1	; 02328094
 pool_02328098:
 loc_02328098:
 	.word FirmwareBootSharedAddress + BootSharedSettingsFlashOffset	; 02328098
@@ -31391,7 +31392,7 @@ loc_0232E710:
 	push {r4,r5,r6,lr}	; 0232E710
 	mov r0,#0x7	; 0232E712
 	ldr r1,[pool_0232E74C]	; 0232E714
-	bl loc_0232EE58	; 0232E716
+	bl P1_SetPxiReceiveCallback	; 0232E716
 	bl loc_0232B624	; 0232E71A
 	cmp r0,#0x0	; 0232E71E
 	bne loc_0232E746	; 0232E720
@@ -31417,9 +31418,10 @@ loc_0232E746:
 	bx r3	; 0232E74A
 pool_0232E74C:
 loc_0232E74C:
-	.word 0x0232E751	; 0232E74C
+	.word P1_PxiCallback_0232E750 + 1	; 0232E74C
 
 ; ===== function loc_0232E750 =====
+P1_PxiCallback_0232E750:
 	push {r4,r5,lr}	; 0232E750
 	sub sp,#0x4	; 0232E752
 	add r5,r1,#0x0	; 0232E754
@@ -32281,6 +32283,8 @@ loc_0232ED06:
 	cmp r0,r1	; 0232ED10
 	beq loc_0232ECCE	; 0232ED12
 	ldr r2,[sp,#0x0]	; 0232ED14
+; 拆出通道/26 位数据/错误位，再以这三个参数调用对应回调。
+; Decode channel, 26-bit data and error bit, then call that channel's callback.
 	lsl r0,r2,#0x1b	; 0232ED16
 	lsr r0,r0,#0x1b	; 0232ED18
 	cmp r0,#0x0	; 0232ED1A
@@ -32350,7 +32354,7 @@ loc_0232ED8C:
 	.word REG_IPC_FIFO_RX	; 0232ED8C
 pool_0232ED90:
 loc_0232ED90:
-	.word P1_BssStart + 0x28208	; 0232ED90
+	.word P1_PxiReceiveCallbacks	; 0232ED90
 pool_0232ED94:
 loc_0232ED94:
 	.word REG_IPC_FIFO_TX	; 0232ED94
@@ -32466,6 +32470,9 @@ loc_0232EE54:
 
 ; ===== function loc_0232EE58 =====
 loc_0232EE58:
+; r0=通道，r1=回调（0 注销）；关中断更新本 CPU 的表及共享可用位。
+; r0=channel, r1=callback (0 removes it); mask IRQs while updating table/availability.
+.func P1_SetPxiReceiveCallback
 	push {r4,r5,lr}	; 0232EE58
 	sub sp,#0x4	; 0232EE5A
 	add r5,r0,#0x0	; 0232EE5C
@@ -32500,15 +32507,16 @@ loc_0232EE90:
 	pop {r4,r5}	; 0232EE96
 	pop {r3}	; 0232EE98
 	bx r3	; 0232EE9A
+.endfunc
 pool_0232EE9C:
 loc_0232EE9C:
-	.word P1_BssStart + 0x28208	; 0232EE9C
+	.word P1_PxiReceiveCallbacks	; 0232EE9C
 pool_0232EEA0:
 loc_0232EEA0:
-	.word 0x027FFC00	; 0232EEA0
+	.word FirmwareSystemWorkAddress	; 0232EEA0
 pool_0232EEA4:
 loc_0232EEA4:
-	.word 0x00000388	; 0232EEA4
+	.word SystemWorkPxiArm9AvailableOffset	; 0232EEA4
 
 ; ===== function loc_0232EEA8 =====
 loc_0232EEA8:
@@ -32531,7 +32539,7 @@ loc_0232EEA8:
 loc_0232EECA:
 	stmia r1!,{r0}	; 0232EECA
 	add r2,r2,#0x1	; 0232EECC
-	cmp r2,#0x20	; 0232EECE
+	cmp r2,#PxiFifoChannelCount	; 0232EECE
 	blt loc_0232EECA	; 0232EED0
 	ldr r0,[pool_0232EF40]	; 0232EED2
 	ldr r1,[pool_0232EF44]	; 0232EED4
@@ -32588,13 +32596,13 @@ loc_0232EF30:
 	.word P1_BssStart + 0x28204	; 0232EF30
 pool_0232EF34:
 loc_0232EF34:
-	.word FirmwareBootInfoAddress	; 0232EF34
+	.word FirmwareSystemWorkAddress	; 0232EF34
 pool_0232EF38:
 loc_0232EF38:
-	.word 0x00000388	; 0232EF38
+	.word SystemWorkPxiArm9AvailableOffset	; 0232EF38
 pool_0232EF3C:
 loc_0232EF3C:
-	.word 0x02359088	; 0232EF3C
+	.word P1_PxiReceiveCallbacks	; 0232EF3C
 pool_0232EF40:
 loc_0232EF40:
 	.word 0x00040000	; 0232EF40
@@ -33275,7 +33283,7 @@ loc_0232F3DE:
 	beq loc_0232F3DE	; 0232F3E8
 	mov r0,#0x6	; 0232F3EA
 	ldr r1,[pool_0232F404]	; 0232F3EC
-	bl loc_0232EE58	; 0232F3EE
+	bl P1_SetPxiReceiveCallback	; 0232F3EE
 loc_0232F3F2:
 	add sp,#0x4	; 0232F3F2
 	pop {r4,r5}	; 0232F3F4
@@ -33290,9 +33298,10 @@ loc_0232F400:
 	.word P1_BssStart + 0x2828C	; 0232F400
 pool_0232F404:
 loc_0232F404:
-	.word 0x0232F409	; 0232F404
+	.word P1_PxiCallback_0232F408 + 1	; 0232F404
 
 ; ===== function loc_0232F408 =====
+P1_PxiCallback_0232F408:
 	push {r4,r5,r6,lr}	; 0232F408
 	sub sp,#0x8	; 0232F40A
 	lsl r0,r1,#0x10	; 0232F40C
@@ -34087,6 +34096,7 @@ loc_0232F97C:
 	.word 0x01010000	; 0232F97C
 
 ; ===== function loc_0232F980 =====
+P1_PxiCallback_0232F980:
 	push {lr}	; 0232F980
 	sub sp,#0x4	; 0232F982
 	cmp r2,#0x0	; 0232F984
@@ -34200,7 +34210,7 @@ loc_0232FA38:
 	beq loc_0232FA38	; 0232FA42
 	mov r0,#0x8	; 0232FA44
 	ldr r1,[pool_0232FA7C]	; 0232FA46
-	bl loc_0232EE58	; 0232FA48
+	bl P1_SetPxiReceiveCallback	; 0232FA48
 	mov r2,#0x0	; 0232FA4C
 	ldr r1,[pool_0232FA80]	; 0232FA4E
 	add r0,r2,#0x0	; 0232FA50
@@ -34230,7 +34240,7 @@ loc_0232FA78:
 	.word P1_BssStart + 0x282D4	; 0232FA78
 pool_0232FA7C:
 loc_0232FA7C:
-	.word 0x0232F981	; 0232FA7C
+	.word P1_PxiCallback_0232F980 + 1	; 0232FA7C
 pool_0232FA80:
 loc_0232FA80:
 	.word P1_BssStart + 0x282F8	; 0232FA80
@@ -34728,6 +34738,7 @@ loc_0232FDC2:
 	bx lr	; 0232FDDE
 
 ; ===== function loc_0232FDE0 =====
+P1_PxiCallback_0232FDE0:
 	push {r4,r5,lr}	; 0232FDE0
 	sub sp,#0x4	; 0232FDE2
 	cmp r2,#0x0	; 0232FDE4
@@ -35653,7 +35664,7 @@ loc_02330462:
 	beq loc_02330462	; 0233046C
 	mov r0,#0x5	; 0233046E
 	ldr r1,[pool_02330488]	; 02330470
-	bl loc_0232EE58	; 02330472
+	bl P1_SetPxiReceiveCallback	; 02330472
 loc_02330476:
 	add sp,#0x4	; 02330476
 	pop {r4,r5}	; 02330478
@@ -35668,7 +35679,7 @@ loc_02330484:
 	.word P1_BssStart + 0x2831C	; 02330484
 pool_02330488:
 loc_02330488:
-	.word 0x0232FDE1	; 02330488
+	.word P1_PxiCallback_0232FDE0 + 1	; 02330488
 loc_0233048C:
 	push {lr}	; 0233048C
 	sub sp,#0x4	; 0233048E
@@ -35997,6 +36008,10 @@ P1_Data_02330E6C:
 ; CRT 复制后，此保存区复用为主 BSS；下游偏移仍保留原内存布局。
 ; After CRT copying, reuse this load area as BSS; keep the original field offsets.
 P1_BssStart:
+; 本 CPU 的 32 项 FIFO 回调表，按通道索引；位于 CRT 清零的 BSS。
+; This CPU's 32 FIFO callback slots, indexed by channel, live in CRT-cleared BSS.
+.definelabel P1_PxiReceiveCallbacks, P1_BssStart + 0x28208
+.definelabel P1_PxiReceiveCallbacksEnd, P1_PxiReceiveCallbacks + PxiFifoChannelCount * 4
 ; 异常对象位于已由 CRT 清零的主 BSS，不是固定硬件地址。
 ; Exception objects live in CRT-cleared BSS, not fixed hardware slots.
 .definelabel P1_UserExceptionHandler, P1_BssStart + 0x265C8

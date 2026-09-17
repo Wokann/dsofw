@@ -707,13 +707,18 @@ loc_037FAD08:
 pool_037FAD0C:
 loc_037FAD0C:
 	.word Bios7IrqFlagsAddress	; 037FAD0C
+; 通道 1 的用户回调：将主工作区的首字写为 6。
+; Channel 1 user callback: write 6 to the first main-work word.
+.func P2_PxiChannel1UserCallback
 	mov r1,#0x6	; 037FAD10
 	ldr r0,[pool_037FAD18]	; 037FAD12
 	str r1,[r0,#0x0]	; 037FAD14
 	bx lr	; 037FAD16
+.endfunc
 pool_037FAD18:
 loc_037FAD18:
 	.word P2_BssStart	; 037FAD18
+P2_PxiCallback_037FAD1C:
 	cmp r1,#0x3	; 037FAD1C
 	bne loc_037FAD28	; 037FAD1E
 	mov r1,#0x6	; 037FAD20
@@ -803,7 +808,7 @@ loc_037FAD78:
 	bl loc_037FAC0C	; 037FADB0
 	bl loc_037FE48C	; 037FADB4
 	ldr r0,[pool_037FAF84]	; 037FADB8
-	bl P2_Runtime_0380F618	; 037FADBA
+	bl P2_InitPxiChannel1Callback	; 037FADBA
 	bl loc_037FB018	; 037FADBE
 	mov r0,#0x8	; 037FADC2
 	ldr r1,[pool_037FAF88]	; 037FADC4
@@ -823,7 +828,7 @@ loc_037FAD78:
 	str r0,[r1,#0x0]	; 037FADEE
 	mov r0,#0x2	; 037FADF0
 	ldr r1,[pool_037FAF94]	; 037FADF2
-	bl loc_03801FC0	; 037FADF4
+	bl P2_SetPxiReceiveCallback	; 037FADF4
 	ldr r0,[pool_037FAF98]	; 037FADF8
 	str r0,[sp,#0x0]	; 037FADFA
 	mov r0,#0xe	; 037FADFC
@@ -1018,7 +1023,7 @@ loc_037FAF80:
 	.word REG_POWERCNT	; 037FAF80
 pool_037FAF84:
 loc_037FAF84:
-	.word 0x037FAD11	; 037FAF84
+	.word P2_PxiChannel1UserCallback + 1	; 037FAF84
 pool_037FAF88:
 loc_037FAF88:
 	.word 0x03807A9C	; 037FAF88
@@ -1030,7 +1035,7 @@ loc_037FAF90:
 	.word P2_BssStart + 0x14	; 037FAF90
 pool_037FAF94:
 loc_037FAF94:
-	.word 0x037FAD1D	; 037FAF94
+	.word P2_PxiCallback_037FAD1C + 1	; 037FAF94
 pool_037FAF98:
 loc_037FAF98:
 	.word 0x00000400	; 037FAF98
@@ -14420,7 +14425,7 @@ loc_03801B30:
 	.word 0x03801B39	; 03801B30
 pool_03801B34:
 loc_03801B34:
-	.word loc_03801FC0 + 1	; 03801B34
+	.word P2_SetPxiReceiveCallback + 1	; 03801B34
 
 ; ===== function loc_03801B38 =====
 	push {r4,r5,lr}	; 03801B38
@@ -14915,6 +14920,8 @@ loc_03801EA6:
 	cmp r0,r1	; 03801EB0
 	beq loc_03801E6E	; 03801EB2
 	ldr r2,[sp,#0x0]	; 03801EB4
+; 拆出通道/26 位数据/错误位，再以这三个参数调用对应回调。
+; Decode channel, 26-bit data and error bit, then call that channel's callback.
 	lsl r0,r2,#0x1b	; 03801EB6
 	lsr r0,r0,#0x1b	; 03801EB8
 	cmp r0,#0x0	; 03801EBA
@@ -14983,7 +14990,7 @@ loc_03801F2C:
 	.word REG_IPC_FIFO_RX	; 03801F2C
 pool_03801F30:
 loc_03801F30:
-	.word P2_BssStart + 0x1D3C	; 03801F30
+	.word P2_PxiReceiveCallbacks	; 03801F30
 pool_03801F34:
 loc_03801F34:
 	.word REG_IPC_FIFO_TX	; 03801F34
@@ -15066,6 +15073,9 @@ loc_03801FBC:
 
 ; ===== function loc_03801FC0 =====
 loc_03801FC0:
+; r0=通道，r1=回调（0 注销）；关中断更新本 CPU 的表及共享可用位。
+; r0=channel, r1=callback (0 removes it); mask IRQs while updating table/availability.
+.func P2_SetPxiReceiveCallback
 	push {r4,r5,lr}	; 03801FC0
 	sub sp,#0x4	; 03801FC2
 	add r5,r0,#0x0	; 03801FC4
@@ -15100,15 +15110,16 @@ loc_03801FF8:
 	pop {r4,r5}	; 03801FFE
 	pop {r3}	; 03802000
 	bx r3	; 03802002
+.endfunc
 pool_03802004:
 loc_03802004:
-	.word P2_BssStart + 0x1D3C	; 03802004
+	.word P2_PxiReceiveCallbacks	; 03802004
 pool_03802008:
 loc_03802008:
-	.word 0x027FFC00	; 03802008
+	.word FirmwareSystemWorkAddress	; 03802008
 pool_0380200C:
 loc_0380200C:
-	.word 0x0000038C	; 0380200C
+	.word SystemWorkPxiArm7AvailableOffset	; 0380200C
 
 ; ===== function loc_03802010 =====
 loc_03802010:
@@ -15132,7 +15143,7 @@ loc_03802032:
 	lsl r1,r3,#0x2	; 03802032
 	str r2,[r0,r1]	; 03802034
 	add r3,r3,#0x1	; 03802036
-	cmp r3,#0x20	; 03802038
+	cmp r3,#PxiFifoChannelCount	; 03802038
 	blt loc_03802032	; 0380203A
 	ldr r0,[pool_03802094]	; 0380203C
 	ldr r1,[pool_03802098]	; 0380203E
@@ -15175,13 +15186,13 @@ loc_03802084:
 	.word P2_BssStart + 0x1D38	; 03802084
 pool_03802088:
 loc_03802088:
-	.word FirmwareBootInfoAddress	; 03802088
+	.word FirmwareSystemWorkAddress	; 03802088
 pool_0380208C:
 loc_0380208C:
-	.word 0x0000038C	; 0380208C
+	.word SystemWorkPxiArm7AvailableOffset	; 0380208C
 pool_03802090:
 loc_03802090:
-	.word P2_BssStart + 0x1D3C	; 03802090
+	.word P2_PxiReceiveCallbacks	; 03802090
 pool_03802094:
 loc_03802094:
 	.word 0x00040000	; 03802094
@@ -15724,6 +15735,7 @@ loc_03802484:
 pool_03802488:
 loc_03802488:
 	.word loc_03801F38 + 1	; 03802488
+P2_PxiCallback_0380248C:
 	push {r4,lr}	; 0380248C
 	cmp r2,#0x0	; 0380248E
 	bne loc_0380252E	; 03802490
@@ -15842,7 +15854,7 @@ loc_03802540:
 	bl loc_03801E58	; 0380255A
 	mov r0,#0x5	; 0380255E
 	ldr r1,[pool_038025E4]	; 03802560
-	bl loc_03801FC0	; 03802562
+	bl P2_SetPxiReceiveCallback	; 03802562
 	ldr r0,[pool_038025E8]	; 03802566
 	ldr r1,[pool_038025EC]	; 03802568
 	mov r2,#0x4	; 0380256A
@@ -15901,7 +15913,7 @@ loc_038025E0:
 	.word P2_BssStart + 0x1F70	; 038025E0
 pool_038025E4:
 loc_038025E4:
-	.word 0x0380248D	; 038025E4
+	.word P2_PxiCallback_0380248C + 1	; 038025E4
 pool_038025E8:
 loc_038025E8:
 	.word 0x03807190	; 038025E8
@@ -16844,6 +16856,7 @@ loc_03802D18:
 .thumb
 
 ; ===== function loc_03802D28 =====
+P2_PxiCallback_03802D28:
 	push {lr}	; 03802D28
 	sub sp,#0x4	; 03802D2A
 	cmp r2,#0x0	; 03802D2C
@@ -17173,13 +17186,13 @@ loc_03802F88:
 	bl loc_03801E58	; 03802FB0
 	mov r0,#0x6	; 03802FB4
 	ldr r1,[pool_03803024]	; 03802FB6
-	bl loc_03801FC0	; 03802FB8
+	bl P2_SetPxiReceiveCallback	; 03802FB8
 	mov r0,#0x8	; 03802FBC
 	ldr r1,[pool_03803024]	; 03802FBE
-	bl loc_03801FC0	; 03802FC0
+	bl P2_SetPxiReceiveCallback	; 03802FC0
 	mov r0,#0x4	; 03802FC4
 	ldr r1,[pool_03803024]	; 03802FC6
-	bl loc_03801FC0	; 03802FC8
+	bl P2_SetPxiReceiveCallback	; 03802FC8
 	ldr r0,[pool_03803028]	; 03802FCC
 	ldr r1,[pool_0380302C]	; 03802FCE
 	mov r2,#0x10	; 03802FD0
@@ -17226,7 +17239,7 @@ loc_03803020:
 	.word P2_BssStart + 0x2140	; 03803020
 pool_03803024:
 loc_03803024:
-	.word 0x03802D29	; 03803024
+	.word P2_PxiCallback_03802D28 + 1	; 03803024
 pool_03803028:
 loc_03803028:
 	.word 0x03807760	; 03803028
@@ -20402,6 +20415,10 @@ P2_Data_0380530C:
 ; CRT 复制后，此保存区复用为主 BSS；下游偏移仍保留原内存布局。
 ; After CRT copying, reuse this load area as BSS; keep the original field offsets.
 P2_BssStart:
+; 本 CPU 的 32 项 FIFO 回调表，按通道索引；位于 CRT 清零的 BSS。
+; This CPU's 32 FIFO callback slots, indexed by channel, live in CRT-cleared BSS.
+.definelabel P2_PxiReceiveCallbacks, P2_BssStart + 0x1D3C
+.definelabel P2_PxiReceiveCallbacksEnd, P2_PxiReceiveCallbacks + PxiFifoChannelCount * 4
 .definelabel P2_CachedFirmwareHeader, P2_BssStart + 0x2C
 .definelabel P2_BssEnd, P2_BssStart + 0x26FC
 
@@ -20689,6 +20706,9 @@ P2_Entry_0380F604:
 .thumb
 P2_Runtime_0380F618:
 .thumb
+; 保存 r0 的用户回调，设置启动参数并注册通道 1 接收入口。
+; Save the r0 user callback, set the boot parameter and register channel 1.
+.func P2_InitPxiChannel1Callback
 	push {r4,lr}	; 0380F618
 	add r4,r0,#0x0	; 0380F61A
 	bl loc_03801E58	; 0380F61C
@@ -20703,31 +20723,53 @@ P2_Runtime_0380F618:
 P2_Runtime_0380F630:
 	mov r0,#0x1	; 0380F630
 	ldr r1,[pool_0380F648]	; 0380F632
-	bl loc_03801FC0	; 0380F634
+	bl P2_SetPxiReceiveCallback	; 0380F634
 	pop {r4}	; 0380F638
 	pop {r3}	; 0380F63A
 	bx r3	; 0380F63C
+.endfunc
 	.byte 0xC0, 0x46	; 0380F63E
 pool_0380F640:
-	.word P2_WramCopy1BssStart	; 0380F640
+	.word P2_PxiChannel1UserCallbackSlot	; 0380F640
 pool_0380F644:
 	.word FirmwareBootParamAddress	; 0380F644
 pool_0380F648:
-	.word 0x0380F655	; 0380F648
-	.byte 0x00, 0x4B, 0x18, 0x47, 0x79, 0xF6, 0x80, 0x03, 0x00, 0xB5, 0x81, 0xB0, 0x01, 0x28, 0x07, 0xD1	; 0380F64C
-	.byte 0x01, 0x29, 0x05, 0xD1, 0x04, 0x48, 0x00, 0x68, 0x00, 0x28, 0x01, 0xD0, 0xF5, 0xF7, 0x10, 0xFD	; 0380F65C
-	.byte 0x01, 0xB0, 0x08, 0xBC, 0x18, 0x47, 0xC0, 0x46, 0xF4, 0xF6, 0x80, 0x03, 0x00, 0xB5, 0x81, 0xB0	; 0380F66C
-	.byte 0x04, 0x48, 0x00, 0x88, 0x02, 0x28, 0x02, 0xD1, 0x03, 0x48, 0x00, 0xF0, 0x29, 0xF8, 0x01, 0xB0	; 0380F67C
-	.byte 0x08, 0xBC, 0x18, 0x47, 0x40, 0xFC, 0x7F, 0x02, 0x40, 0xE8, 0x3F, 0x02, 0x70, 0xB5, 0x0E, 0x1C	; 0380F68C
-	.byte 0x00, 0x28, 0x13, 0xD0, 0x00, 0x25, 0x04, 0x1C, 0x0C, 0x34, 0x28, 0x01, 0x22, 0x18, 0xD0, 0x68	; 0380F69C
-	.byte 0xC0, 0x07, 0xC0, 0x0F, 0xB0, 0x42, 0x06, 0xD1, 0x51, 0x68, 0x10, 0x68, 0x88, 0x42, 0x02, 0xD0	; 0380F6AC
-	.byte 0x92, 0x68, 0x00, 0xF0, 0x07, 0xF8, 0x6D, 0x1C, 0x03, 0x2D, 0xEE, 0xDB, 0x70, 0xBC, 0x08, 0xBC	; 0380F6BC
-	.byte 0x18, 0x47, 0xC0, 0x46, 0x78, 0x47, 0xC0, 0x46, 0x04, 0xF0, 0x1F, 0xE5, 0x00, 0xF6, 0x80, 0x03	; 0380F6CC
-	.byte 0x10, 0xB5, 0x04, 0x1C, 0x00, 0x21, 0xFF, 0xF7, 0xD9, 0xFF, 0x20, 0x1C, 0x01, 0x21, 0xFF, 0xF7	; 0380F6DC
-	.byte 0xD5, 0xFF, 0x10, 0xBC, 0x08, 0xBC, 0x18, 0x47	; 0380F6EC
+	.word P2_PxiChannel1Callback + 1	; 0380F648
+	.byte 0x00, 0x4B, 0x18, 0x47, 0x79, 0xF6, 0x80, 0x03	; 0380F64C
+; 仅在通道=1、数据=1 且用户回调非空时，间接调用该回调。
+; Invoke the saved callback only for channel 1/data 1 and a non-null callback.
+.func P2_PxiChannel1Callback
+	push {lr}	; 0380F654
+	sub sp,#0x4	; 0380F656
+	cmp r0,#0x1	; 0380F658
+	bne P2_Entry_0380F66C	; 0380F65A
+	cmp r1,#0x1	; 0380F65C
+	bne P2_Entry_0380F66C	; 0380F65E
+	ldr r0,[pool_0380F674]	; 0380F660
+	ldr r0,[r0,#0x0]	; 0380F662
+	cmp r0,#0x0	; 0380F664
+	beq P2_Entry_0380F66C	; 0380F666
+	bl loc_0380508C	; 0380F668
+P2_Entry_0380F66C:
+	add sp,#0x4	; 0380F66C
+	pop {r3}	; 0380F66E
+	bx r3	; 0380F670
+.endfunc
+	.byte 0xC0, 0x46	; 0380F672
+pool_0380F674:
+	.word P2_PxiChannel1UserCallbackSlot	; 0380F674
+	.byte 0x00, 0xB5, 0x81, 0xB0, 0x04, 0x48, 0x00, 0x88, 0x02, 0x28, 0x02, 0xD1, 0x03, 0x48, 0x00, 0xF0	; 0380F678
+	.byte 0x29, 0xF8, 0x01, 0xB0, 0x08, 0xBC, 0x18, 0x47, 0x40, 0xFC, 0x7F, 0x02, 0x40, 0xE8, 0x3F, 0x02	; 0380F688
+	.byte 0x70, 0xB5, 0x0E, 0x1C, 0x00, 0x28, 0x13, 0xD0, 0x00, 0x25, 0x04, 0x1C, 0x0C, 0x34, 0x28, 0x01	; 0380F698
+	.byte 0x22, 0x18, 0xD0, 0x68, 0xC0, 0x07, 0xC0, 0x0F, 0xB0, 0x42, 0x06, 0xD1, 0x51, 0x68, 0x10, 0x68	; 0380F6A8
+	.byte 0x88, 0x42, 0x02, 0xD0, 0x92, 0x68, 0x00, 0xF0, 0x07, 0xF8, 0x6D, 0x1C, 0x03, 0x2D, 0xEE, 0xDB	; 0380F6B8
+	.byte 0x70, 0xBC, 0x08, 0xBC, 0x18, 0x47, 0xC0, 0x46, 0x78, 0x47, 0xC0, 0x46, 0x04, 0xF0, 0x1F, 0xE5	; 0380F6C8
+	.byte 0x00, 0xF6, 0x80, 0x03, 0x10, 0xB5, 0x04, 0x1C, 0x00, 0x21, 0xFF, 0xF7, 0xD9, 0xFF, 0x20, 0x1C	; 0380F6D8
+	.byte 0x01, 0x21, 0xFF, 0xF7, 0xD5, 0xFF, 0x10, 0xBC, 0x08, 0xBC, 0x18, 0x47	; 0380F6E8
 P2_WramCopy1RuntimeEnd:
 .definelabel P2_WramCopy1ZeroBytes, 0x4
 .definelabel P2_WramCopy1BssStart, P2_WramCopy1RuntimeEnd
+.definelabel P2_PxiChannel1UserCallbackSlot, P2_WramCopy1BssStart
 .definelabel P2_WramCopy1BssEnd, P2_WramCopy1BssStart + P2_WramCopy1ZeroBytes
 .headersize 0x037FA800
 P2_WramCopy1LoadEnd:
