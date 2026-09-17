@@ -1180,7 +1180,7 @@ loc_037FB054:
 	.word 0x00002000	; 037FB054
 pool_037FB058:
 loc_037FB058:
-	.word 0x04808180	; 037FB058
+	.word REG_WIFI_RF_BUSY	; 037FB058
 
 ; ===== function loc_037FB05C =====
 loc_037FB05C:
@@ -1225,7 +1225,7 @@ loc_037FB098:
 	.word 0x00002000	; 037FB098
 pool_037FB09C:
 loc_037FB09C:
-	.word 0x0480815E	; 037FB09C
+	.word REG_WIFI_BB_BUSY	; 037FB09C
 
 ; ===== function loc_037FB0A0 =====
 loc_037FB0A0:
@@ -5294,7 +5294,7 @@ P2_Entry_037FCD1E:
 	bne P2_Entry_037FCD1E	; 037FCD24
 	bx lr	; 037FCD26
 pool_037FCD28:
-	.word 0x040000B0	; 037FCD28
+	.word REG_DMA0SAD	; 037FCD28
 pool_037FCD2C:
 	.word 0x80000000	; 037FCD2C
 P2_Entry_037FCD30:
@@ -5705,7 +5705,7 @@ loc_037FD056:
 	.byte 0xC0, 0x46	; 037FD05C
 pool_037FD05C:
 loc_037FD05C:
-	.word 0x04000403	; 037FD05C
+	.word SCHANNEL0_CR + 3	; 037FD05C
 
 ; ===== function loc_037FD060 =====
 loc_037FD060:
@@ -6045,13 +6045,13 @@ loc_037FD28C:
 	.word SCHANNEL0_TIMER	; 037FD28C
 pool_037FD290:
 loc_037FD290:
-	.word 0x0400040A	; 037FD290
+	.word SCHANNEL0_PNT	; 037FD290
 pool_037FD294:
 loc_037FD294:
-	.word 0x0400040C	; 037FD294
+	.word SCHANNEL0_LEN	; 037FD294
 pool_037FD298:
 loc_037FD298:
-	.word 0x04000404	; 037FD298
+	.word SCHANNEL0_SAD	; 037FD298
 
 ; ===== function loc_037FD29C =====
 loc_037FD29C:
@@ -7922,7 +7922,7 @@ P2_Entry_037FDF56:
 pool_037FDF64:
 	.word 0x0380387C	; 037FDF64
 pool_037FDF68:
-	.word 0x04000403	; 037FDF68
+	.word SCHANNEL0_CR + 3	; 037FDF68
 P2_Entry_037FDF6C:
 	push {r4,r5,r6,lr}	; 037FDF6C
 	mov r0,#0x0	; 037FDF6E
@@ -11059,7 +11059,7 @@ loc_037FF544:
 	.byte 0xC0, 0x46	; 037FF558
 pool_037FF558:
 loc_037FF558:
-	.word 0x04000403	; 037FF558
+	.word SCHANNEL0_CR + 3	; 037FF558
 pool_037FF55C:
 loc_037FF55C:
 	.word REG_SNDCAP0CNT	; 037FF55C
@@ -16221,7 +16221,7 @@ P2_Entry_03801A64:
 	bx r3	; 03801A70
 	.byte 0xC0, 0x46	; 03801A72
 pool_03801A74:
-	.word 0x040001C0	; 03801A74
+	.word REG_SPICNT	; 03801A74
 pool_03801A78:
 	.word 0x00008100	; 03801A78
 pool_03801A7C:
@@ -16262,7 +16262,7 @@ P2_Entry_03801AB0:
 	bx r3	; 03801ABC
 	.byte 0xC0, 0x46	; 03801ABE
 pool_03801AC0:
-	.word 0x040001C0	; 03801AC0
+	.word REG_SPICNT	; 03801AC0
 pool_03801AC4:
 	.word 0x00008100	; 03801AC4
 pool_03801AC8:
@@ -17309,7 +17309,7 @@ loc_03802244:
 .endfunc
 	.hword 0x0000	; literal alignment / 字面量对齐。
 P2_SwiIntrWaitRegisterBase:
-	.word 0x04000000	; ARM7 I/O register base / ARM7 I/O 寄存器基址。
+	.word REG_DISPCNT_A	; ARM7 I/O register base / ARM7 I/O 寄存器基址。
 ; BIOS SWI #05: wait for VBlank IRQ. / BIOS SWI #05：等待 VBlank 中断。
 P2_SwiVBlankIntrWait:
 	mov r2,#0x0

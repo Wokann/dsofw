@@ -31,6 +31,7 @@
 .definelabel REG_BLDALPHA,                            0x04000052
 .definelabel REG_MASTER_BRIGHT,                       0x0400006c
 .definelabel REG_DMA0SAD,                             0x040000b0
+.definelabel REG_DMA0FILL,                            0x040000e0
 .definelabel REG_DISPCNT_B,                           0x04001000
 .definelabel REG_BG0CNT_SUB,                          0x04001008
 .definelabel REG_BG1CNT_SUB,                          0x0400100a
@@ -113,6 +114,11 @@
 ; ARM7 audio registers. / ARM7 音频寄存器。
 .definelabel REG_SOUNDCNT_ARM7,                       0x04000500
 .definelabel SCHANNEL0_CR,                            0x04000400
+; Channel 0 SOUNDx block: source, timer, loop point and sample length.
+; 通道 0 SOUNDx 块：源地址、定时器、循环点与采样长度。
+.definelabel SCHANNEL0_SAD,                       0x04000404
+.definelabel SCHANNEL0_PNT,                       0x0400040a
+.definelabel SCHANNEL0_LEN,                       0x0400040c
 .definelabel SCHANNEL0_PAN,                           0x04000402
 .definelabel SCHANNEL0_TIMER,                         0x04000408
 .definelabel REG_SNDCAP0CNT,                          0x04000508
