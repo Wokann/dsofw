@@ -15285,12 +15285,12 @@ loc_02326D74:
 	sub sp,#0x4	; 02326D76
 	ldr r0,[pool_02326DCC]	; 02326D78
 	ldr r1,[pool_02326DD0]	; 02326D7A
-	blx loc_02328680	; 02326D7C
+	blx P1_DecompressP345	; 02326D7C
 	add r5,r0,#0x0	; 02326D80
 	ldr r1,[pool_02326DD4]	; 02326D82
 	ldr r0,[r1,#0xc]	; 02326D84
 	ldr r1,[r1,#0x10]	; 02326D86
-	blx loc_02328680	; 02326D88
+	blx P1_DecompressP345	; 02326D88
 	add r4,r0,#0x0	; 02326D8C
 	ldr r0,[pool_02326DD8]	; 02326D8E
 	ldr r1,[pool_02326DCC]	; 02326D90
@@ -15345,7 +15345,7 @@ loc_02326DE4:
 	push {r4,lr}	; 02326DE4
 	ldr r0,[pool_02326E14]	; 02326DE6
 	ldr r1,[pool_02326E18]	; 02326DE8
-	blx loc_02328680	; 02326DEA
+	blx P1_DecompressP345	; 02326DEA
 	add r2,r0,#0x0	; 02326DEE
 	ldr r0,[pool_02326E1C]	; 02326DF0
 	ldr r1,[pool_02326E14]	; 02326DF2
@@ -18886,6 +18886,9 @@ loc_0232867C:
 
 ; ===== function loc_02328680 =====
 loc_02328680:
+; 解出 P3/P4/P5；r0=目标、r1=压缩流，返回输出长度。
+; Decode P3/P4/P5; r0=destination, r1=stream, returns output size.
+.func P1_DecompressP345
 	stmdb sp!,{r4,r5,r6,r7,r8,r9,r10,r11,r12,lr}	; 02328680
 	sub sp,sp,#0x4	; 02328684
 	ldr r4,[r1,#0x4]	; 02328688
@@ -18908,6 +18911,8 @@ loc_023286C0:
 	bic r6,r6,#0xff0000	; 023286C8
 	mov r5,r5, ror #0x8	; 023286CC
 	eor r5,r5,r6, lsr #0x8	; 023286D0
+; 每次重新建立两路状态；共享工作区不可重入。
+; Reinitialize both streams for each call; shared workspace is not reentrant.
 	ldr r2,[pool_02328A9C]	; 023286D4
 	add r3,r1,#0xc	; 023286D8
 	str r3,[r2,#0x10]	; 023286DC
@@ -18922,10 +18927,12 @@ loc_023286C0:
 	str r3,[r2,#0xc]	; 02328700
 	ldr r11,[pool_02328A9C]	; 02328704
 	mov r12,#0x20	; 02328708
-	bl loc_023289F0	; 0232870C
+	bl P1_ReadP345Bits	; 0232870C
 	ldr r11,[pool_02328AA0]	; 02328710
 	mov r12,#0x20	; 02328714
-	bl loc_023289F0	; 02328718
+	bl P1_ReadP345Bits	; 02328718
+; 先构建 9 位字面量/长度树，子节点为 16 位表项。
+; Build the 9-bit literal/length tree with 16-bit child entries.
 	ldr r11,[pool_02328A9C]	; 0232871C
 	ldr r2,[pool_02328AA4]	; 02328720
 	mov r1,r2	; 02328724
@@ -18963,7 +18970,7 @@ loc_02328770:
 	b loc_02328730	; 02328798
 loc_0232879C:
 	mov r12,#0x9	; 0232879C
-	bl loc_023289F0	; 023287A0
+	bl P1_ReadP345Bits	; 023287A0
 	mov r10,#0x4000	; 023287A4
 	ldr r12,[pool_02328AA8]	; 023287A8
 	ldr r3,[pool_02328AAC]	; 023287AC
@@ -18985,6 +18992,8 @@ loc_023287DC:
 	b loc_02328730	; 023287E4
 loc_023287E8:
 	str r7,[r11,#0x20]	; 023287E8
+; 复用临时栈构建 11 位距离树，不覆盖前一棵树。
+; Reuse the temporary stack for the 11-bit distance tree, preserving the first tree.
 	ldr r11,[pool_02328AA0]	; 023287EC
 	ldr r2,[pool_02328AA4]	; 023287F0
 	mov r1,r2	; 023287F4
@@ -19022,7 +19031,7 @@ loc_02328840:
 	b loc_02328800	; 02328868
 loc_0232886C:
 	mov r12,#0xb	; 0232886C
-	bl loc_023289F0	; 02328870
+	bl P1_ReadP345Bits	; 02328870
 	mov r10,#0x4000	; 02328874
 	ldr r12,[pool_02328AB0]	; 02328878
 	ldr r3,[pool_02328AB4]	; 0232887C
@@ -19045,6 +19054,8 @@ loc_023288AC:
 loc_023288B8:
 	str r7,[r11,#0x20]	; 023288B8
 loc_023288BC:
+; 小于 0x100 的值直接输出；否则长度=值-0xFD，回距=距离值+1。
+; Values below 0x100 are literals; otherwise length=value-0xFD, distance=distance value+1.
 	cmp r4,#0x0	; 023288BC
 	beq loc_023289E4	; 023288C0
 	ldr r11,[pool_02328A9C]	; 023288C4
@@ -19132,13 +19143,17 @@ loc_023289D0:
 loc_023289E4:
 	ldr r0,[sp],#0x4	; 023289E4
 
-; ===== function loc_023289E8 =====
+; 共用返回尾部。 / Shared return epilogue.
 loc_023289E8:
 	ldmia sp!,{r4,r5,r6,r7,r8,r9,r10,r11,r12,lr}	; 023289E8
 	bx lr	; 023289EC
+.endfunc
 
 ; ===== function loc_023289F0 =====
 loc_023289F0:
+; 从 r11 指定的位流取 r12 位到 r7，并推进游标。
+; Read r12 bits into r7 from the r11 stream context; advance its cursor.
+.func P1_ReadP345Bits
 	ldr r8,[r11,#0x0]	; 023289F0
 	ldr r9,[r11,#0x10]	; 023289F4
 	ldr r10,[r11,#0x18]	; 023289F8
@@ -19183,30 +19198,31 @@ loc_02328A84:
 	add r10,r8,r12	; 02328A8C
 	str r10,[r11,#0x0]	; 02328A90
 	bx lr	; 02328A94
+.endfunc
 pool_02328A98:
 loc_02328A98:
-	.word 0x023FE000	; 02328A98
+	.word P345DecodeOutputLimitAddress	; 02328A98
 pool_02328A9C:
 loc_02328A9C:
-	.word 0x023DF240	; 02328A9C
+	.word P1_P345DecodeWorkspace	; 02328A9C
 pool_02328AA0:
 loc_02328AA0:
-	.word 0x023DF244	; 02328AA0
+	.word P1_P345DecodeWorkspace + 4	; 02328AA0
 pool_02328AA4:
 loc_02328AA4:
-	.word 0x023DF280	; 02328AA4
+	.word P1_P345TreeStack	; 02328AA4
 pool_02328AA8:
 loc_02328AA8:
-	.word 0x023E0480	; 02328AA8
+	.word P1_P345LengthZeroChildren	; 02328AA8
 pool_02328AAC:
 loc_02328AAC:
-	.word 0x023DF480	; 02328AAC
+	.word P1_P345LengthOneChildren	; 02328AAC
 pool_02328AB0:
 loc_02328AB0:
-	.word 0x023E1480	; 02328AB0
+	.word P1_P345DistanceZeroChildren	; 02328AB0
 pool_02328AB4:
 loc_02328AB4:
-	.word 0x023E5480	; 02328AB4
+	.word P1_P345DistanceOneChildren	; 02328AB4
 	.byte 0x10, 0xB5, 0x00, 0xF0, 0x3B, 0xF8, 0x04, 0x1C, 0x00, 0x2C, 0x24, 0xD0, 0x14, 0x48, 0x10, 0x30	; 02328AC8
 	.byte 0x14, 0x49, 0x02, 0x22, 0x00, 0xF0, 0x54, 0xF8, 0x00, 0x28, 0x1C, 0xD1, 0x10, 0x48, 0x80, 0x7F	; 02328AD8
 	.byte 0x00, 0x28, 0x18, 0xD1, 0x10, 0x4A, 0x61, 0x1E, 0xB8, 0x20, 0x41, 0x43, 0x54, 0x18, 0x0F, 0x48	; 02328AE8
@@ -26194,7 +26210,7 @@ loc_0232BCC0:
 	bx lr	; 0232BCC2
 pool_0232BCC4:
 loc_0232BCC4:
-	.word 0x023E9480	; 0232BCC4
+	.word P1_P345DecodeWorkspaceEnd	; 0232BCC4
 pool_0232BCC8:
 loc_0232BCC8:
 	.word 0x01FF8320	; 0232BCC8

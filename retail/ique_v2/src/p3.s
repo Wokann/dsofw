@@ -38420,3 +38420,17 @@ P3_ImageEnd:
 .definelabel UiBootZeroStart, 0x02280220
 .definelabel UiBootZeroBytes, 0x20700
 .definelabel UiBootZeroEnd, UiBootZeroStart + UiBootZeroBytes
+
+; 解压时临时复用此区，随后清零供 UI 使用；不能与 UI 并行使用。
+; Decoder scratch overlays this region before UI clearing; it is not live UI storage.
+; 表间距保留原布局，并非访问上界检查。 / Original table spacing, not runtime bounds checking.
+.definelabel P1_P345DecodeWorkspace, UiBootZeroStart
+.definelabel P1_P345TreeStack, P1_P345DecodeWorkspace + 0x40
+.definelabel P1_P345LengthOneChildren, P1_P345TreeStack + 0x200
+.definelabel P1_P345LengthZeroChildren, P1_P345LengthOneChildren + 0x1000
+.definelabel P1_P345DistanceZeroChildren, P1_P345LengthZeroChildren + 0x1000
+.definelabel P1_P345DistanceOneChildren, P1_P345DistanceZeroChildren + 0x4000
+.definelabel P1_P345DecodeWorkspaceEnd, P1_P345DistanceOneChildren + 0x4000
+.if P1_P345DecodeWorkspaceEnd > UiBootZeroEnd
+    .error "P345 decode workspace exceeds its reserved RAM range"
+.endif

@@ -13949,4 +13949,23 @@ P5SpanishSystemSettingsDateTimeDialogText:
     .byte 0xEE, 0x80, 0x94
     .asciiz "."
     .fill 9, 0x00
+P5_ImageEnd:
 .close
+
+; RAM 预留布局：P5 后留 0x20，继以解压状态、临时栈和子节点表；不输出字节。
+; RAM-only reservation: P5 + 0x20, decoder state, temporary stack and child tables.
+; 表间距保留原布局，并非访问上界检查。 / Original table spacing, not runtime bounds checking.
+.definelabel P1_P345DecodeWorkspace, P5_ImageEnd + 0x20
+.definelabel P1_P345StreamOffsets, P1_P345DecodeWorkspace + 0x0
+.definelabel P1_P345NodeBaseIds, P1_P345DecodeWorkspace + 0x8
+.definelabel P1_P345ShiftedWords, P1_P345DecodeWorkspace + 0x10
+.definelabel P1_P345BitPositions, P1_P345DecodeWorkspace + 0x18
+.definelabel P1_P345TreeStack, P1_P345DecodeWorkspace + 0x20
+.definelabel P1_P345LengthOneChildren, P1_P345TreeStack + 0x200
+.definelabel P1_P345LengthZeroChildren, P1_P345LengthOneChildren + 0x1000
+.definelabel P1_P345DistanceZeroChildren, P1_P345LengthZeroChildren + 0x1000
+.definelabel P1_P345DistanceOneChildren, P1_P345DistanceZeroChildren + 0x4000
+.definelabel P1_P345DecodeWorkspaceEnd, P1_P345DistanceOneChildren + 0x4000
+.if P1_P345DecodeWorkspaceEnd > P345DecodeOutputLimitAddress
+    .error "P345 decode workspace exceeds its reserved RAM range"
+.endif
