@@ -389,13 +389,21 @@
 ; 固件私有的双核启动交换区，区别于 SDK 系统工作区。
 .definelabel FirmwareBootSharedAddress,              0x027ff860
 .definelabel BootSharedSettingsFlashOffset,               0x08
-.definelabel BootSharedP3StagingOffset,                   0x0c
+.definelabel BootSharedP4DestinationOffset,              0x0c
 .definelabel BootSharedP4StagingOffset,                   0x10
 .definelabel BootSharedP5Crc16Offset,                     0x14
 .definelabel BootSharedP3P4Crc16Offset,                   0x16
+; V4–V7 store the staging end; iQue/KOR store the aligned P4 span instead.
+; V4–V7 存暂存末端地址；iQue/KOR 在同槽改存按 8 字节对齐的 P4 暂存长度。
 .definelabel BootSharedStagingEndOffset,                  0x1c
+.definelabel BootSharedP4StagedBytesOffset,               0x1c
 .definelabel BootSharedEventSyncOffset,                   0x28
 .definelabel BootSharedEventFlagsOffset,                  0x30
+
+; ARM7 stages packed components here for ARM9; later boot phases may reuse RAM.
+; ARM7 将压缩组件暂存于此供 ARM9 解压；该 RAM 可由后续启动阶段复用。
+.definelabel FirmwareComponentStagingAddress,        0x022c0000
+.definelabel FirmwareComponentStagingLimit,          0x02300000
 
 ; PXI FIFO: five tag bits; one shared callback-availability bitmap per CPU.
 ; PXI FIFO 使用五位通道号，每个 CPU 各有一个共享回调可用位图。

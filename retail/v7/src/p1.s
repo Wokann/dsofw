@@ -15244,8 +15244,11 @@ pool_02326D70:
 loc_02326D70:
 	.word VRAM_A_CR	; 02326D70
 
-; ===== function loc_02326D74 =====
+; ===== function P1_DecompressAndCheckP3P4 =====
 loc_02326D74:
+; 解压 P3/P4，按顺序累计两块明文的 CRC16，清理缓存后发布结果。
+; Decode P3/P4, chain CRC16 over their decoded bytes, maintain the cache, then publish the result.
+.func P1_DecompressAndCheckP3P4
 	push {r4,r5,lr}	; 02326D74
 	sub sp,#0x4	; 02326D76
 	ldr r0,[pool_02326DCC]	; 02326D78
@@ -15253,22 +15256,22 @@ loc_02326D74:
 	blx P1_DecompressP345	; 02326D7C
 	add r5,r0,#0x0	; 02326D80
 	ldr r1,[pool_02326DD4]	; 02326D82
-	ldr r0,[r1,#0xc]	; 02326D84
-	ldr r1,[r1,#0x10]	; 02326D86
+	ldr r0,[r1,#BootSharedP4DestinationOffset]	; 02326D84
+	ldr r1,[r1,#BootSharedP4StagingOffset]	; 02326D86
 	blx P1_DecompressP345	; 02326D88
 	add r4,r0,#0x0	; 02326D8C
 	ldr r0,[pool_02326DD8]	; 02326D8E
 	ldr r1,[pool_02326DCC]	; 02326D90
 	add r2,r5,#0x0	; 02326D92
-	bl loc_0232C776	; 02326D94
+	bl P1_SwiGetCrc16	; 02326D94
 	ldr r1,[pool_02326DD4]	; 02326D98
-	ldr r1,[r1,#0xc]	; 02326D9A
+	ldr r1,[r1,#BootSharedP4DestinationOffset]	; 02326D9A
 	add r2,r4,#0x0	; 02326D9C
-	bl loc_0232C776	; 02326D9E
+	bl P1_SwiGetCrc16	; 02326D9E
 	add r4,r0,#0x0	; 02326DA2
 	blx P1_CleanAndInvalidateEntireDataCacheByIndex	; 02326DA4
 	ldr r0,[pool_02326DD4]	; 02326DA8
-	ldrh r0,[r0,#0x16]	; 02326DAA
+	ldrh r0,[r0,#BootSharedP3P4Crc16Offset]	; 02326DAA
 	cmp r4,r0	; 02326DAC
 	bne loc_02326DBE	; 02326DAE
 	ldr r0,[pool_02326DDC]	; 02326DB0
@@ -15284,12 +15287,13 @@ loc_02326DBE:
 	pop {r4,r5}	; 02326DC6
 	pop {r3}	; 02326DC8
 	bx r3	; 02326DCA
+.endfunc
 pool_02326DCC:
 loc_02326DCC:
-	.word 0x02358B20	; 02326DCC
+	.word P3_FirmwareUiEntry	; 02326DCC
 pool_02326DD0:
 loc_02326DD0:
-	.word 0x022C0000	; 02326DD0
+	.word FirmwareComponentStagingAddress	; 02326DD0
 pool_02326DD4:
 loc_02326DD4:
 	.word FirmwareBootSharedAddress	; 02326DD4
@@ -15303,8 +15307,11 @@ pool_02326DE0:
 loc_02326DE0:
 	.word 0x00000408	; 02326DE0
 
-; ===== function loc_02326DE4 =====
+; ===== function P1_DecompressAndCheckP5 =====
 loc_02326DE4:
+; 解压 P5 并校验明文 CRC16；匹配时才发布资源已就绪标志。
+; Decode P5 and check its decoded CRC16; publish the resource-ready flag only on a match.
+.func P1_DecompressAndCheckP5
 	push {r4,lr}	; 02326DE4
 	ldr r0,[pool_02326E14]	; 02326DE6
 	ldr r1,[pool_02326E18]	; 02326DE8
@@ -15312,7 +15319,7 @@ loc_02326DE4:
 	add r2,r0,#0x0	; 02326DEE
 	ldr r0,[pool_02326E1C]	; 02326DF0
 	ldr r1,[pool_02326E14]	; 02326DF2
-	bl loc_0232C776	; 02326DF4
+	bl P1_SwiGetCrc16	; 02326DF4
 	add r4,r0,#0x0	; 02326DF8
 	blx P1_CleanAndInvalidateEntireDataCacheByIndex	; 02326DFA
 	ldr r0,[pool_02326E20]	; 02326DFE
@@ -15325,13 +15332,14 @@ loc_02326E0C:
 	pop {r4}	; 02326E0C
 	pop {r3}	; 02326E0E
 	bx r3	; 02326E10
+.endfunc
 	.byte 0xC0, 0x46	; 02326E14
 pool_02326E14:
 loc_02326E14:
-	.word 0x023A4760	; 02326E14
+	.word P5_FirmwareUiResources	; 02326E14
 pool_02326E18:
 loc_02326E18:
-	.word 0x022C0000	; 02326E18
+	.word FirmwareComponentStagingAddress	; 02326E18
 pool_02326E1C:
 loc_02326E1C:
 	.word 0x0000FFFF	; 02326E1C
@@ -15809,7 +15817,7 @@ loc_0232714E:
 	add r1,r5,#0x0	; 02327150
 	add r1,#0x20	; 02327152
 	ldr r2,[pool_02327190]	; 02327154
-	bl loc_0232C776	; 02327156
+	bl P1_SwiGetCrc16	; 02327156
 	ldrh r1,[r5,#0x2]	; 0232715A
 	cmp r1,r0	; 0232715C
 	beq loc_0232716E	; 0232715E
@@ -16809,7 +16817,7 @@ loc_0232782E:
 	and r1,r0	; 02327834
 	cmp r1,#0x0	; 02327836
 	beq loc_02327916	; 02327838
-	bl loc_02326D74	; 0232783A
+	bl P1_DecompressAndCheckP3P4	; 0232783A
 	ldr r0,[pool_02327944]	; 0232783E
 	bl P1_OrSharedEventFlags	; 02327840
 	mov r0,#0x0	; 02327844
@@ -17016,7 +17024,7 @@ loc_0232798A:
 	and r5,r7	; 0232799A
 	cmp r5,#0x0	; 0232799C
 	beq loc_0232798A	; 0232799E
-	bl loc_02326DE4	; 023279A0
+	bl P1_DecompressAndCheckP5	; 023279A0
 	add r0,r4,#0x0	; 023279A4
 	bl P1_OrSharedEventFlags	; 023279A6
 	b loc_0232798A	; 023279AA
@@ -18268,7 +18276,7 @@ loc_02328292:
 	ldr r0,[pool_02328340]	; 02328296
 	add r1,r4,#0x0	; 02328298
 	mov r2,#0x70	; 0232829A
-	bl loc_0232C776	; 0232829C
+	bl P1_SwiGetCrc16	; 0232829C
 	add r1,r4,#0x0	; 023282A0
 	add r1,#0x72	; 023282A2
 	ldrh r1,[r1,#0x0]	; 023282A4
@@ -18392,7 +18400,7 @@ loc_0232836E:
 	ldr r0,[pool_023283EC]	; 02328378
 	ldr r1,[pool_023283E8]	; 0232837A
 	mov r2,#0x70	; 0232837C
-	bl loc_0232C776	; 0232837E
+	bl P1_SwiGetCrc16	; 0232837E
 	ldr r1,[pool_023283E8]	; 02328382
 	add r1,#0x72	; 02328384
 	strh r0,[r1,#0x0]	; 02328386
@@ -27809,7 +27817,7 @@ loc_0232C76E:
 	bx lr
 .endfunc
 
-; ===== function loc_0232C776 =====
+; ===== function P1_SwiGetCrc16 =====
 .func P1_SwiGetCrc16
 ; BIOS SWI #0E: CRC-16 service. / BIOS SWI #0E：CRC-16 服务。
 loc_0232C776:

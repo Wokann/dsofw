@@ -441,13 +441,13 @@ loc_037FAB54:
 	.word FirmwareBootSharedAddress + BootSharedP3P4Crc16Offset	; 037FAB54
 pool_037FAB58:
 loc_037FAB58:
-	.word 0x02300200	; 037FAB58
+	.word P4_FirmwareServiceEntry	; 037FAB58
 pool_037FAB5C:
 loc_037FAB5C:
-	.word FirmwareBootSharedAddress + BootSharedP3StagingOffset	; 037FAB5C
+	.word FirmwareBootSharedAddress + BootSharedP4DestinationOffset	; 037FAB5C
 pool_037FAB60:
 loc_037FAB60:
-	.word 0x022C0000	; 037FAB60
+	.word FirmwareComponentStagingAddress	; 037FAB60
 pool_037FAB64:
 loc_037FAB64:
 	.word 0x00040000	; 037FAB64
@@ -459,10 +459,10 @@ loc_037FAB6C:
 	.word FirmwareBootSharedAddress + BootSharedP4StagingOffset	; 037FAB6C
 pool_037FAB70:
 loc_037FAB70:
-	.word 0x02300000	; 037FAB70
+	.word FirmwareComponentStagingLimit	; 037FAB70
 pool_037FAB74:
 loc_037FAB74:
-	.word FirmwareBootSharedAddress + BootSharedStagingEndOffset	; 037FAB74
+	.word FirmwareBootSharedAddress + BootSharedP4StagedBytesOffset	; 037FAB74
 pool_037FAB78:
 loc_037FAB78:
 	.word 0x00001000	; 037FAB78
@@ -500,7 +500,7 @@ loc_037FABAC:
 	.word FirmwareBootSharedAddress + BootSharedP5Crc16Offset	; 037FABAC
 pool_037FABB0:
 loc_037FABB0:
-	.word 0x022C0000	; 037FABB0
+	.word FirmwareComponentStagingAddress	; 037FABB0
 pool_037FABB4:
 loc_037FABB4:
 	.word 0x00040000	; 037FABB4
