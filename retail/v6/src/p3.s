@@ -24432,7 +24432,7 @@ loc_02369788:
 	.word 0x0238A994	; 02369788
 pool_0236978C:
 loc_0236978C:
-	.word 0x027FF8CC	; 0236978C
+	.word FirmwareBootSharedAddress + BootSharedRuntimePatchFlagsOffset	; 0236978C
 pool_02369790:
 loc_02369790:
 	.word UiBootZeroStart + 0x30C84	; 02369790
@@ -24447,7 +24447,7 @@ loc_0236979C:
 	.word 0x0000050C	; 0236979C
 pool_023697A0:
 loc_023697A0:
-	.word 0x027FF8D0	; 023697A0
+	.word FirmwareBootSharedAddress + BootSharedRuntimePatchKeyOffset	; 023697A0
 
 ; ===== function loc_023697A4 =====
 loc_023697A4:

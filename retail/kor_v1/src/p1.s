@@ -142,7 +142,7 @@ loc_0232015E:
 	ldrb r0,[r0,#0x0]	; 02320160
 	cmp r0,#0x0	; 02320162
 	beq loc_02320182	; 02320164
-	bl loc_023274A0	; 02320166
+	bl P1_HeaderAllowsLevelBrightness	; 02320166
 	cmp r0,#0x0	; 0232016A
 	beq loc_02320182	; 0232016C
 	mov r0,#0x4	; 0232016E
@@ -314,7 +314,7 @@ loc_023202A8:
 	.word FirmwareUserSettingsSharedAddress + UserSettingsOptionsOffset	; 023202A8
 pool_023202AC:
 loc_023202AC:
-	.word 0x027FF879	; 023202AC
+	.word FirmwareBootSharedAddress + BootSharedPmicReg4Bit6Offset	; 023202AC
 pool_023202B0:
 loc_023202B0:
 	.word FirmwareBootSharedAddress + BootSharedEventFlagsOffset	; 023202B0
@@ -13619,7 +13619,7 @@ loc_02326200:
 	ldrb r0,[r0,#0x0]	; 02326214
 	cmp r0,#0x0	; 02326216
 	beq loc_0232622C	; 02326218
-	bl loc_023274A0	; 0232621A
+	bl P1_HeaderAllowsLevelBrightness	; 0232621A
 	cmp r0,#0x0	; 0232621E
 	beq loc_0232622C	; 02326220
 	mov r0,#0x4	; 02326222
@@ -13642,7 +13642,7 @@ loc_02326234:
 	.byte 0xC0, 0x46	; 02326248
 pool_02326248:
 loc_02326248:
-	.word 0x027FF879	; 02326248
+	.word FirmwareBootSharedAddress + BootSharedPmicReg4Bit6Offset	; 02326248
 pool_0232624C:
 loc_0232624C:
 	.word 0xFFFFFBFF	; 0232624C
@@ -15501,7 +15501,7 @@ loc_02326F44:
 	ldrb r0,[r0,#0x0]	; 02326F4A
 	cmp r0,#0x0	; 02326F4C
 	beq loc_02326F78	; 02326F4E
-	bl loc_023274A0	; 02326F50
+	bl P1_HeaderAllowsLevelBrightness	; 02326F50
 	cmp r0,#0x0	; 02326F54
 	beq loc_02326F78	; 02326F56
 	mov r0,#0x4	; 02326F58
@@ -15542,7 +15542,7 @@ loc_02326F94:
 	.byte 0xC0, 0x46	; 02326FA4
 pool_02326FA4:
 loc_02326FA4:
-	.word 0x027FF879	; 02326FA4
+	.word FirmwareBootSharedAddress + BootSharedPmicReg4Bit6Offset	; 02326FA4
 pool_02326FA8:
 loc_02326FA8:
 	.word FirmwareUserSettingsSharedAddress + UserSettingsOptionsOffset	; 02326FA8
@@ -15858,6 +15858,9 @@ loc_023271B0:
 
 ; ===== function loc_023271B4 =====
 loc_023271B4:
+; 检查 ROM 尾标记 ac，写入补丁模式 1/2；无效头路径不更新。
+; Check the ac ROM trailer and publish patch mode 1/2; invalid headers leave it unchanged.
+.func P1_ClassifyTrailerForRuntimePatch
 	push {r4,r5,r6,r7,lr}	; 023271B4
 	sub sp,#0x4	; 023271B6
 	ldr r7,[pool_02327234]	; 023271B8
@@ -15919,6 +15922,7 @@ loc_0232722C:
 	pop {r4,r5,r6,r7}	; 0232722E
 	pop {r3}	; 02327230
 	bx r3	; 02327232
+.endfunc
 pool_02327234:
 loc_02327234:
 	.word 0x023593A0	; 02327234
@@ -15939,7 +15943,7 @@ loc_02327248:
 	.word 0x000001FF	; 02327248
 pool_0232724C:
 loc_0232724C:
-	.word 0x027FF87A	; 0232724C
+	.word FirmwareBootSharedAddress + BootSharedRuntimePatchModeOffset	; 0232724C
 
 ; ===== function loc_02327250 =====
 loc_02327250:
@@ -16276,6 +16280,9 @@ loc_0232749C:
 
 ; ===== function loc_023274A0 =====
 loc_023274A0:
+; 缓存机型字节必须非 FF 且 bit5 置位，才允许进入分级亮度路径。
+; Allow the level-brightness path only when the cached model byte is not FF and bit5 is set.
+.func P1_HeaderAllowsLevelBrightness
 	mov r2,#0x0	; 023274A0
 	ldr r0,[pool_023274C0]	; 023274A2
 	ldrb r1,[r0,#0x0]	; 023274A4
@@ -16294,6 +16301,7 @@ loc_023274B4:
 loc_023274BC:
 	mov r0,#0x0	; 023274BC
 	bx lr	; 023274BE
+.endfunc
 pool_023274C0:
 loc_023274C0:
 	.word FirmwareBootSharedAddress + BootSharedConsoleTypeOffset	; 023274C0
@@ -17263,7 +17271,7 @@ loc_02327B70:
 	.word 0x00000160	; 02327B70
 pool_02327B74:
 loc_02327B74:
-	.word 0x027FF87A	; 02327B74
+	.word FirmwareBootSharedAddress + BootSharedRuntimePatchModeOffset	; 02327B74
 
 ; ===== function loc_02327B78 =====
 loc_02327B78:
@@ -17290,7 +17298,7 @@ loc_02327B80:
 	orr r1,r0	; 02327BA4
 	strh r1,[r2,#0x0]	; 02327BA6
 	bl loc_02327F48	; 02327BA8
-	bl loc_023271B4	; 02327BAC
+	bl P1_ClassifyTrailerForRuntimePatch	; 02327BAC
 	bl loc_02327250	; 02327BB0
 	mov r0,#0x0	; 02327BB4
 	pop {r4,r5,r6}	; 02327BB6

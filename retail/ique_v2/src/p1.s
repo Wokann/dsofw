@@ -15801,6 +15801,9 @@ loc_02327128:
 
 ; ===== function loc_0232712C =====
 loc_0232712C:
+; 检查 ROM 尾标记 ac，写入补丁模式 1/2；无效头路径不更新。
+; Check the ac ROM trailer and publish patch mode 1/2; invalid headers leave it unchanged.
+.func P1_ClassifyTrailerForRuntimePatch
 	push {r4,r5,r6,r7,lr}	; 0232712C
 	sub sp,#0x4	; 0232712E
 	ldr r7,[pool_023271AC]	; 02327130
@@ -15862,6 +15865,7 @@ loc_023271A4:
 	pop {r4,r5,r6,r7}	; 023271A6
 	pop {r3}	; 023271A8
 	bx r3	; 023271AA
+.endfunc
 pool_023271AC:
 loc_023271AC:
 	.word 0x02359220	; 023271AC
@@ -15882,7 +15886,7 @@ loc_023271C0:
 	.word 0x000001FF	; 023271C0
 pool_023271C4:
 loc_023271C4:
-	.word 0x027FF87A	; 023271C4
+	.word FirmwareBootSharedAddress + BootSharedRuntimePatchModeOffset	; 023271C4
 
 ; ===== function loc_023271C8 =====
 loc_023271C8:
@@ -17174,7 +17178,7 @@ loc_02327AB4:
 	.word 0x00000160	; 02327AB4
 pool_02327AB8:
 loc_02327AB8:
-	.word 0x027FF87A	; 02327AB8
+	.word FirmwareBootSharedAddress + BootSharedRuntimePatchModeOffset	; 02327AB8
 
 ; ===== function loc_02327ABC =====
 loc_02327ABC:
@@ -17208,7 +17212,7 @@ loc_02327AE8:
 	orr r1,r0	; 02327AF4
 	strh r1,[r2,#0x0]	; 02327AF6
 	bl loc_02327E9C	; 02327AF8
-	bl loc_0232712C	; 02327AFC
+	bl P1_ClassifyTrailerForRuntimePatch	; 02327AFC
 	bl loc_023271C8	; 02327B00
 	mov r0,#0x0	; 02327B04
 	add sp,#0x4	; 02327B06

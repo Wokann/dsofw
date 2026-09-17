@@ -789,6 +789,8 @@ loc_037FAD78:
 	ldr r2,[pool_037FAF68]	; 037FAD84
 	bl P2_SwiCpuFastSet	; 037FAD86
 	ldr r1,[pool_037FAF6C]	; 037FAD8A
+; 锁定 Lite 扩展寄存器；写入值保持 FFFF。
+; Lock the Lite extension registers; retain the original FFFF write.
 	ldr r0,[pool_037FAF70]	; 037FAD8C
 	strh r1,[r0,#0x0]	; 037FAD8E
 	ldr r0,[pool_037FAF74]	; 037FAD90
@@ -939,8 +941,8 @@ loc_037FAED6:
 	ldr r0,[r0,#0x0]	; 037FAEDE
 	cmp r0,#0x7	; 037FAEE0
 	bne loc_037FAE54	; 037FAEE2
-	bl P2_Runtime_037F8064	; 037FAEE4
-	bl P2_Runtime_037F8000	; 037FAEE8
+	bl P2_ApplyGameCodeRevisionPatch	; 037FAEE4
+	bl P2_ApplyKeyedRuntimePatch	; 037FAEE8
 	bl P2_ResetArm7Peripherals	; 037FAEEC
 	ldr r1,[pool_037FAFDC]	; 037FAEF0
 	ldr r0,[pool_037FAFE0]	; 037FAEF2
@@ -959,6 +961,8 @@ loc_037FAF08:
 	cmp r0,#0x8	; 037FAF0A
 	bne loc_037FAF24	; 037FAF0C
 	mov r1,#0x6	; 037FAF0E
+; 启动状态 8 路径在私有源区写入 6；发布时此字段会被另行覆盖。
+; Boot state 8 writes 6 to this private slot; publication later replaces the field.
 	ldr r0,[pool_037FAFE4]	; 037FAF10
 	strh r1,[r0,#0x0]	; 037FAF12
 	ldr r0,[pool_037FAFCC]	; 037FAF14
@@ -1008,7 +1012,7 @@ loc_037FAF6C:
 	.word 0x0000FFFF	; 037FAF6C
 pool_037FAF70:
 loc_037FAF70:
-	.word 0x04001080	; 037FAF70
+	.word REG_NITRO2_REGCNT	; 037FAF70
 pool_037FAF74:
 loc_037FAF74:
 	.word 0x00001000	; 037FAF74
@@ -1095,7 +1099,7 @@ loc_037FAFE0:
 	.word REG_IPC_SYNC	; 037FAFE0
 pool_037FAFE4:
 loc_037FAFE4:
-	.word 0x027FF810	; 037FAFE4
+	.word FirmwareBootInfoScratchAddress + 0x10	; 037FAFE4
 pool_037FAFE8:
 loc_037FAFE8:
 	.word P2_WaitVCount200ThenEnterAgbMode	; 037FAFE8
@@ -21529,7 +21533,7 @@ P2_Case_03804206:
 	lsl r0,r1,#0x10	; 03804210
 	lsr r4,r0,#0x10	; 03804212
 	add r0,r4,#0x0	; 03804214
-	bl loc_03804458	; 03804216
+	bl P2_ReadPmicRegister	; 03804216
 	add r1,r0,#0x0	; 0380421A
 	add r4,#0x70	; 0380421C
 	lsl r0,r4,#0x10	; 0380421E
@@ -21814,7 +21818,7 @@ loc_03804420:
 	push {r4,lr}	; 03804420
 	add r4,r0,#0x0	; 03804422
 	mov r0,#0x0	; 03804424
-	bl loc_03804458	; 03804426
+	bl P2_ReadPmicRegister	; 03804426
 	bic r0,r4	; 0380442A
 	lsl r0,r0,#0x18	; 0380442C
 	lsr r1,r0,#0x18	; 0380442E
@@ -21829,7 +21833,7 @@ loc_0380443C:
 	push {r4,lr}	; 0380443C
 	add r4,r0,#0x0	; 0380443E
 	mov r0,#0x0	; 03804440
-	bl loc_03804458	; 03804442
+	bl P2_ReadPmicRegister	; 03804442
 	add r1,r0,#0x0	; 03804446
 	orr r1,r4	; 03804448
 	mov r0,#0x0	; 0380444A
@@ -21841,6 +21845,9 @@ loc_0380443C:
 
 ; ===== function loc_03804458 =====
 loc_03804458:
+; 通过 SPI 读取 r0 指定的电源管理寄存器，返回低 8 位。
+; Read the PMIC register selected by r0 over SPI; return its low byte.
+.func P2_ReadPmicRegister
 	push {r4,r5,r6,r7,lr}	; 03804458
 	sub sp,#0x4	; 0380445A
 	add r5,r0,#0x0	; 0380445C
@@ -21857,7 +21864,7 @@ loc_0380446C:
 	cmp r0,#0x0	; 03804470
 	bne loc_03804466	; 03804472
 	mov r0,#0x1	; 03804474
-	bl loc_03804544	; 03804476
+	bl P2_SetPmicSpiHold	; 03804476
 	mov r4,#0x80	; 0380447A
 	orr r5,r4	; 0380447C
 	lsl r0,r5,#0x18	; 0380447E
@@ -21878,7 +21885,7 @@ loc_03804496:
 	cmp r0,#0x0	; 0380449A
 	bne loc_03804490	; 0380449C
 	mov r0,#0x0	; 0380449E
-	bl loc_03804544	; 038044A0
+	bl P2_SetPmicSpiHold	; 038044A0
 	mov r1,#0x0	; 038044A4
 	ldr r0,[pool_038044DC]	; 038044A6
 	strh r1,[r0,#0x0]	; 038044A8
@@ -21906,6 +21913,7 @@ loc_038044B8:
 	pop {r4,r5,r6,r7}	; 038044D2
 	pop {r3}	; 038044D4
 	bx r3	; 038044D6
+.endfunc
 pool_038044D8:
 loc_038044D8:
 	.word REG_SPICNT	; 038044D8
@@ -21931,7 +21939,7 @@ loc_038044F4:
 	cmp r0,#0x0	; 038044F8
 	bne loc_038044EE	; 038044FA
 	mov r0,#0x1	; 038044FC
-	bl loc_03804544	; 038044FE
+	bl P2_SetPmicSpiHold	; 038044FE
 	lsl r0,r5,#0x18	; 03804502
 	lsr r1,r0,#0x18	; 03804504
 	mov r0,#0xff	; 03804506
@@ -21951,7 +21959,7 @@ loc_0380451C:
 	cmp r0,#0x0	; 03804520
 	bne loc_03804516	; 03804522
 	mov r0,#0x0	; 03804524
-	bl loc_03804544	; 03804526
+	bl P2_SetPmicSpiHold	; 03804526
 	mov r0,#0xff	; 0380452A
 	and r4,r0	; 0380452C
 	ldr r0,[pool_03804540]	; 0380452E
@@ -21970,12 +21978,16 @@ loc_03804540:
 
 ; ===== function loc_03804544 =====
 loc_03804544:
+; 选择 PMIC 的 SPI 通道；r0 控制两次传输之间是否保持片选。
+; Select the PMIC SPI device; r0 controls chip-select hold between transfers.
+.func P2_SetPmicSpiHold
 	lsl r1,r0,#0xb	; 03804544
 	ldr r0,[pool_03804550]	; 03804546
 	orr r1,r0	; 03804548
 	ldr r0,[pool_03804554]	; 0380454A
 	strh r1,[r0,#0x0]	; 0380454C
 	bx lr	; 0380454E
+.endfunc
 pool_03804550:
 loc_03804550:
 	.word 0x00008002	; 03804550
@@ -22140,7 +22152,7 @@ P2_Entry_0380466C:
 	bl loc_037FDA6C	; 03804680
 	add r7,r0,#0x0	; 03804684
 	mov r0,#0x0	; 03804686
-	bl loc_03804458	; 03804688
+	bl P2_ReadPmicRegister	; 03804688
 	str r0,[sp,#0x0]	; 0380468C
 	mov r0,#0x2	; 0380468E
 	bl loc_038047C4	; 03804690
@@ -23307,6 +23319,9 @@ P2_WramCopy0LoadStart:
 P2_WramCopy0RuntimeStart:
 P2_Runtime_037F8000:
 .thumb
+; 按共享键值和 Game Code 匹配表项，复制 20 字节补丁并更新共享状态。
+; Match the shared key and Game Code, copy a 20-byte patch, then update shared state.
+.func P2_ApplyKeyedRuntimePatch
 	push {lr}	; 037F8000
 	sub sp,#0x4	; 037F8002
 	mov r0,#0x1	; 037F8004
@@ -23350,18 +23365,22 @@ P2_Entry_037F8048:
 	add sp,#0x4	; 037F8048
 	pop {r3}	; 037F804A
 	bx r3	; 037F804C
+.endfunc
 	.byte 0xC0, 0x46	; 037F804E
 pool_037F8050:
-	.word 0x037F80FC	; 037F8050
+	.word P2_RuntimePatchKeyTable	; 037F8050
 pool_037F8054:
-	.word 0x027FF8CC	; 037F8054
+	.word FirmwareBootSharedAddress + BootSharedRuntimePatchFlagsOffset	; 037F8054
 pool_037F8058:
-	.word 0x027FF8D0	; 037F8058
+	.word FirmwareBootSharedAddress + BootSharedRuntimePatchKeyOffset	; 037F8058
 pool_037F805C:
 	.word NdsCartHeaderRamAddress + 0xC	; 037F805C
 pool_037F8060:
-	.word 0x037F8108	; 037F8060
+	.word P2_RuntimePatchTemplate	; 037F8060
 P2_Runtime_037F8064:
+; 按 Game Code、版本及可选标志筛选；复制补丁和可选的两字替换。
+; Filter by Game Code, revision and optional flags; apply a patch and optional two-word replacement.
+.func P2_ApplyGameCodeRevisionPatch
 	push {r4,r5,r6,r7,lr}	; 037F8064
 	sub sp,#0x4	; 037F8066
 	mov r3,#0x0	; 037F8068
@@ -23428,33 +23447,85 @@ P2_Runtime_037F80D2:
 	pop {r4,r5,r6,r7}	; 037F80D4
 	pop {r3}	; 037F80D6
 	bx r3	; 037F80D8
+.endfunc
 	.byte 0xC0, 0x46	; 037F80DA
 pool_037F80DC:
-	.word 0x037F811C	; 037F80DC
+	.word P2_RuntimePatchGameTable	; 037F80DC
 pool_037F80E0:
-	.word 0x027FF8CC	; 037F80E0
+	.word FirmwareBootSharedAddress + BootSharedRuntimePatchFlagsOffset	; 037F80E0
 pool_037F80E4:
-	.word 0x027FFE1E	; 037F80E4
+	.word NdsCartHeaderRamAddress + 0x1E	; 037F80E4
 pool_037F80E8:
-	.word 0x027FFE0C	; 037F80E8
+	.word NdsCartHeaderRamAddress + 0xC	; 037F80E8
 pool_037F80EC:
-	.word P2_WramCopy0RuntimeStart + 0xF4	; 037F80EC
+	.word P2_RuntimePatchExtraWords	; 037F80EC
 pool_037F80F0:
-	.word 0x037F8108	; 037F80F0
-	.byte 0x01, 0x00, 0xA0, 0xE3, 0x01, 0x00, 0xA0, 0xE3, 0x4E, 0x54, 0x52, 0x4A, 0x51, 0x00, 0x00, 0x00	; 037F80F4
-	.byte 0xE8, 0xB8, 0x2D, 0x02, 0x05, 0x00, 0x50, 0xE3, 0x1E, 0xFF, 0x2F, 0x31, 0xB0, 0x00, 0xD1, 0xE1	; 037F8104
-	.byte 0x08, 0x00, 0x50, 0xE3, 0xF6, 0xFF, 0xFF, 0x9A, 0x41, 0x59, 0x41, 0x4A, 0x00, 0x01, 0x00, 0x00	; 037F8114
-	.byte 0xEC, 0xB8, 0x2D, 0x02, 0x00, 0x00, 0x00, 0x00, 0x41, 0x59, 0x41, 0x4A, 0x01, 0x01, 0x00, 0x00	; 037F8124
-	.byte 0xEC, 0xB8, 0x2D, 0x02, 0x00, 0x00, 0x00, 0x00, 0x41, 0x54, 0x47, 0x4A, 0x00, 0x01, 0x00, 0x00	; 037F8134
-	.byte 0xAC, 0xBB, 0x2D, 0x02, 0x00, 0x00, 0x00, 0x00, 0x41, 0x44, 0x4D, 0x4A, 0xFF, 0x00, 0x00, 0x00	; 037F8144
-	.byte 0x64, 0xE9, 0x2D, 0x02, 0xDC, 0xAE, 0x2D, 0x02, 0x41, 0x44, 0x4D, 0x45, 0xFF, 0x00, 0x00, 0x00	; 037F8154
-	.byte 0x64, 0xE9, 0x2D, 0x02, 0xDC, 0xAE, 0x2D, 0x02, 0x41, 0x44, 0x4D, 0x50, 0xFF, 0x00, 0x00, 0x00	; 037F8164
-	.byte 0x64, 0xE9, 0x2D, 0x02, 0xDC, 0xAE, 0x2D, 0x02, 0x41, 0x53, 0x43, 0x4A, 0x00, 0x00, 0x00, 0x00	; 037F8174
-	.byte 0xE8, 0xB8, 0x2D, 0x02, 0x00, 0x00, 0x00, 0x00, 0x41, 0x53, 0x43, 0x45, 0x00, 0x00, 0x00, 0x00	; 037F8184
-	.byte 0xE8, 0xB8, 0x2D, 0x02, 0x00, 0x00, 0x00, 0x00, 0x41, 0x53, 0x43, 0x50, 0x00, 0x00, 0x00, 0x00	; 037F8194
-	.byte 0xE8, 0xB8, 0x2D, 0x02, 0x00, 0x00, 0x00, 0x00, 0x41, 0x42, 0x4C, 0x4A, 0x00, 0x01, 0x00, 0x00	; 037F81A4
-	.byte 0xA4, 0x39, 0x2C, 0x02, 0x20, 0xAE, 0x2D, 0x02, 0x41, 0x4D, 0x39, 0x4A, 0x00, 0x00, 0x00, 0x00	; 037F81B4
-	.byte 0xA4, 0x39, 0x2C, 0x02, 0x20, 0xAE, 0x2D, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	; 037F81C4
+	.word P2_RuntimePatchTemplate	; 037F80F0
+
+P2_RuntimePatchExtraWords:
+; 复制到外部程序的编码模板，不在此地址执行。
+; Encoded template copied into an external program, not executed here.
+	.word 0xE3A00001, 0xE3A00001
+
+P2_RuntimePatchKeyTable:
+; Game Code、共享键、外部程序补丁地址。 / Game Code, shared key, external patch address.
+	.ascii "NTRJ"
+	.word 0x00000051, 0x022DB8E8
+
+P2_RuntimePatchTemplate:
+; 复制到外部程序的编码模板，不在此地址执行。
+; Encoded template copied into an external program, not executed here.
+	.word 0xE3500005, 0x312FFF1E, 0xE1D100B0, 0xE3500008
+	.word 0x9AFFFFF6
+
+P2_RuntimePatchGameTable:
+; 每项：Game Code、版本、标志掩码、保留半字、外部程序的两个目标地址。
+; Each entry: Game Code, revision, flag mask, reserved halfword, two external destinations.
+	.ascii "AYAJ"
+	.byte 0x00, 0x01
+	.halfword 0x0000
+	.word 0x022DB8EC, 0x00000000
+	.ascii "AYAJ"
+	.byte 0x01, 0x01
+	.halfword 0x0000
+	.word 0x022DB8EC, 0x00000000
+	.ascii "ATGJ"
+	.byte 0x00, 0x01
+	.halfword 0x0000
+	.word 0x022DBBAC, 0x00000000
+	.ascii "ADMJ"
+	.byte 0xFF, 0x00
+	.halfword 0x0000
+	.word 0x022DE964, 0x022DAEDC
+	.ascii "ADME"
+	.byte 0xFF, 0x00
+	.halfword 0x0000
+	.word 0x022DE964, 0x022DAEDC
+	.ascii "ADMP"
+	.byte 0xFF, 0x00
+	.halfword 0x0000
+	.word 0x022DE964, 0x022DAEDC
+	.ascii "ASCJ"
+	.byte 0x00, 0x00
+	.halfword 0x0000
+	.word 0x022DB8E8, 0x00000000
+	.ascii "ASCE"
+	.byte 0x00, 0x00
+	.halfword 0x0000
+	.word 0x022DB8E8, 0x00000000
+	.ascii "ASCP"
+	.byte 0x00, 0x00
+	.halfword 0x0000
+	.word 0x022DB8E8, 0x00000000
+	.ascii "ABLJ"
+	.byte 0x00, 0x01
+	.halfword 0x0000
+	.word 0x022C39A4, 0x022DAE20
+	.ascii "AM9J"
+	.byte 0x00, 0x00
+	.halfword 0x0000
+	.word 0x022C39A4, 0x022DAE20
+	.byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 	.byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	; 037F81D4
 	.byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	; 037F81E4
 	.byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	; 037F81F4

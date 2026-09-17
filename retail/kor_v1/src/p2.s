@@ -835,6 +835,8 @@ loc_037FADBC:
 	ldr r2,[pool_037FAFD0]	; 037FADC8
 	bl P2_SwiCpuFastSet	; 037FADCA
 	ldr r1,[pool_037FAFD4]	; 037FADCE
+; 锁定 Lite 扩展寄存器；写入值保持 FFFF。
+; Lock the Lite extension registers; retain the original FFFF write.
 	ldr r0,[pool_037FAFD8]	; 037FADD0
 	strh r1,[r0,#0x0]	; 037FADD2
 	ldr r0,[pool_037FAFDC]	; 037FADD4
@@ -846,8 +848,10 @@ loc_037FADBC:
 	str r1,[r2,#0x0]	; 037FADE0
 	mov r0,#0x1	; 037FADE2
 	bl loc_03804818	; 037FADE4
+; 缓存 PMIC 寄存器 4 的 bit6，供 ARM9 亮度路径判断；不是充电检测位。
+; Cache PMIC register 4 bit6 for ARM9 brightness gating, not the charger-detect bit.
 	mov r0,#0x4	; 037FADE8
-	bl loc_03804834	; 037FADEA
+	bl P2_ReadPmicRegister	; 037FADEA
 	mov r1,#0x40	; 037FADEE
 	add r4,r0,#0x0	; 037FADF0
 	and r4,r1	; 037FADF2
@@ -1001,7 +1005,7 @@ loc_037FAF32:
 	mov r0,#0x0	; 037FAF44
 	strh r0,[r1,#0x0]	; 037FAF46
 	bl loc_037FDEAC	; 037FAF48
-	bl P2_Runtime_037F8148	; 037FAF4C
+	bl P2_ApplyPatternSelectedRuntimePatch	; 037FAF4C
 	bl P2_ResetArm7Peripherals	; 037FAF50
 	ldr r1,[pool_037FB050]	; 037FAF54
 	ldr r0,[pool_037FB054]	; 037FAF56
@@ -1021,6 +1025,8 @@ loc_037FAF6C:
 	bne loc_037FAF8C	; 037FAF70
 	bl P2_InitializeBootProcedureCallbacks	; 037FAF72
 	mov r1,#0x6	; 037FAF76
+; 启动状态 8 路径在私有源区写入 6；发布时此字段会被另行覆盖。
+; Boot state 8 writes 6 to this private slot; publication later replaces the field.
 	ldr r0,[pool_037FB058]	; 037FAF78
 	strh r1,[r0,#0x0]	; 037FAF7A
 	ldr r0,[pool_037FB018]	; 037FAF7C
@@ -1070,7 +1076,7 @@ loc_037FAFD4:
 	.word 0x0000FFFF	; 037FAFD4
 pool_037FAFD8:
 loc_037FAFD8:
-	.word 0x04001080	; 037FAFD8
+	.word REG_NITRO2_REGCNT	; 037FAFD8
 pool_037FAFDC:
 loc_037FAFDC:
 	.word 0x00001000	; 037FAFDC
@@ -1088,7 +1094,7 @@ loc_037FAFEC:
 	.word P2_PxiChannel1UserCallback + 1	; 037FAFEC
 pool_037FAFF0:
 loc_037FAFF0:
-	.word 0x027FF879	; 037FAFF0
+	.word FirmwareBootSharedAddress + BootSharedPmicReg4Bit6Offset	; 037FAFF0
 pool_037FAFF4:
 loc_037FAFF4:
 	.word 0x03808078	; 037FAFF4
@@ -1166,7 +1172,7 @@ loc_037FB054:
 	.word REG_IPC_SYNC	; 037FB054
 pool_037FB058:
 loc_037FB058:
-	.word 0x027FF810	; 037FB058
+	.word FirmwareBootInfoScratchAddress + 0x10	; 037FB058
 pool_037FB05C:
 loc_037FB05C:
 	.word P2_WaitVCount200ThenEnterAgbMode	; 037FB05C
@@ -22101,7 +22107,7 @@ P2_Case_038045E2:
 	lsl r0,r1,#0x10	; 038045EC
 	lsr r4,r0,#0x10	; 038045EE
 	add r0,r4,#0x0	; 038045F0
-	bl loc_03804834	; 038045F2
+	bl P2_ReadPmicRegister	; 038045F2
 	add r1,r0,#0x0	; 038045F6
 	add r4,#0x70	; 038045F8
 	lsl r0,r4,#0x10	; 038045FA
@@ -22386,7 +22392,7 @@ loc_038047FC:
 	push {r4,lr}	; 038047FC
 	add r4,r0,#0x0	; 038047FE
 	mov r0,#0x0	; 03804800
-	bl loc_03804834	; 03804802
+	bl P2_ReadPmicRegister	; 03804802
 	bic r0,r4	; 03804806
 	lsl r0,r0,#0x18	; 03804808
 	lsr r1,r0,#0x18	; 0380480A
@@ -22401,7 +22407,7 @@ loc_03804818:
 	push {r4,lr}	; 03804818
 	add r4,r0,#0x0	; 0380481A
 	mov r0,#0x0	; 0380481C
-	bl loc_03804834	; 0380481E
+	bl P2_ReadPmicRegister	; 0380481E
 	add r1,r0,#0x0	; 03804822
 	orr r1,r4	; 03804824
 	mov r0,#0x0	; 03804826
@@ -22413,6 +22419,9 @@ loc_03804818:
 
 ; ===== function loc_03804834 =====
 loc_03804834:
+; 通过 SPI 读取 r0 指定的电源管理寄存器，返回低 8 位。
+; Read the PMIC register selected by r0 over SPI; return its low byte.
+.func P2_ReadPmicRegister
 	push {r4,r5,r6,r7,lr}	; 03804834
 	sub sp,#0x4	; 03804836
 	add r5,r0,#0x0	; 03804838
@@ -22429,7 +22438,7 @@ loc_03804848:
 	cmp r0,#0x0	; 0380484C
 	bne loc_03804842	; 0380484E
 	mov r0,#0x1	; 03804850
-	bl loc_03804920	; 03804852
+	bl P2_SetPmicSpiHold	; 03804852
 	mov r4,#0x80	; 03804856
 	orr r5,r4	; 03804858
 	lsl r0,r5,#0x18	; 0380485A
@@ -22450,7 +22459,7 @@ loc_03804872:
 	cmp r0,#0x0	; 03804876
 	bne loc_0380486C	; 03804878
 	mov r0,#0x0	; 0380487A
-	bl loc_03804920	; 0380487C
+	bl P2_SetPmicSpiHold	; 0380487C
 	mov r1,#0x0	; 03804880
 	ldr r0,[pool_038048B8]	; 03804882
 	strh r1,[r0,#0x0]	; 03804884
@@ -22478,6 +22487,7 @@ loc_03804894:
 	pop {r4,r5,r6,r7}	; 038048AE
 	pop {r3}	; 038048B0
 	bx r3	; 038048B2
+.endfunc
 pool_038048B4:
 loc_038048B4:
 	.word REG_SPICNT	; 038048B4
@@ -22503,7 +22513,7 @@ loc_038048D0:
 	cmp r0,#0x0	; 038048D4
 	bne loc_038048CA	; 038048D6
 	mov r0,#0x1	; 038048D8
-	bl loc_03804920	; 038048DA
+	bl P2_SetPmicSpiHold	; 038048DA
 	lsl r0,r5,#0x18	; 038048DE
 	lsr r1,r0,#0x18	; 038048E0
 	mov r0,#0xff	; 038048E2
@@ -22523,7 +22533,7 @@ loc_038048F8:
 	cmp r0,#0x0	; 038048FC
 	bne loc_038048F2	; 038048FE
 	mov r0,#0x0	; 03804900
-	bl loc_03804920	; 03804902
+	bl P2_SetPmicSpiHold	; 03804902
 	mov r0,#0xff	; 03804906
 	and r4,r0	; 03804908
 	ldr r0,[pool_0380491C]	; 0380490A
@@ -22542,12 +22552,16 @@ loc_0380491C:
 
 ; ===== function loc_03804920 =====
 loc_03804920:
+; 选择 PMIC 的 SPI 通道；r0 控制两次传输之间是否保持片选。
+; Select the PMIC SPI device; r0 controls chip-select hold between transfers.
+.func P2_SetPmicSpiHold
 	lsl r1,r0,#0xb	; 03804920
 	ldr r0,[pool_0380492C]	; 03804922
 	orr r1,r0	; 03804924
 	ldr r0,[pool_03804930]	; 03804926
 	strh r1,[r0,#0x0]	; 03804928
 	bx lr	; 0380492A
+.endfunc
 pool_0380492C:
 loc_0380492C:
 	.word 0x00008002	; 0380492C
@@ -22712,7 +22726,7 @@ P2_Entry_03804A48:
 	bl loc_037FDE54	; 03804A5C
 	add r7,r0,#0x0	; 03804A60
 	mov r0,#0x0	; 03804A62
-	bl loc_03804834	; 03804A64
+	bl P2_ReadPmicRegister	; 03804A64
 	str r0,[sp,#0x0]	; 03804A68
 	mov r0,#0x2	; 03804A6A
 	bl loc_03804BA0	; 03804A6C
@@ -23873,11 +23887,18 @@ P2_BssStart:
 P2_WramCopy0LoadStart:
 .headersize 0x037F8000 - orga()
 P2_WramCopy0RuntimeStart:
-	.byte 0x24, 0x00, 0x4F, 0xE2, 0x14, 0x10, 0x1F, 0xE5, 0x05, 0x20, 0xA0, 0xE3, 0x00, 0x00, 0x0C, 0xEF	; 037F8000
-	.byte 0x1C, 0xC0, 0x1F, 0xE5, 0x0C, 0xE0, 0xA0, 0xE1, 0x00, 0x00, 0xA0, 0xE3, 0x00, 0x10, 0xA0, 0xE1	; 037F8010
-	.byte 0x00, 0x20, 0xA0, 0xE1, 0x1C, 0xFF, 0x2F, 0xE1	; 037F8020
+
+P2_DeferredPatchEntryImage:
+; 二次复制到共享 RAM 后才执行；此处是存储位置，不是执行地址。
+; Executed only after a second copy to shared RAM; this is its storage address.
+	.word 0xE24F0024, 0xE51F1014, 0xE3A02005, 0xEF0C0000
+	.word 0xE51FC01C, 0xE1A0E00C, 0xE3A00000, 0xE1A01000
+	.word 0xE1A02000, 0xE12FFF1C
 P2_Runtime_037F8028:
 .thumb
+; 保存补丁、目标和原 ARM7 入口，再复制 40 字节入口代码到共享 RAM。
+; Save the patch, destination and original ARM7 entry; copy a 40-byte entry stub to shared RAM.
+.func P2_PrepareDeferredRuntimePatch
 	push {r4,r5,lr}	; 037F8028
 	sub sp,#0x4	; 037F802A
 	ldr r3,[pool_037F8060]	; 037F802C
@@ -23908,13 +23929,17 @@ P2_Runtime_037F804C:
 	pop {r4,r5}	; 037F805A
 	pop {r3}	; 037F805C
 	bx r3	; 037F805E
+.endfunc
 pool_037F8060:
-	.word 0x027FF800	; 037F8060
+	.word FirmwareBootInfoScratchAddress	; 037F8060
 pool_037F8064:
-	.word 0x037F8000	; 037F8064
+	.word P2_DeferredPatchEntryImage	; 037F8064
 pool_037F8068:
 	.word NdsCartHeaderArm7EntryAddress	; 037F8068
 P2_Runtime_037F806C:
+; r0=模式、r1=字数、r2=结果偏移；扫描 ARM9 或 ARM7 暂存代码，未命中返回 0。
+; r0=pattern, r1=word count, r2=result offset; scan ARM9 or staged ARM7 code, returning 0 on miss.
+.func P2_FindRuntimePatchPattern
 	push {r4,r5,r6,r7,lr}	; 037F806C
 	sub sp,#0xc	; 037F806E
 	str r1,[sp,#0x0]	; 037F8070
@@ -23982,9 +24007,10 @@ P2_Entry_037F80DA:
 	pop {r4,r5,r6,r7}	; 037F80DC
 	pop {r3}	; 037F80DE
 	bx r3	; 037F80E0
+.endfunc
 	.byte 0xC0, 0x46	; 037F80E2
 pool_037F80E4:
-	.word 0x037F81E0	; 037F80E4
+	.word P2_RuntimePatchArm9Marker	; 037F80E4
 pool_037F80E8:
 	.word NdsCartHeaderArm9EntryAddress	; 037F80E8
 pool_037F80EC:
@@ -23996,13 +24022,16 @@ pool_037F80F4:
 pool_037F80F8:
 	.word NdsCartHeaderArm7SizeAddress	; 037F80F8
 P2_Runtime_037F80FC:
+; 查找 ARM9 标记并检查其前一字数值，决定是否继续寻找 ARM7 补丁点。
+; Find the ARM9 marker and test the preceding value before looking for an ARM7 patch site.
+.func P2_CheckArm9RuntimePatchGate
 	push {lr}	; 037F80FC
 	sub sp,#0x4	; 037F80FE
 	ldr r0,[pool_037F8138]	; 037F8100
 	mov r1,#0x2	; 037F8102
 	mov r2,#0x3	; 037F8104
 	mvn r2,r2	; 037F8106
-	bl P2_Runtime_037F806C	; 037F8108
+	bl P2_FindRuntimePatchPattern	; 037F8108
 	cmp r0,#0x0	; 037F810C
 	bne P2_Runtime_037F8114	; 037F810E
 	mov r0,#0x0	; 037F8110
@@ -24029,8 +24058,9 @@ P2_Entry_037F8132:
 	add sp,#0x4	; 037F8132
 	pop {r3}	; 037F8134
 	bx r3	; 037F8136
+.endfunc
 pool_037F8138:
-	.word 0x037F81E0	; 037F8138
+	.word P2_RuntimePatchArm9Marker	; 037F8138
 pool_037F813C:
 	.word 0x03000000	; 037F813C
 pool_037F8140:
@@ -24038,15 +24068,18 @@ pool_037F8140:
 pool_037F8144:
 	.word 0x02027533	; 037F8144
 P2_Runtime_037F8148:
+; 按指令模式定位 ARM7 补丁点；模式 1 立即覆盖，否则安排入口处延后覆盖。
+; Locate an ARM7 patch by instruction patterns; mode 1 patches now, otherwise defer to entry.
+.func P2_ApplyPatternSelectedRuntimePatch
 	push {r4,lr}	; 037F8148
-	bl P2_Runtime_037F80FC	; 037F814A
+	bl P2_CheckArm9RuntimePatchGate	; 037F814A
 	cmp r0,#0x0	; 037F814E
 	beq P2_Runtime_037F81AC	; 037F8150
 	ldr r4,[pool_037F81B4]	; 037F8152
 	ldr r0,[pool_037F81B8]	; 037F8154
 	mov r1,#0xe	; 037F8156
 	mov r2,#0x18	; 037F8158
-	bl P2_Runtime_037F806C	; 037F815A
+	bl P2_FindRuntimePatchPattern	; 037F815A
 	add r1,r0,#0x0	; 037F815E
 	cmp r1,#0x0	; 037F8160
 	bne P2_Runtime_037F8172	; 037F8162
@@ -24054,7 +24087,7 @@ P2_Runtime_037F8148:
 	ldr r0,[pool_037F81C0]	; 037F8166
 	mov r1,#0xe	; 037F8168
 	mov r2,#0x4	; 037F816A
-	bl P2_Runtime_037F806C	; 037F816C
+	bl P2_FindRuntimePatchPattern	; 037F816C
 	add r1,r0,#0x0	; 037F8170
 P2_Runtime_037F8172:
 	cmp r1,#0x0	; 037F8172
@@ -24083,7 +24116,7 @@ P2_Entry_037F819A:
 	sub r0,r1,r0	; 037F819C
 	add r0,r0,r2	; 037F819E
 	add r1,r4,#0x0	; 037F81A0
-	bl P2_Runtime_037F8028	; 037F81A2
+	bl P2_PrepareDeferredRuntimePatch	; 037F81A2
 	ldr r1,[pool_037F81D8]	; 037F81A6
 	ldr r0,[pool_037F81DC]	; 037F81A8
 	str r1,[r0,#0x0]	; 037F81AA
@@ -24091,17 +24124,18 @@ P2_Runtime_037F81AC:
 	pop {r4}	; 037F81AC
 	pop {r3}	; 037F81AE
 	bx r3	; 037F81B0
+.endfunc
 	.byte 0xC0, 0x46	; 037F81B2
 pool_037F81B4:
-	.word 0x037F81FC	; 037F81B4
+	.word P2_RuntimePatchTemplateB	; 037F81B4
 pool_037F81B8:
-	.word 0x037F8248	; 037F81B8
+	.word P2_RuntimePatchPatternB	; 037F81B8
 pool_037F81BC:
-	.word 0x037F81E8	; 037F81BC
+	.word P2_RuntimePatchTemplateA	; 037F81BC
 pool_037F81C0:
-	.word 0x037F8210	; 037F81C0
+	.word P2_RuntimePatchPatternA	; 037F81C0
 pool_037F81C4:
-	.word 0x027FF87A	; 037F81C4
+	.word FirmwareBootSharedAddress + BootSharedRuntimePatchModeOffset	; 037F81C4
 pool_037F81C8:
 	.word FirmwareBootParamAddress	; 037F81C8
 pool_037F81CC:
@@ -24111,19 +24145,39 @@ pool_037F81D0:
 pool_037F81D4:
 	.word 0x022C0000	; 037F81D4
 pool_037F81D8:
-	.word 0x027FF81C	; 037F81D8
+	.word FirmwareBootInfoScratchAddress + 0x1C	; 037F81D8
 pool_037F81DC:
 	.word NdsCartHeaderArm7EntryAddress	; 037F81DC
-	.byte 0x21, 0x06, 0xC0, 0xDE, 0xDE, 0xC0, 0x06, 0x21, 0x05, 0x00, 0x50, 0xE3, 0x02, 0x00, 0x00, 0x3A	; 037F81E0
-	.byte 0xB0, 0x00, 0xD1, 0xE1, 0x08, 0x00, 0x50, 0xE3, 0xF6, 0xFF, 0xFF, 0x9A, 0x05, 0x00, 0x50, 0xE3	; 037F81F0
-	.byte 0x1E, 0xFF, 0x2F, 0x31, 0xB0, 0x00, 0xD1, 0xE1, 0x08, 0x00, 0x50, 0xE3, 0xF6, 0xFF, 0xFF, 0x9A	; 037F8200
-	.byte 0xB0, 0x00, 0xD1, 0xE1, 0x06, 0x00, 0x50, 0xE3, 0xF9, 0xFF, 0xFF, 0x0A, 0xB0, 0x00, 0xD1, 0xE1	; 037F8210
-	.byte 0x05, 0x00, 0x50, 0xE3, 0xF6, 0xFF, 0xFF, 0x0A, 0x00, 0x10, 0xA0, 0xE3, 0x68, 0x00, 0x9F, 0xE5	; 037F8220
-	.byte 0xB0, 0x10, 0xC0, 0xE1, 0x64, 0x00, 0x9F, 0xE5, 0xB0, 0x10, 0xC0, 0xE1, 0x4C, 0x00, 0x9F, 0xE5	; 037F8230
-	.byte 0x00, 0x00, 0x90, 0xE5, 0x03, 0x0C, 0x80, 0xE2, 0x28, 0x10, 0x9F, 0xE5, 0x28, 0x20, 0x9F, 0xE5	; 037F8240
-	.byte 0xB0, 0x00, 0xD2, 0xE1, 0x01, 0x00, 0x10, 0xE2, 0xFC, 0xFF, 0xFF, 0x1A, 0xB0, 0x00, 0xD1, 0xE1	; 037F8250
-	.byte 0x06, 0x00, 0x50, 0xE3, 0xF9, 0xFF, 0xFF, 0x0A, 0xB0, 0x00, 0xD1, 0xE1, 0x05, 0x00, 0x50, 0xE3	; 037F8260
-	.byte 0xF6, 0xFF, 0xFF, 0x0A, 0x1E, 0xFF, 0x2F, 0xE1, 0x14, 0x82, 0x80, 0x04, 0x9C, 0x81, 0x80, 0x04	; 037F8270
+
+P2_RuntimePatchArm9Marker:
+; 逐字匹配的数据，不作为此处的指令执行。 / Word-matching data, not instructions executed here.
+	.word 0xDEC00621, 0x2106C0DE
+
+P2_RuntimePatchTemplateA:
+; 复制到外部程序的编码模板，不在此地址执行。
+; Encoded template copied into an external program, not executed here.
+	.word 0xE3500005, 0x3A000002, 0xE1D100B0, 0xE3500008
+	.word 0x9AFFFFF6
+
+P2_RuntimePatchTemplateB:
+; 复制到外部程序的编码模板，不在此地址执行。
+; Encoded template copied into an external program, not executed here.
+	.word 0xE3500005, 0x312FFF1E, 0xE1D100B0, 0xE3500008
+	.word 0x9AFFFFF6
+
+P2_RuntimePatchPatternA:
+; 逐字匹配的数据，不作为此处的指令执行。 / Word-matching data, not instructions executed here.
+	.word 0xE1D100B0, 0xE3500006, 0x0AFFFFF9, 0xE1D100B0
+	.word 0xE3500005, 0x0AFFFFF6, 0xE3A01000, 0xE59F0068
+	.word 0xE1C010B0, 0xE59F0064, 0xE1C010B0, 0xE59F004C
+	.word 0xE5900000, 0xE2800C03
+
+P2_RuntimePatchPatternB:
+; 逐字匹配的数据，不作为此处的指令执行。 / Word-matching data, not instructions executed here.
+	.word 0xE59F1028, 0xE59F2028, 0xE1D200B0, 0xE2100001
+	.word 0x1AFFFFFC, 0xE1D100B0, 0xE3500006, 0x0AFFFFF9
+	.word 0xE1D100B0, 0xE3500005, 0x0AFFFFF6, 0xE12FFF1E
+	.word 0x04808214, 0x0480819C
 	.byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	; 037F8280
 	.byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	; 037F8290
 	.byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	; 037F82A0

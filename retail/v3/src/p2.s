@@ -750,6 +750,8 @@ loc_037FAD34:
 	ldr r2,[pool_037FAF1C]	; 037FAD40
 	bl P2_SwiCpuFastSet	; 037FAD42
 	ldr r1,[pool_037FAF20]	; 037FAD46
+; 锁定 Lite 扩展寄存器；写入值保持 FFFF。
+; Lock the Lite extension registers; retain the original FFFF write.
 	ldr r0,[pool_037FAF24]	; 037FAD48
 	strh r1,[r0,#0x0]	; 037FAD4A
 	ldr r0,[pool_037FAF28]	; 037FAD4C
@@ -918,6 +920,8 @@ loc_037FAEBC:
 	cmp r0,#0x8	; 037FAEBE
 	bne loc_037FAED8	; 037FAEC0
 	mov r1,#0x6	; 037FAEC2
+; 启动状态 8 路径在私有源区写入 6；发布时此字段会被另行覆盖。
+; Boot state 8 writes 6 to this private slot; publication later replaces the field.
 	ldr r0,[pool_037FAF98]	; 037FAEC4
 	strh r1,[r0,#0x0]	; 037FAEC6
 	ldr r0,[pool_037FAF80]	; 037FAEC8
@@ -967,7 +971,7 @@ loc_037FAF20:
 	.word 0x0000FFFF	; 037FAF20
 pool_037FAF24:
 loc_037FAF24:
-	.word 0x04001080	; 037FAF24
+	.word REG_NITRO2_REGCNT	; 037FAF24
 pool_037FAF28:
 loc_037FAF28:
 	.word 0x00001000	; 037FAF28
@@ -1054,7 +1058,7 @@ loc_037FAF94:
 	.word REG_IPC_SYNC	; 037FAF94
 pool_037FAF98:
 loc_037FAF98:
-	.word 0x027FF810	; 037FAF98
+	.word FirmwareBootInfoScratchAddress + 0x10	; 037FAF98
 pool_037FAF9C:
 loc_037FAF9C:
 	.word P2_WaitVCount200ThenEnterAgbMode	; 037FAF9C
@@ -21488,7 +21492,7 @@ P2_Case_038041BA:
 	lsl r0,r1,#0x10	; 038041C4
 	lsr r4,r0,#0x10	; 038041C6
 	add r0,r4,#0x0	; 038041C8
-	bl loc_0380440C	; 038041CA
+	bl P2_ReadPmicRegister	; 038041CA
 	add r1,r0,#0x0	; 038041CE
 	add r4,#0x70	; 038041D0
 	lsl r0,r4,#0x10	; 038041D2
@@ -21773,7 +21777,7 @@ loc_038043D4:
 	push {r4,lr}	; 038043D4
 	add r4,r0,#0x0	; 038043D6
 	mov r0,#0x0	; 038043D8
-	bl loc_0380440C	; 038043DA
+	bl P2_ReadPmicRegister	; 038043DA
 	bic r0,r4	; 038043DE
 	lsl r0,r0,#0x18	; 038043E0
 	lsr r1,r0,#0x18	; 038043E2
@@ -21788,7 +21792,7 @@ loc_038043F0:
 	push {r4,lr}	; 038043F0
 	add r4,r0,#0x0	; 038043F2
 	mov r0,#0x0	; 038043F4
-	bl loc_0380440C	; 038043F6
+	bl P2_ReadPmicRegister	; 038043F6
 	add r1,r0,#0x0	; 038043FA
 	orr r1,r4	; 038043FC
 	mov r0,#0x0	; 038043FE
@@ -21800,6 +21804,9 @@ loc_038043F0:
 
 ; ===== function loc_0380440C =====
 loc_0380440C:
+; 通过 SPI 读取 r0 指定的电源管理寄存器，返回低 8 位。
+; Read the PMIC register selected by r0 over SPI; return its low byte.
+.func P2_ReadPmicRegister
 	push {r4,r5,r6,r7,lr}	; 0380440C
 	sub sp,#0x4	; 0380440E
 	add r5,r0,#0x0	; 03804410
@@ -21816,7 +21823,7 @@ loc_03804420:
 	cmp r0,#0x0	; 03804424
 	bne loc_0380441A	; 03804426
 	mov r0,#0x1	; 03804428
-	bl loc_038044F8	; 0380442A
+	bl P2_SetPmicSpiHold	; 0380442A
 	mov r4,#0x80	; 0380442E
 	orr r5,r4	; 03804430
 	lsl r0,r5,#0x18	; 03804432
@@ -21837,7 +21844,7 @@ loc_0380444A:
 	cmp r0,#0x0	; 0380444E
 	bne loc_03804444	; 03804450
 	mov r0,#0x0	; 03804452
-	bl loc_038044F8	; 03804454
+	bl P2_SetPmicSpiHold	; 03804454
 	mov r1,#0x0	; 03804458
 	ldr r0,[pool_03804490]	; 0380445A
 	strh r1,[r0,#0x0]	; 0380445C
@@ -21865,6 +21872,7 @@ loc_0380446C:
 	pop {r4,r5,r6,r7}	; 03804486
 	pop {r3}	; 03804488
 	bx r3	; 0380448A
+.endfunc
 pool_0380448C:
 loc_0380448C:
 	.word REG_SPICNT	; 0380448C
@@ -21890,7 +21898,7 @@ loc_038044A8:
 	cmp r0,#0x0	; 038044AC
 	bne loc_038044A2	; 038044AE
 	mov r0,#0x1	; 038044B0
-	bl loc_038044F8	; 038044B2
+	bl P2_SetPmicSpiHold	; 038044B2
 	lsl r0,r5,#0x18	; 038044B6
 	lsr r1,r0,#0x18	; 038044B8
 	mov r0,#0xff	; 038044BA
@@ -21910,7 +21918,7 @@ loc_038044D0:
 	cmp r0,#0x0	; 038044D4
 	bne loc_038044CA	; 038044D6
 	mov r0,#0x0	; 038044D8
-	bl loc_038044F8	; 038044DA
+	bl P2_SetPmicSpiHold	; 038044DA
 	mov r0,#0xff	; 038044DE
 	and r4,r0	; 038044E0
 	ldr r0,[pool_038044F4]	; 038044E2
@@ -21929,12 +21937,16 @@ loc_038044F4:
 
 ; ===== function loc_038044F8 =====
 loc_038044F8:
+; 选择 PMIC 的 SPI 通道；r0 控制两次传输之间是否保持片选。
+; Select the PMIC SPI device; r0 controls chip-select hold between transfers.
+.func P2_SetPmicSpiHold
 	lsl r1,r0,#0xb	; 038044F8
 	ldr r0,[pool_03804504]	; 038044FA
 	orr r1,r0	; 038044FC
 	ldr r0,[pool_03804508]	; 038044FE
 	strh r1,[r0,#0x0]	; 03804500
 	bx lr	; 03804502
+.endfunc
 pool_03804504:
 loc_03804504:
 	.word 0x00008002	; 03804504
@@ -22099,7 +22111,7 @@ P2_Entry_03804620:
 	bl loc_037FDA20	; 03804634
 	add r7,r0,#0x0	; 03804638
 	mov r0,#0x0	; 0380463A
-	bl loc_0380440C	; 0380463C
+	bl P2_ReadPmicRegister	; 0380463C
 	str r0,[sp,#0x0]	; 03804640
 	mov r0,#0x2	; 03804642
 	bl loc_03804778	; 03804644

@@ -909,6 +909,8 @@ loc_037FAEAE:
 	cmp r0,#0x8	; 037FAEB0
 	bne loc_037FAECA	; 037FAEB2
 	mov r1,#0x6	; 037FAEB4
+; 启动状态 8 路径在私有源区写入 6；发布时此字段会被另行覆盖。
+; Boot state 8 writes 6 to this private slot; publication later replaces the field.
 	ldr r0,[pool_037FAF7C]	; 037FAEB6
 	strh r1,[r0,#0x0]	; 037FAEB8
 	ldr r0,[pool_037FAF64]	; 037FAEBA
@@ -1035,7 +1037,7 @@ loc_037FAF78:
 	.word REG_IPC_SYNC	; 037FAF78
 pool_037FAF7C:
 loc_037FAF7C:
-	.word 0x027FF810	; 037FAF7C
+	.word FirmwareBootInfoScratchAddress + 0x10	; 037FAF7C
 pool_037FAF80:
 loc_037FAF80:
 	.word P2_WaitVCount200ThenEnterAgbMode	; 037FAF80
@@ -16345,7 +16347,7 @@ P2_Case_03801B62:
 	lsl r0,r1,#0x10	; 03801B6C
 	lsr r4,r0,#0x10	; 03801B6E
 	add r0,r4,#0x0	; 03801B70
-	bl loc_03801DB4	; 03801B72
+	bl P2_ReadPmicRegister	; 03801B72
 	add r1,r0,#0x0	; 03801B76
 	add r4,#0x70	; 03801B78
 	lsl r0,r4,#0x10	; 03801B7A
@@ -16630,7 +16632,7 @@ loc_03801D7C:
 	push {r4,lr}	; 03801D7C
 	add r4,r0,#0x0	; 03801D7E
 	mov r0,#0x0	; 03801D80
-	bl loc_03801DB4	; 03801D82
+	bl P2_ReadPmicRegister	; 03801D82
 	bic r0,r4	; 03801D86
 	lsl r0,r0,#0x18	; 03801D88
 	lsr r1,r0,#0x18	; 03801D8A
@@ -16645,7 +16647,7 @@ loc_03801D98:
 	push {r4,lr}	; 03801D98
 	add r4,r0,#0x0	; 03801D9A
 	mov r0,#0x0	; 03801D9C
-	bl loc_03801DB4	; 03801D9E
+	bl P2_ReadPmicRegister	; 03801D9E
 	add r1,r0,#0x0	; 03801DA2
 	orr r1,r4	; 03801DA4
 	mov r0,#0x0	; 03801DA6
@@ -16657,6 +16659,9 @@ loc_03801D98:
 
 ; ===== function loc_03801DB4 =====
 loc_03801DB4:
+; 通过 SPI 读取 r0 指定的电源管理寄存器，返回低 8 位。
+; Read the PMIC register selected by r0 over SPI; return its low byte.
+.func P2_ReadPmicRegister
 	push {r4,r5,r6,r7,lr}	; 03801DB4
 	sub sp,#0x4	; 03801DB6
 	add r5,r0,#0x0	; 03801DB8
@@ -16673,7 +16678,7 @@ loc_03801DC8:
 	cmp r0,#0x0	; 03801DCC
 	bne loc_03801DC2	; 03801DCE
 	mov r0,#0x1	; 03801DD0
-	bl loc_03801EA0	; 03801DD2
+	bl P2_SetPmicSpiHold	; 03801DD2
 	mov r4,#0x80	; 03801DD6
 	orr r5,r4	; 03801DD8
 	lsl r0,r5,#0x18	; 03801DDA
@@ -16694,7 +16699,7 @@ loc_03801DF2:
 	cmp r0,#0x0	; 03801DF6
 	bne loc_03801DEC	; 03801DF8
 	mov r0,#0x0	; 03801DFA
-	bl loc_03801EA0	; 03801DFC
+	bl P2_SetPmicSpiHold	; 03801DFC
 	mov r1,#0x0	; 03801E00
 	ldr r0,[pool_03801E38]	; 03801E02
 	strh r1,[r0,#0x0]	; 03801E04
@@ -16722,6 +16727,7 @@ loc_03801E14:
 	pop {r4,r5,r6,r7}	; 03801E2E
 	pop {r3}	; 03801E30
 	bx r3	; 03801E32
+.endfunc
 pool_03801E34:
 loc_03801E34:
 	.word REG_SPICNT	; 03801E34
@@ -16747,7 +16753,7 @@ loc_03801E50:
 	cmp r0,#0x0	; 03801E54
 	bne loc_03801E4A	; 03801E56
 	mov r0,#0x1	; 03801E58
-	bl loc_03801EA0	; 03801E5A
+	bl P2_SetPmicSpiHold	; 03801E5A
 	lsl r0,r5,#0x18	; 03801E5E
 	lsr r1,r0,#0x18	; 03801E60
 	mov r0,#0xff	; 03801E62
@@ -16767,7 +16773,7 @@ loc_03801E78:
 	cmp r0,#0x0	; 03801E7C
 	bne loc_03801E72	; 03801E7E
 	mov r0,#0x0	; 03801E80
-	bl loc_03801EA0	; 03801E82
+	bl P2_SetPmicSpiHold	; 03801E82
 	mov r0,#0xff	; 03801E86
 	and r4,r0	; 03801E88
 	ldr r0,[pool_03801E9C]	; 03801E8A
@@ -16786,12 +16792,16 @@ loc_03801E9C:
 
 ; ===== function loc_03801EA0 =====
 loc_03801EA0:
+; 选择 PMIC 的 SPI 通道；r0 控制两次传输之间是否保持片选。
+; Select the PMIC SPI device; r0 controls chip-select hold between transfers.
+.func P2_SetPmicSpiHold
 	lsl r1,r0,#0xb	; 03801EA0
 	ldr r0,[pool_03801EAC]	; 03801EA2
 	orr r1,r0	; 03801EA4
 	ldr r0,[pool_03801EB0]	; 03801EA6
 	strh r1,[r0,#0x0]	; 03801EA8
 	bx lr	; 03801EAA
+.endfunc
 pool_03801EAC:
 loc_03801EAC:
 	.word 0x00008002	; 03801EAC
@@ -16956,7 +16966,7 @@ P2_Entry_03801FC8:
 	bl loc_037FB570	; 03801FDC
 	add r7,r0,#0x0	; 03801FE0
 	mov r0,#0x0	; 03801FE2
-	bl loc_03801DB4	; 03801FE4
+	bl P2_ReadPmicRegister	; 03801FE4
 	str r0,[sp,#0x0]	; 03801FE8
 	mov r0,#0x2	; 03801FEA
 	bl loc_03802120	; 03801FEC
