@@ -293,7 +293,7 @@ loc_037FAA68:
 	.word 0x03807ADC	; 037FAA68
 pool_037FAA6C:
 loc_037FAA6C:
-	.word 0x0380F600	; 037FAA6C
+	.word P2_WramCopy1RuntimeStart	; 037FAA6C
 pool_037FAA70:
 loc_037FAA70:
 	.word 0x001FFFFF	; 037FAA70
@@ -1085,7 +1085,7 @@ loc_037FAFD4:
 	.word 0x03807ADC	; 037FAFD4
 pool_037FAFD8:
 loc_037FAFD8:
-	.word 0x0380F600	; 037FAFD8
+	.word P2_WramCopy1RuntimeStart	; 037FAFD8
 pool_037FAFDC:
 loc_037FAFDC:
 	.word P2_BssStart + 0x14	; 037FAFDC
@@ -1157,7 +1157,7 @@ loc_037FB034:
 	.word P2_WaitVCount200ThenEnterAgbMode	; 037FB034
 pool_037FB038:
 loc_037FB038:
-	.word 0x037F8000	; 037FB038
+	.word P2_WramCopy0RuntimeStart	; 037FB038
 pool_037FB03C:
 loc_037FB03C:
 	.word 0x00000100	; 037FB03C
@@ -7926,7 +7926,7 @@ loc_037FE170:
 	.word 0x00000400	; 037FE170
 pool_037FE174:
 loc_037FE174:
-	.word 0x037F8000	; 037FE174
+	.word P2_WramCopy0RuntimeStart	; 037FE174
 pool_037FE178:
 loc_037FE178:
 	.word 0x00000200	; 037FE178
@@ -8467,10 +8467,10 @@ loc_037FE54C:
 	.word 0x027C0000	; 037FE54C
 pool_037FE550:
 loc_037FE550:
-	.word 0x037F81A4	; 037FE550
+	.word P2_WramCopy0RuntimeEnd	; 037FE550
 pool_037FE554:
 loc_037FE554:
-	.word 0x03800000	; 037FE554
+	.word Arm7WramBase	; 037FE554
 
 ; ===== function loc_037FE558 =====
 loc_037FE558:
@@ -8513,7 +8513,7 @@ loc_037FE590:
 	.word 0x027FF000	; 037FE590
 pool_037FE594:
 loc_037FE594:
-	.word 0x03800000	; 037FE594
+	.word Arm7WramBase	; 037FE594
 pool_037FE598:
 loc_037FE598:
 	.word 0x00000200	; 037FE598
@@ -9070,7 +9070,7 @@ loc_037FE980:
 	.word TIMER0_DATA	; 037FE980
 pool_037FE984:
 loc_037FE984:
-	.word 0x037FE939	; 037FE984
+	.word P2_IrqHandler_037FE938 + 1	; 037FE984
 
 ; ===== function loc_037FE988 =====
 loc_037FE988:
@@ -23515,7 +23515,13 @@ pool_0380F644:
 	.word FirmwareBootParamAddress	; 0380F644
 pool_0380F648:
 	.word P2_PxiChannel1Callback + 1	; 0380F648
-	.byte 0x00, 0x4B, 0x18, 0x47, 0x79, 0xF6, 0x80, 0x03	; 0380F64C
+; Thumb veneer: loads the next block entry with its Thumb state bit, then branches.
+; Thumb 跳板：读入带 Thumb 状态位的下一块入口后跳转。
+P2_RuntimeThumbVeneer_0380F64C:
+	ldr r3,[P2_RuntimeThumbVeneerTarget]	; 0380F64C
+	bx r3	; 0380F64E
+P2_RuntimeThumbVeneerTarget:
+	.word P2_Code_0380F678 + 1	; 0380F650
 ; 仅在通道=1、数据=1 且用户回调非空时，间接调用该回调。
 ; Invoke the saved callback only for channel 1/data 1 and a non-null callback.
 .func P2_PxiChannel1Callback
@@ -23594,9 +23600,9 @@ pool_0380F764:
 pool_0380F768:
 	.word 0x023FE800	; 0380F768
 pool_0380F76C:
-	.word 0x037F8000	; 0380F76C
+	.word P2_WramCopy0RuntimeStart	; 0380F76C
 pool_0380F770:
-	.word 0x0380F600	; 0380F770
+	.word P2_WramCopy1RuntimeStart	; 0380F770
 pool_0380F774:
 	.word FirmwareBootParamAddress	; 0380F774
 pool_0380F778:
@@ -23648,7 +23654,7 @@ pool_0380F814:
 pool_0380F818:
 	.word 0x03810000	; 0380F818
 pool_0380F81C:
-	.word 0x0380F6F8	; 0380F81C
+	.word P2_WramCopy2RuntimeStart	; 0380F81C
 pool_0380F820:
 	.word 0x027FF000	; 0380F820
 
@@ -23693,7 +23699,7 @@ P2_Runtime_0380F878:
 pool_0380F8A0:
 	.word REG_IPC_SYNC	; 0380F8A0
 pool_0380F8A4:
-	.word 0x0380F64D	; 0380F8A4
+	.word P2_RuntimeThumbVeneer_0380F64C + 1	; 0380F8A4
 pool_0380F8A8:
 ; 基准为头部 RAM 视图 +0x200；负偏移实际读取 ARM9/ARM7 入口字段。
 ; Addressing anchor: the negative offset above reads the ARM9/ARM7 entry field.

@@ -632,7 +632,7 @@ loc_0235961C:
 	.byte 0xC0, 0x46	; 0235962C
 pool_0235962C:
 loc_0235962C:
-	.word 0x03000000	; 0235962C
+	.word P1_DtcmRuntimeStart	; 0235962C
 pool_02359630:
 loc_02359630:
 	.word 0x00003FF8	; 02359630

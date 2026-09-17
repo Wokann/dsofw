@@ -275,7 +275,7 @@ P1_IrqHandler_02320248:
 	bx lr	; 02320256
 pool_02320258:
 loc_02320258:
-	.word 0x03000000	; 02320258
+	.word P1_DtcmRuntimeStart	; 02320258
 pool_0232025C:
 loc_0232025C:
 	.word 0x00003FF8	; 0232025C
@@ -790,7 +790,7 @@ loc_023205DA:
 	bx r3	; 023205E6
 pool_023205E8:
 loc_023205E8:
-	.word 0x02330A80	; 023205E8
+	.word P1_BssStart	; 023205E8
 pool_023205EC:
 loc_023205EC:
 	.word P1_BssStart + 0xB00	; 023205EC
@@ -1004,7 +1004,7 @@ loc_02320792:
 	.byte 0xC0, 0x46	; 0232079C
 pool_0232079C:
 loc_0232079C:
-	.word 0x02330A80	; 0232079C
+	.word P1_BssStart	; 0232079C
 pool_023207A0:
 loc_023207A0:
 	.word P1_BssStart + 0x100	; 023207A0
@@ -1862,7 +1862,7 @@ loc_02320DD0:
 	.word P1_Data_0232FEA4	; 02320DD0
 pool_02320DD4:
 loc_02320DD4:
-	.word 0x02330A80	; 02320DD4
+	.word P1_BssStart	; 02320DD4
 pool_02320DD8:
 loc_02320DD8:
 	.word 0x02330BB4	; 02320DD8
@@ -2330,7 +2330,7 @@ loc_023211A8:
 	b loc_023212E8	; 023211C2
 pool_023211C4:
 loc_023211C4:
-	.word 0x02330A80	; 023211C4
+	.word P1_BssStart	; 023211C4
 pool_023211C8:
 loc_023211C8:
 	.word 0x0000136C	; 023211C8
@@ -2775,7 +2775,7 @@ loc_02321474:
 	.word REG_BLDCNT_SUB	; 02321474
 pool_02321478:
 loc_02321478:
-	.word 0x02330A80	; 02321478
+	.word P1_BssStart	; 02321478
 pool_0232147C:
 loc_0232147C:
 	.word 0x02330C00	; 0232147C
@@ -2907,7 +2907,7 @@ loc_02321548:
 	.word 0x0232FEBC	; 02321548
 pool_0232154C:
 loc_0232154C:
-	.word 0x02330A80	; 0232154C
+	.word P1_BssStart	; 0232154C
 pool_02321550:
 loc_02321550:
 	.word 0x00000D58	; 02321550
@@ -3059,7 +3059,7 @@ loc_0232166A:
 	bx r3	; 02321672
 pool_02321674:
 loc_02321674:
-	.word 0x03000000	; 02321674
+	.word P1_DtcmRuntimeStart	; 02321674
 pool_02321678:
 loc_02321678:
 	.word 0x00003FF8	; 02321678
@@ -16376,10 +16376,10 @@ loc_023274F8:
 	.word 0x023FE000	; 023274F8
 pool_023274FC:
 loc_023274FC:
-	.word 0x037F8000	; 023274FC
+	.word Arm7SharedWramStart	; 023274FC
 pool_02327500:
 loc_02327500:
-	.word 0x0380F000	; 02327500
+	.word Arm7FirmwareReservedWramStart	; 02327500
 
 ; ===== function loc_02327504 =====
 loc_02327504:
@@ -16478,7 +16478,7 @@ P1_IrqHandler_023275AC:
 	bx lr	; 023275BA
 pool_023275BC:
 loc_023275BC:
-	.word 0x03000000	; 023275BC
+	.word P1_DtcmRuntimeStart	; 023275BC
 pool_023275C0:
 loc_023275C0:
 	.word 0x00003FF8	; 023275C0
@@ -17120,10 +17120,10 @@ loc_023279FC:
 	.word NdsCartHeaderArm7RamAddress	; 023279FC
 pool_02327A00:
 loc_02327A00:
-	.word 0x037F8000	; 02327A00
+	.word Arm7SharedWramStart	; 02327A00
 pool_02327A04:
 loc_02327A04:
-	.word 0x0380F000	; 02327A04
+	.word Arm7FirmwareReservedWramStart	; 02327A04
 pool_02327A08:
 loc_02327A08:
 	.word FirmwareBootSharedAddress	; 02327A08
@@ -17620,7 +17620,7 @@ loc_02327D74:
 	.word NdsCartHeaderRamAddress + 0x200	; 02327D74
 pool_02327D78:
 loc_02327D78:
-	.word 0x03000000	; 02327D78
+	.word P1_DtcmRuntimeStart	; 02327D78
 
 ; ===== function loc_02327D7C =====
 loc_02327D7C:
@@ -17669,7 +17669,7 @@ loc_02327DA4:
 	bx r12	; 02327E10
 pool_02327E14:
 loc_02327E14:
-	.word 0x03000000	; 02327E14
+	.word P1_DtcmRuntimeStart	; 02327E14
 pool_02327E18:
 loc_02327E18:
 	.word 0x00001000	; 02327E18
@@ -24404,7 +24404,7 @@ loc_0232B050:
 	.word 0x00003FF8	; 0232B050
 pool_0232B054:
 loc_0232B054:
-	.word 0x03000000	; 0232B054
+	.word P1_DtcmRuntimeStart	; 0232B054
 .thumb
 P1_IrqHandler_0232B058:
 	mov r0,#0x7	; 0232B058
@@ -24519,7 +24519,7 @@ loc_0232B108:
 	.word P1_BssStart + 0x26318	; 0232B108
 pool_0232B10C:
 loc_0232B10C:
-	.word 0x03000000	; 0232B10C
+	.word P1_DtcmRuntimeStart	; 0232B10C
 pool_0232B110:
 loc_0232B110:
 	.word 0x00003FF8	; 0232B110
@@ -25631,10 +25631,10 @@ loc_0232B890:
 	.word 0x00000000	; 0232B890
 pool_0232B894:
 loc_0232B894:
-	.word 0x03000020	; 0232B894
+	.word P1_DtcmRuntimeEnd	; 0232B894
 pool_0232B898:
 loc_0232B898:
-	.word 0x03000000	; 0232B898
+	.word P1_DtcmRuntimeStart	; 0232B898
 pool_0232B89C:
 loc_0232B89C:
 	.word 0x00003FC0	; 0232B89C
@@ -26226,13 +26226,13 @@ loc_0232BCD8:
 	.word 0x01FF8320	; 0232BCD8
 pool_0232BCDC:
 loc_0232BCDC:
-	.word 0x03000020	; 0232BCDC
+	.word P1_DtcmRuntimeEnd	; 0232BCDC
 pool_0232BCE0:
 loc_0232BCE0:
 	.word 0x027FF000	; 0232BCE0
 pool_0232BCE4:
 loc_0232BCE4:
-	.word 0x037F8000	; 0232BCE4
+	.word Arm7SharedWramStart	; 0232BCE4
 
 ; ===== function loc_0232BCE8 =====
 loc_0232BCE8:
@@ -26308,7 +26308,7 @@ loc_0232BD4C:
 	.word 0x02000000	; 0232BD4C
 pool_0232BD50:
 loc_0232BD50:
-	.word 0x03000000	; 0232BD50
+	.word P1_DtcmRuntimeStart	; 0232BD50
 pool_0232BD54:
 loc_0232BD54:
 	.word 0x00003F80	; 0232BD54
@@ -26320,13 +26320,13 @@ loc_0232BD5C:
 	.word 0x00000000	; 0232BD5C
 pool_0232BD60:
 loc_0232BD60:
-	.word 0x03000020	; 0232BD60
+	.word P1_DtcmRuntimeEnd	; 0232BD60
 pool_0232BD64:
 loc_0232BD64:
 	.word 0x027FF800	; 0232BD64
 pool_0232BD68:
 loc_0232BD68:
-	.word 0x037F8000	; 0232BD68
+	.word Arm7SharedWramStart	; 0232BD68
 
 ; ===== function loc_0232BD6C =====
 loc_0232BD6C:
@@ -26745,7 +26745,7 @@ loc_0232C0C4:
 	.word TIMER0_DATA	; 0232C0C4
 pool_0232C0C8:
 loc_0232C0C8:
-	.word 0x0232C07D	; 0232C0C8
+	.word P1_IrqHandler_0232C07C + 1	; 0232C0C8
 
 ; ===== function loc_0232C0CC =====
 loc_0232C0CC:
@@ -26947,7 +26947,7 @@ loc_0232C22C:
 	.word TIMER1_CR	; 0232C22C
 pool_0232C230:
 loc_0232C230:
-	.word 0x03000000	; 0232C230
+	.word P1_DtcmRuntimeStart	; 0232C230
 pool_0232C234:
 loc_0232C234:
 	.word 0x00003FF8	; 0232C234
@@ -27936,7 +27936,7 @@ P1_Cp15ControlDisableMask:       .word 0x000F9005
 P1_Cp15MpuRegion0Config:         .word 0x04000033
 P1_Cp15MpuRegion1Config:         .word 0x0200002B
 P1_Cp15MpuRegion3Config:         .word 0x08000035
-P1_Cp15MpuRegion4Base:           .word 0x03000000
+P1_Cp15MpuRegion4Base:           .word P1_DtcmRuntimeStart
 P1_Cp15MpuRegion5Config:         .word 0x0100002F
 P1_Cp15MpuRegion6Config:         .word 0xFFFF001D
 P1_Cp15MpuRegion7Config:         .word 0x027FF017
@@ -32850,7 +32850,7 @@ loc_0232EE1E:
 	bx r3	; 0232EE22
 pool_0232EE24:
 loc_0232EE24:
-	.word 0x03000000	; 0232EE24
+	.word P1_DtcmRuntimeStart	; 0232EE24
 pool_0232EE28:
 loc_0232EE28:
 	.word P1_BssStart + 0x2828C	; 0232EE28

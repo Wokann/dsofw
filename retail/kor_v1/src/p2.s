@@ -285,7 +285,7 @@ loc_037FAA58:
 	.word 0x03808078	; 037FAA58
 pool_037FAA5C:
 loc_037FAA5C:
-	.word 0x0380F600	; 037FAA5C
+	.word P2_WramCopy1RuntimeStart	; 037FAA5C
 pool_037FAA60:
 loc_037FAA60:
 	.word 0x001FFFFF	; 037FAA60
@@ -1102,7 +1102,7 @@ loc_037FAFF4:
 	.word 0x03808078	; 037FAFF4
 pool_037FAFF8:
 loc_037FAFF8:
-	.word 0x0380F600	; 037FAFF8
+	.word P2_WramCopy1RuntimeStart	; 037FAFF8
 pool_037FAFFC:
 loc_037FAFFC:
 	.word P2_BssStart + 0x14	; 037FAFFC
@@ -1180,7 +1180,7 @@ loc_037FB05C:
 	.word P2_WaitVCount200ThenEnterAgbMode	; 037FB05C
 pool_037FB060:
 loc_037FB060:
-	.word 0x037F8000	; 037FB060
+	.word P2_WramCopy0RuntimeStart	; 037FB060
 pool_037FB064:
 loc_037FB064:
 	.word 0x00000100	; 037FB064
@@ -1786,7 +1786,7 @@ loc_037FB3F4:
 	.word 0x00080000	; 037FB3F4
 pool_037FB3F8:
 loc_037FB3F8:
-	.word 0x037F8000	; 037FB3F8
+	.word P2_WramCopy0RuntimeStart	; 037FB3F8
 pool_037FB3FC:
 loc_037FB3FC:
 	.word 0x03807E01	; 037FB3FC
@@ -8513,7 +8513,7 @@ loc_037FE50C:
 	.word 0x00000400	; 037FE50C
 pool_037FE510:
 loc_037FE510:
-	.word 0x037F8000	; 037FE510
+	.word P2_WramCopy0RuntimeStart	; 037FE510
 pool_037FE514:
 loc_037FE514:
 	.word 0x00000200	; 037FE514
@@ -9054,10 +9054,10 @@ loc_037FE8E8:
 	.word 0x027C0000	; 037FE8E8
 pool_037FE8EC:
 loc_037FE8EC:
-	.word 0x037F8424	; 037FE8EC
+	.word P2_WramCopy0RuntimeEnd	; 037FE8EC
 pool_037FE8F0:
 loc_037FE8F0:
-	.word 0x03800000	; 037FE8F0
+	.word Arm7WramBase	; 037FE8F0
 
 ; ===== function loc_037FE8F4 =====
 loc_037FE8F4:
@@ -9100,7 +9100,7 @@ loc_037FE92C:
 	.word 0x027FF000	; 037FE92C
 pool_037FE930:
 loc_037FE930:
-	.word 0x03800000	; 037FE930
+	.word Arm7WramBase	; 037FE930
 pool_037FE934:
 loc_037FE934:
 	.word 0x00000200	; 037FE934
@@ -9657,7 +9657,7 @@ loc_037FED1C:
 	.word TIMER0_DATA	; 037FED1C
 pool_037FED20:
 loc_037FED20:
-	.word 0x037FECD5	; 037FED20
+	.word P2_IrqHandler_037FECD4 + 1	; 037FED20
 
 ; ===== function loc_037FED24 =====
 loc_037FED24:
@@ -24404,7 +24404,13 @@ pool_0380F644:
 	.word FirmwareBootParamAddress	; 0380F644
 pool_0380F648:
 	.word P2_PxiChannel1Callback + 1	; 0380F648
-	.byte 0x00, 0x4B, 0x18, 0x47, 0x79, 0xF6, 0x80, 0x03	; 0380F64C
+; Thumb veneer: loads the next block entry with its Thumb state bit, then branches.
+; Thumb 跳板：读入带 Thumb 状态位的下一块入口后跳转。
+P2_RuntimeThumbVeneer_0380F64C:
+	ldr r3,[P2_RuntimeThumbVeneerTarget]	; 0380F64C
+	bx r3	; 0380F64E
+P2_RuntimeThumbVeneerTarget:
+	.word P2_Code_0380F678 + 1	; 0380F650
 ; 仅在通道=1、数据=1 且用户回调非空时，间接调用该回调。
 ; Invoke the saved callback only for channel 1/data 1 and a non-null callback.
 .func P2_PxiChannel1Callback
@@ -24483,9 +24489,9 @@ pool_0380F764:
 pool_0380F768:
 	.word 0x023FE800	; 0380F768
 pool_0380F76C:
-	.word 0x037F8000	; 0380F76C
+	.word P2_WramCopy0RuntimeStart	; 0380F76C
 pool_0380F770:
-	.word 0x0380F600	; 0380F770
+	.word P2_WramCopy1RuntimeStart	; 0380F770
 pool_0380F774:
 	.word FirmwareBootParamAddress	; 0380F774
 pool_0380F778:
@@ -24537,7 +24543,7 @@ pool_0380F814:
 pool_0380F818:
 	.word 0x03810000	; 0380F818
 pool_0380F81C:
-	.word 0x0380F6F8	; 0380F81C
+	.word P2_WramCopy2RuntimeStart	; 0380F81C
 pool_0380F820:
 	.word 0x027FF000	; 0380F820
 
@@ -24582,7 +24588,7 @@ P2_Runtime_0380F878:
 pool_0380F8A0:
 	.word REG_IPC_SYNC	; 0380F8A0
 pool_0380F8A4:
-	.word 0x0380F64D	; 0380F8A4
+	.word P2_RuntimeThumbVeneer_0380F64C + 1	; 0380F8A4
 pool_0380F8A8:
 ; 基准为头部 RAM 视图 +0x200；负偏移实际读取 ARM9/ARM7 入口字段。
 ; Addressing anchor: the negative offset above reads the ARM9/ARM7 entry field.

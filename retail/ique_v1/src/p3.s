@@ -630,7 +630,7 @@ loc_02364F9C:
 	.byte 0xC0, 0x46	; 02364FAC
 pool_02364FAC:
 loc_02364FAC:
-	.word 0x03000000	; 02364FAC
+	.word P1_DtcmRuntimeStart	; 02364FAC
 pool_02364FB0:
 loc_02364FB0:
 	.word 0x00003FF8	; 02364FB0
@@ -35065,10 +35065,10 @@ loc_0237A2C0:
 	.word 0x00040000	; 0237A2C0
 pool_0237A2C4:
 loc_0237A2C4:
-	.word 0x037F8000	; 0237A2C4
+	.word Arm7SharedWramStart	; 0237A2C4
 pool_0237A2C8:
 loc_0237A2C8:
-	.word 0x0380F000	; 0237A2C8
+	.word Arm7FirmwareReservedWramStart	; 0237A2C8
 
 ; ===== function loc_0237A2CC =====
 loc_0237A2CC:

@@ -138,6 +138,16 @@
 .definelabel VramLcdcBytes,                           0x000a4000
 .definelabel MM_PALRAM_SZ,                            0x00000800
 .definelabel MM_OBJRAM_SZ,                            0x00000800
+.definelabel Arm7WramBase,                             0x03800000
+.definelabel Arm7WramEnd,                              0x03810000
+.definelabel Arm7SharedWramStart,                    0x037f8000
+; With 32 KiB assigned to ARM7, this is its shared-WRAM mirror/start.
+; 分配 32 KiB 给 ARM7 时，这是共享 WRAM 的 ARM7 镜像起点。
+.definelabel Arm7FirmwareReservedWramStart,          0x0380f000
+; Firmware runtime occupies the final 4 KiB; external ARM7 images stop before it.
+; 固件运行期占用最后 4 KiB；外部 ARM7 映像必须在此之前结束。
+; ARM7 private WRAM is 64 KiB at this range, even when firmware code is loaded there.
+; ARM7 私有 WRAM 固定为此 64 KiB 范围；固件代码装载在其中不改变该内存语义。
 .definelabel WRAM_0KARM9_32KARM7,                     0x03
 .definelabel VramcntLcdcEnableAbcd,                   0x80808080
 

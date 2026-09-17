@@ -1150,7 +1150,7 @@ loc_023009A8:
 	.word 0x00001000	; 023009A8
 pool_023009AC:
 loc_023009AC:
-	.word 0x037F8000	; 023009AC
+	.word Arm7SharedWramStart	; 023009AC
 pool_023009B0:
 loc_023009B0:
 	.word P4_ThreadEntry_02301824 + 1	; 023009B0
