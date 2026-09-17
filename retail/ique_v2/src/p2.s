@@ -23350,11 +23350,28 @@ P2_WramCopy0LoadStart:
 P2_WramCopy0RuntimeStart:
 
 P2_DeferredPatchEntryImage:
-; 二次复制到共享 RAM 后才执行；此处是存储位置，不是执行地址。
-; Executed only after a second copy to shared RAM; this is its storage address.
-	.word 0xE24F0024, 0xE51F1014, 0xE3A02005, 0xEF0C0000
-	.word 0xE51FC01C, 0xE1A0E00C, 0xE3A00000, 0xE1A01000
-	.word 0xE1A02000, 0xE12FFF1C
+.definelabel P2_DeferredPatchEntryFileOffset, orga()
+; 按共享 RAM 中的实际执行地址汇编；这些字节先随 P2 复制到 WRAM。
+; Assemble for execution in shared RAM; these bytes first travel with P2 into WRAM.
+.headersize P2_DeferredPatchOriginalEntry + 4 - orga()
+.arm
+; 安装 20 字节补丁，清空 r0-r2，跳回保存的 ARM7 程序入口。
+; Install the 20-byte patch, clear r0-r2, then jump to the saved ARM7 program entry.
+.func P2_DeferredRuntimePatchEntry
+	sub r0,pc,#(P2_DeferredRuntimePatchEntry + 8 - P2_DeferredPatchPayload)
+	ldr r1,[P2_DeferredPatchDestination]
+	mov r2,#(P2_DeferredPatchPayloadBytes / 4)
+	swi 0xc0000
+	ldr r12,[P2_DeferredPatchOriginalEntry]
+	mov lr,r12
+	mov r0,#0x0
+	mov r1,r0
+	mov r2,r0
+	bx r12
+.endfunc
+P2_DeferredRuntimePatchEntryEnd:
+.headersize P2_DeferredPatchEntryImage - P2_DeferredPatchEntryFileOffset
+P2_DeferredPatchEntryImageEnd:
 P2_Runtime_037F8028:
 .thumb
 ; 保存补丁、目标和原 ARM7 入口，再复制 40 字节入口代码到共享 RAM。
@@ -23370,7 +23387,7 @@ P2_Runtime_037F8032:
 	add r1,r1,#0x4	; 037F8034
 	stmia r3!,{r4}	; 037F8036
 	add r5,r5,#0x1	; 037F8038
-	cmp r5,#0x5	; 037F803A
+	cmp r5,#(P2_DeferredPatchPayloadBytes / 4)	; 037F803A
 	blt P2_Runtime_037F8032	; 037F803C
 	str r0,[r3,#0x0]	; 037F803E
 	add r1,r3,#0x4	; 037F8040
@@ -23384,7 +23401,7 @@ P2_Runtime_037F804C:
 	add r2,r2,#0x4	; 037F804E
 	stmia r3!,{r0}	; 037F8050
 	add r1,r1,#0x1	; 037F8052
-	cmp r1,#0xa	; 037F8054
+	cmp r1,#((P2_DeferredRuntimePatchEntryEnd - P2_DeferredRuntimePatchEntry) / 4)	; 037F8054
 	blt P2_Runtime_037F804C	; 037F8056
 	add sp,#0x4	; 037F8058
 	pop {r4,r5}	; 037F805A
@@ -23392,7 +23409,7 @@ P2_Runtime_037F804C:
 	bx r3	; 037F805E
 .endfunc
 pool_037F8060:
-	.word FirmwareBootInfoScratchAddress	; 037F8060
+	.word P2_DeferredPatchPayload	; 037F8060
 pool_037F8064:
 	.word P2_DeferredPatchEntryImage	; 037F8064
 pool_037F8068:
@@ -23558,7 +23575,7 @@ P2_Runtime_037F8172:
 	cmp r0,#0x1	; 037F817A
 	bne P2_Runtime_037F8188	; 037F817C
 	add r0,r4,#0x0	; 037F817E
-	mov r2,#0x5	; 037F8180
+	mov r2,#(P2_DeferredPatchPayloadBytes / 4)	; 037F8180
 	bl P2_SwiCpuFastSet	; 037F8182
 	b P2_Runtime_037F81AC	; 037F8186
 P2_Runtime_037F8188:
@@ -23606,7 +23623,7 @@ pool_037F81D0:
 pool_037F81D4:
 	.word 0x022C0000	; 037F81D4
 pool_037F81D8:
-	.word FirmwareBootInfoScratchAddress + 0x1C	; 037F81D8
+	.word P2_DeferredRuntimePatchEntry	; 037F81D8
 pool_037F81DC:
 	.word NdsCartHeaderArm7EntryAddress	; 037F81DC
 
@@ -24009,3 +24026,10 @@ P2_CopyDescriptors:
 P2_CopyDescriptorsEnd:
 .arm
 .close
+
+; 延迟补丁阶段复用早期启动信息暂存区：补丁、目标地址、原入口，随后是入口代码。
+; Deferred patching reuses the early boot-info scratch: payload, destination, saved entry, then code.
+.definelabel P2_DeferredPatchPayload, FirmwareBootInfoScratchAddress
+.definelabel P2_DeferredPatchPayloadBytes, 20
+.definelabel P2_DeferredPatchDestination, P2_DeferredPatchPayload + P2_DeferredPatchPayloadBytes
+.definelabel P2_DeferredPatchOriginalEntry, P2_DeferredPatchDestination + 4
