@@ -16953,13 +16953,16 @@ loc_038020A4:
 pool_038020A8:
 loc_038020A8:
 	.word 0x000003E8	; 038020A8
+; 采样 X/Y、调试键与合盖输入；将合盖位转换为共享状态 bit15。
+; Sample X/Y, debug and hinge inputs; publish the hinge bit as shared bit15.
+.func P2_PublishExtendedKeyState
 	push {r4,lr}	; 038020AC
 	mov r4,#0x0	; 038020AE
 	ldr r0,[pool_038020D8]	; 038020B0
 	bl loc_0380214C	; 038020B2
 	ldr r0,[pool_038020DC]	; 038020B6
 	ldrh r2,[r0,#0x0]	; 038020B8
-	mov r0,#0x80	; 038020BA
+	mov r0,#KEYXY_LID_CLOSED	; 038020BA
 	add r1,r2,#0x0	; 038020BC
 	and r1,r0	; 038020BE
 	cmp r1,#0x0	; 038020C0
@@ -16975,9 +16978,12 @@ loc_038020C6:
 	pop {r4}	; 038020D2
 	pop {r3}	; 038020D4
 	bx r3	; 038020D6
+.endfunc
 pool_038020D8:
 loc_038020D8:
-	.word 0x00008000	; 038020D8
+; 此 0x8000 常量也传给 RCNT 模式设置；原代码共用同一槽。
+; The same 0x8000 literal also selects RCNT GPIO mode in the original code.
+	.word SystemWorkLidClosedMask	; 038020D8
 pool_038020DC:
 loc_038020DC:
 	.word REG_KEYXY	; 038020DC
@@ -17038,7 +17044,7 @@ loc_03802140:
 	.word 0x03807160	; 03802140
 pool_03802144:
 loc_03802144:
-	.word 0x038020AD	; 03802144
+	.word P2_PublishExtendedKeyState + 1	; 03802144
 pool_03802148:
 loc_03802148:
 	.word 0x0000082E	; 03802148

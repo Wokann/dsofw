@@ -2675,7 +2675,7 @@ loc_023213C0:
 	mov r2,#0x8	; 023213D0
 	bl loc_02325FDC	; 023213D2
 	ldr r0,[pool_0232147C]	; 023213D6
-	bl loc_02326544	; 023213D8
+	bl P1_SetLidOpenedCallback	; 023213D8
 	mov r0,#0x1	; 023213DC
 	ldr r1,[pool_02321480]	; 023213DE
 	bl loc_0232ADD0	; 023213E0
@@ -2783,7 +2783,7 @@ loc_02321478:
 	.word 0x0233191C	; 02321478
 pool_0232147C:
 loc_0232147C:
-	.word 0x0232154D	; 0232147C
+	.word P1_UiOnLidOpened + 1	; 0232147C
 pool_02321480:
 loc_02321480:
 	.word P1_IrqHandler_02321594 + 1	; 02321480
@@ -2912,6 +2912,9 @@ loc_02321548:
 	.word 0x00000D58	; 02321548
 
 ; ===== function loc_0232154C =====
+; 本组件 UI 注册的开盖处理：更新局部状态及 UI 电源标志。
+; This UI stage's lid-open handler updates local state and UI power flags.
+.func P1_UiOnLidOpened
 	push {lr}	; 0232154C
 	sub sp,#0x4	; 0232154E
 	mov r1,#0x0	; 02321550
@@ -2942,6 +2945,7 @@ loc_02321586:
 	add sp,#0x4	; 02321586
 	pop {r3}	; 02321588
 	bx r3	; 0232158A
+.endfunc
 pool_0232158C:
 loc_0232158C:
 	.word P1_BssStart + 0xA80	; 0232158C
@@ -14100,15 +14104,39 @@ loc_02326540:
 
 ; ===== function loc_02326544 =====
 loc_02326544:
+; 保存 r0 的开盖回调；空指针表示不回调。
+; Save the lid-open callback in r0; null disables its notification.
+.func P1_SetLidOpenedCallback
 	ldr r1,[pool_0232654C]	; 02326544
 	str r0,[r1,#0x0]	; 02326546
 	bx lr	; 02326548
+.endfunc
 	.byte 0xC0, 0x46	; 0232654C
 pool_0232654C:
 loc_0232654C:
-	.word P1_BssStart + 0x24DE8	; 0232654C
-	.byte 0x01, 0x49, 0x08, 0x60, 0x70, 0x47, 0xC0, 0x46, 0x64, 0x5C, 0x35, 0x02, 0x01, 0x49, 0x08, 0x60	; 02326560
-	.byte 0x70, 0x47, 0xC0, 0x46, 0x60, 0x5C, 0x35, 0x02	; 02326568
+	.word P1_LidOpenedCallbackSlot	; 0232654C
+; 保存 r0 的唤醒后回调；空指针表示不回调。
+; Save the after-sleep callback in r0; null disables it.
+.func P1_SetAfterSleepCallback
+	ldr r1,[P1_SetAfterSleepCallbackLiteral]
+	str r0,[r1,#0x0]
+	bx lr
+.endfunc
+	.byte 0xC0, 0x46
+P1_SetAfterSleepCallbackLiteral:
+	.word P1_AfterSleepCallbackSlot
+
+; 保存 r0 的休眠前回调；空指针表示不回调。
+; Save the before-sleep callback in r0; null disables it.
+.func P1_SetBeforeSleepCallback
+	ldr r1,[P1_SetBeforeSleepCallbackLiteral]
+	str r0,[r1,#0x0]
+	bx lr
+.endfunc
+	.byte 0xC0, 0x46
+P1_SetBeforeSleepCallbackLiteral:
+	.word P1_BeforeSleepCallbackSlot
+
 
 ; ===== function loc_02326568 =====
 loc_02326568:
@@ -14239,6 +14267,9 @@ loc_02326640:
 
 ; ===== function loc_02326644 =====
 loc_02326644:
+; 更新开合盖边沿；按现有状态执行休眠、唤醒及已注册回调。
+; Track lid transitions; handle sleep, wake-up and registered callbacks according to current state.
+.func P1_UpdateLidAndSleepState
 	push {lr}	; 02326644
 	sub sp,#0x4	; 02326646
 	ldr r0,[pool_023267F8]	; 02326648
@@ -14460,30 +14491,31 @@ loc_023267F2:
 	add sp,#0x4	; 023267F2
 	pop {r3}	; 023267F4
 	bx r3	; 023267F6
+.endfunc
 pool_023267F8:
 loc_023267F8:
 	.word FirmwareSystemWorkAddress + SystemWorkKeyXYStateOffset	; 023267F8
 pool_023267FC:
 loc_023267FC:
-	.word 0x00008000	; 023267FC
+	.word SystemWorkLidClosedMask	; 023267FC
 pool_02326800:
 loc_02326800:
-	.word P1_BssStart + 0x24DD8	; 02326800
+	.word P1_LidAndSleepState	; 02326800
 pool_02326804:
 loc_02326804:
-	.word 0x00000200	; 02326804
+	.word LidStateClosedMask	; 02326804
 pool_02326808:
 loc_02326808:
-	.word 0x00000100	; 02326808
+	.word LidStateOpenedMask	; 02326808
 pool_0232680C:
 loc_0232680C:
-	.word 0xFFFFFEFF	; 0232680C
+	.word (0xFFFFFFFF ^ LidStateOpenedMask)	; 0232680C
 pool_02326810:
 loc_02326810:
-	.word 0xFFFFFDFF	; 02326810
+	.word (0xFFFFFFFF ^ LidStateClosedMask)	; 02326810
 pool_02326814:
 loc_02326814:
-	.word P1_BssStart + 0x24DE0	; 02326814
+	.word P1_BeforeSleepCallbackSlot	; 02326814
 pool_02326818:
 loc_02326818:
 	.word REG_DISPCNT_B	; 02326818
@@ -14498,10 +14530,10 @@ loc_02326824:
 	.word FirmwareBootSharedAddress + BootSharedEventFlagsOffset	; 02326824
 pool_02326828:
 loc_02326828:
-	.word P1_BssStart + 0x24DE4	; 02326828
+	.word P1_AfterSleepCallbackSlot	; 02326828
 pool_0232682C:
 loc_0232682C:
-	.word P1_BssStart + 0x24DE8	; 0232682C
+	.word P1_LidOpenedCallbackSlot	; 0232682C
 
 ; ===== function loc_02326830 =====
 loc_02326830:
@@ -14540,7 +14572,7 @@ loc_02326864:
 loc_02326868:
 	push {lr}	; 02326868
 	sub sp,#0x4	; 0232686A
-	bl loc_02326644	; 0232686C
+	bl P1_UpdateLidAndSleepState	; 0232686C
 	bl loc_02326918	; 02326870
 	bl loc_02325694	; 02326874
 	add r1,r0,#0x4	; 02326878
@@ -36420,3 +36452,10 @@ P1_CopyDescriptorsEnd:
 	.byte 0x21, 0x06, 0xC0, 0xDE, 0x90, 0x08, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00	; 023311D8
 .thumb
 .close
+
+; 开合盖/休眠状态与可选回调槽，位于 CRT 清零的 BSS。
+; Lid/sleep state and optional callback slots in CRT-cleared BSS.
+.definelabel P1_LidAndSleepState, P1_BssStart + 0x24DD8
+.definelabel P1_BeforeSleepCallbackSlot, P1_LidAndSleepState + 8
+.definelabel P1_AfterSleepCallbackSlot, P1_LidAndSleepState + 12
+.definelabel P1_LidOpenedCallbackSlot, P1_LidAndSleepState + 16

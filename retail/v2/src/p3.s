@@ -10878,7 +10878,7 @@ loc_0235E08C:
 	mov r0,#0xc0	; 0235E14A
 	bl P1_Entry_02324020	; 0235E14C
 	ldr r0,[pool_0235E1BC]	; 0235E150
-	bl loc_02326544	; 0235E152
+	bl P1_SetLidOpenedCallback	; 0235E152
 	mov r0,#0x1f	; 0235E156
 	mov r1,#0x0	; 0235E158
 	bl P1_Entry_02325378	; 0235E15A
@@ -10949,7 +10949,7 @@ loc_0235E1B8:
 	.word 0x023759DC	; 0235E1B8
 pool_0235E1BC:
 loc_0235E1BC:
-	.word 0x0235E7D9	; 0235E1BC
+	.word P3_UiOnLidOpened + 1	; 0235E1BC
 
 ; ===== function loc_0235E1C0 =====
 loc_0235E1C0:
@@ -11740,6 +11740,9 @@ loc_0235E7D4:
 	.word 0x027FFC80	; 0235E7D4
 
 ; ===== function loc_0235E7D8 =====
+; 本组件 UI 注册的开盖处理：更新局部状态及 UI 电源标志。
+; This UI stage's lid-open handler updates local state and UI power flags.
+.func P3_UiOnLidOpened
 	push {lr}	; 0235E7D8
 	sub sp,#0x4	; 0235E7DA
 	mov r1,#0x0	; 0235E7DC
@@ -11770,6 +11773,7 @@ loc_0235E812:
 	add sp,#0x4	; 0235E812
 	pop {r3}	; 0235E814
 	bx r3	; 0235E816
+.endfunc
 pool_0235E818:
 loc_0235E818:
 	.word UiBootZeroStart + 0x1BFC	; 0235E818

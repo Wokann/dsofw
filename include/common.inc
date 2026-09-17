@@ -126,6 +126,10 @@
 .definelabel KEY_SELECT,                              (1 << 2)
 .definelabel KEYXY_X,                                 (1 << 0)
 .definelabel KEYXY_Y,                                 (1 << 1)
+; KEYXY hardware bit; distinct from libnds' packed logical KEY_LID value.
+; KEYXY 硬件合盖位，不是 libnds 重排后的逻辑 KEY_LID 位。
+; https://raw.githubusercontent.com/devkitPro/calico/master/include/calico/nds/arm7/gpio.h
+.definelabel KEYXY_LID_CLOSED,                        (1 << 7)
 
 ; NDS memory and video layout
 .definelabel BG_PALETTE,                              0x05000000
@@ -379,6 +383,9 @@
 .definelabel SystemWorkArm9ThreadInfoOffset,              0x3a0
 .definelabel SystemWorkArm7ThreadInfoOffset,              0x3a4
 .definelabel SystemWorkKeyXYStateOffset,                  0x3a8
+; Firmware/SDK shared input packing: ARM7 copies the hinge input to bit15.
+; 固件/SDK 的共享输入格式：ARM7 将硬件合盖位转存到 bit15。
+.definelabel SystemWorkLidClosedMask,                 (1 << 15)
 .definelabel SystemWorkTouchPanelOffset,                  0x3aa
 .definelabel SystemWorkArm9LockIdsOffset,                 0x3b0
 .definelabel SystemWorkArm7LockIdsOffset,                 0x3b8
@@ -404,6 +411,11 @@
 ; ARM7 将压缩组件暂存于此供 ARM9 解压；该 RAM 可由后续启动阶段复用。
 .definelabel FirmwareComponentStagingAddress,        0x022c0000
 .definelabel FirmwareComponentStagingLimit,          0x02300000
+
+; Private lid-state word: opening edge and the last sampled closed state.
+; 固件私有开合盖状态字：开盖边沿与上次采样的闭合状态。
+.definelabel LidStateOpenedMask,                     (1 << 8)
+.definelabel LidStateClosedMask,                     (1 << 9)
 
 ; PXI FIFO: five tag bits; one shared callback-availability bitmap per CPU.
 ; PXI FIFO 使用五位通道号，每个 CPU 各有一个共享回调可用位图。
