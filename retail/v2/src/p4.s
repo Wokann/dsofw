@@ -800,7 +800,7 @@ loc_0230074C:
 	bx r3	; 02300752
 pool_02300754:
 loc_02300754:
-	.word P4_BssStart + 0x23C0	; 02300754
+	.word P4_ServicePrimaryThreadRecord + 0x8	; 02300754
 
 ; ===== function loc_02300758 =====
 loc_02300758:
@@ -856,7 +856,7 @@ loc_023007B0:
 	bx r3	; 023007B6
 pool_023007B8:
 loc_023007B8:
-	.word P4_BssStart + 0x23C0	; 023007B8
+	.word P4_ServicePrimaryThreadRecord + 0x8	; 023007B8
 
 ; ===== function loc_023007BC =====
 loc_023007BC:
@@ -913,7 +913,7 @@ loc_0230081C:
 	.word 0x023117D4	; 0230081C
 pool_02300820:
 loc_02300820:
-	.word P4_BssStart + 0x23C0	; 02300820
+	.word P4_ServicePrimaryThreadRecord + 0x8	; 02300820
 
 ; ===== function loc_02300824 =====
 loc_02300824:
@@ -1108,7 +1108,7 @@ loc_02300948:
 	bx r3	; 02300972
 pool_02300974:
 loc_02300974:
-	.word P4_BssStart + 0x23C0	; 02300974
+	.word P4_ServicePrimaryThreadRecord + 0x8	; 02300974
 pool_02300978:
 loc_02300978:
 	.word 0x02311770	; 02300978
@@ -1135,13 +1135,13 @@ loc_02300994:
 	.word 0x023117E8	; 02300994
 pool_02300998:
 loc_02300998:
-	.word 0x02312C68	; 02300998
+	.word P4_ServicePrimaryThreadRecord	; 02300998
 pool_0230099C:
 loc_0230099C:
 	.word 0x00000400	; 0230099C
 pool_023009A0:
 loc_023009A0:
-	.word 0x037F8078	; 023009A0
+	.word P2_P4ServicePrimaryThreadStackTop	; 023009A0
 pool_023009A4:
 loc_023009A4:
 	.word P4_ThreadEntry_023017C0 + 1	; 023009A4
@@ -1150,13 +1150,13 @@ loc_023009A8:
 	.word 0x00001000	; 023009A8
 pool_023009AC:
 loc_023009AC:
-	.word Arm7SharedWramStart	; 023009AC
+	.word P2_P4ServiceSecondaryThreadStackTop	; 023009AC
 pool_023009B0:
 loc_023009B0:
 	.word P4_ThreadEntry_02301824 + 1	; 023009B0
 pool_023009B4:
 loc_023009B4:
-	.word 0x02312868	; 023009B4
+	.word P4_ServiceSecondaryThreadRecord	; 023009B4
 pool_023009B8:
 loc_023009B8:
 	.word 0x0000151C	; 023009B8
@@ -34113,3 +34113,6 @@ P4_BssStart:
 ; P4 initialization clears runtime storage after its image; BSS emits no file data.
 .definelabel P4_BssBytes, 0x2424
 .definelabel P4_BssEnd, P4_BssStart + P4_BssBytes
+; P4 服务线程记录 / Thread records used by the P4 service.
+.definelabel P4_ServicePrimaryThreadRecord, P4_BssStart + 0x23B8
+.definelabel P4_ServiceSecondaryThreadRecord, P4_BssStart + 0x1FB8

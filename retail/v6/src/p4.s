@@ -337,7 +337,7 @@ loc_0230044A:
 	.byte 0xC0, 0x46	; 02300464
 pool_02300464:
 loc_02300464:
-	.word 0x0230EA0C	; 02300464
+	.word P4_RuntimeState	; 02300464
 pool_02300468:
 loc_02300468:
 	.word 0x0000151C	; 02300468
@@ -367,13 +367,13 @@ loc_02300474:
 	.byte 0xC0, 0x46	; 0230048C
 pool_0230048C:
 loc_0230048C:
-	.word 0x0230EA0C	; 0230048C
+	.word P4_RuntimeState	; 0230048C
 pool_02300490:
 loc_02300490:
 	.word 0x0000151C	; 02300490
 pool_02300494:
 loc_02300494:
-	.word P4_BssStart + 0x23C0	; 02300494
+	.word P4_ServicePrimaryThreadRecord + 0x8	; 02300494
 
 ; ===== function P4_PushByteToInputWindow =====
 ; Stores one byte at the current input-window index and advances it modulo 16.
@@ -393,7 +393,7 @@ loc_02300498:
 .endfunc
 pool_023004AC:
 loc_023004AC:
-	.word P4_BssStart + 0x23C0	; 023004AC
+	.word P4_ServicePrimaryThreadRecord + 0x8	; 023004AC
 pool_023004B0:
 loc_023004B0:
 	.word P4_BssStart + 0x23DC	; 023004B0
@@ -863,7 +863,7 @@ loc_02300790:
 .endfunc
 pool_02300798:
 loc_02300798:
-	.word P4_BssStart + 0x23C0	; 02300798
+	.word P4_ServicePrimaryThreadRecord + 0x8	; 02300798
 
 ; Compares three caller halfwords with byte-swapped runtime-record halfwords.
 ; 将调用方的三个半字与运行时记录中的字节交换半字逐一比较。
@@ -922,7 +922,7 @@ loc_023007F4:
 .endfunc
 pool_023007FC:
 loc_023007FC:
-	.word P4_BssStart + 0x23C0	; 023007FC
+	.word P4_ServicePrimaryThreadRecord + 0x8	; 023007FC
 
 ; ===== function loc_02300800 =====
 ; Byte-swaps exactly three halfwords from source to destination.
@@ -980,10 +980,10 @@ loc_0230085A:
 	bx r3	; 0230085E
 pool_02300860:
 loc_02300860:
-	.word 0x0230EA70	; 02300860
+	.word P4_RuntimeState + 0x64	; 02300860
 pool_02300864:
 loc_02300864:
-	.word P4_BssStart + 0x23C0	; 02300864
+	.word P4_ServicePrimaryThreadRecord + 0x8	; 02300864
 
 ; ===== function loc_02300868 =====
 loc_02300868:
@@ -1035,10 +1035,10 @@ loc_023008B6:
 	.byte 0xC0, 0x46	; 023008C0
 pool_023008C0:
 loc_023008C0:
-	.word 0x0230EA0C	; 023008C0
+	.word P4_RuntimeState	; 023008C0
 pool_023008C4:
 loc_023008C4:
-	.word 0x0230EA4C	; 023008C4
+	.word P4_RuntimeState + 0x40	; 023008C4
 
 ; ===== function loc_023008C8 =====
 loc_023008C8:
@@ -1092,7 +1092,7 @@ loc_023008F4:
 	bx lr	; 023008FA
 pool_023008FC:
 loc_023008FC:
-	.word 0x0230EA0C	; 023008FC
+	.word P4_RuntimeState	; 023008FC
 .endfunc
 
 ; ===== function loc_02300900 =====
@@ -1183,40 +1183,40 @@ loc_0230098C:
 	bx r3	; 023009B6
 pool_023009B8:
 loc_023009B8:
-	.word P4_BssStart + 0x23C0	; 023009B8
+	.word P4_ServicePrimaryThreadRecord + 0x8	; 023009B8
 pool_023009BC:
 loc_023009BC:
-	.word 0x0230EA0C	; 023009BC
+	.word P4_RuntimeState	; 023009BC
 pool_023009C0:
 loc_023009C0:
-	.word 0x0230EA20	; 023009C0
+	.word P4_RuntimeState + 0x14	; 023009C0
 pool_023009C4:
 loc_023009C4:
-	.word 0x0230EA28	; 023009C4
+	.word P4_RuntimeState + 0x1C	; 023009C4
 pool_023009C8:
 loc_023009C8:
-	.word 0x0230EA3C	; 023009C8
+	.word P4_RuntimeState + 0x30	; 023009C8
 pool_023009CC:
 loc_023009CC:
-	.word 0x0230EA4C	; 023009CC
+	.word P4_RuntimeState + 0x40	; 023009CC
 pool_023009D0:
 loc_023009D0:
-	.word 0x0230EA60	; 023009D0
+	.word P4_RuntimeState + 0x54	; 023009D0
 pool_023009D4:
 loc_023009D4:
-	.word 0x0230EA70	; 023009D4
+	.word P4_RuntimeState + 0x64	; 023009D4
 pool_023009D8:
 loc_023009D8:
-	.word 0x0230EA84	; 023009D8
+	.word P4_RuntimeState + 0x78	; 023009D8
 pool_023009DC:
 loc_023009DC:
-	.word 0x0230FF04	; 023009DC
+	.word P4_ServicePrimaryThreadRecord	; 023009DC
 pool_023009E0:
 loc_023009E0:
 	.word 0x00000400	; 023009E0
 pool_023009E4:
 loc_023009E4:
-	.word 0x037F8244	; 023009E4
+	.word P2_P4ServicePrimaryThreadStackTop	; 023009E4
 pool_023009E8:
 loc_023009E8:
 	.word P4_ThreadEntry_02301794 + 1	; 023009E8
@@ -1225,13 +1225,13 @@ loc_023009EC:
 	.word 0x00001000	; 023009EC
 pool_023009F0:
 loc_023009F0:
-	.word 0x037F81CC	; 023009F0
+	.word P2_P4ServiceSecondaryThreadStackTop	; 023009F0
 pool_023009F4:
 loc_023009F4:
 	.word P4_ThreadEntry_023017F8 + 1	; 023009F4
 pool_023009F8:
 loc_023009F8:
-	.word 0x0230FB04	; 023009F8
+	.word P4_ServiceSecondaryThreadRecord	; 023009F8
 pool_023009FC:
 loc_023009FC:
 	.word 0x0000151C	; 023009FC
@@ -11883,6 +11883,7 @@ loc_02305400:
 pool_02305404:
 loc_02305404:
 	.word 0x000082EA	; 02305404
+P4_Entry_02305408:
 	.byte 0x10, 0xB5, 0x13, 0x48, 0x04, 0x68, 0x13, 0x48, 0x20, 0x18, 0x01, 0x68, 0x49, 0x1C, 0x01, 0x60	; 02305408
 	.byte 0x01, 0x20, 0x0A, 0x21, 0xFF, 0xF7, 0xE4, 0xFB, 0x02, 0x20, 0x12, 0x21, 0xFF, 0xF7, 0xE0, 0xFB	; 02305418
 	.byte 0x01, 0x20, 0x11, 0x21, 0xFF, 0xF7, 0xDC, 0xFB, 0x0B, 0x48, 0x20, 0x5A, 0x00, 0x28, 0x03, 0xD0	; 02305428
@@ -26296,3 +26297,7 @@ P4_BssStart:
 ; P4 initialization clears runtime storage after its image; BSS emits no file data.
 .definelabel P4_BssBytes, 0x2424
 .definelabel P4_BssEnd, P4_BssStart + P4_BssBytes
+; P4 服务线程记录 / Thread records used by the P4 service.
+.definelabel P4_ServicePrimaryThreadRecord, P4_BssStart + 0x23B8
+.definelabel P4_ServiceSecondaryThreadRecord, P4_BssStart + 0x1FB8
+.definelabel P4_RuntimeState, P4_BssStart + 0xEC0

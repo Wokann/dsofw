@@ -18198,13 +18198,13 @@ P2_Entry_037F8106:
 	bx r3	; 037F8120
 	.byte 0xC0, 0x46	; 037F8122
 pool_037F8124:
-	.word 0x02312C64	; 037F8124
+	.word P4_ServicePrimaryThreadRecord	; 037F8124
 pool_037F8128:
 	.word 0x00000100	; 037F8128
 pool_037F812C:
 	.word 0x027FFF96	; 037F812C
 pool_037F8130:
-	.word P4_BssStart + 0x23C0	; 037F8130
+	.word P4_ServicePrimaryThreadRecord + 0x8	; 037F8130
 P2_Runtime_037F8134:
 	push {r4,r5,r6,lr}	; 037F8134
 	ldr r0,[pool_037F8160]	; 037F8136
@@ -18228,7 +18228,7 @@ P2_Entry_037F814A:
 	bx r3	; 037F815C
 	.byte 0xC0, 0x46	; 037F815E
 pool_037F8160:
-	.word 0x02312C64	; 037F8160
+	.word P4_ServicePrimaryThreadRecord	; 037F8160
 pool_037F8164:
 	.word 0x00000100	; 037F8164
 pool_037F8168:
@@ -18260,11 +18260,14 @@ P2_Entry_037F8180:
 pool_037F819C:
 	.word 0x00000100	; 037F819C
 pool_037F81A0:
-	.word 0x02312C64	; 037F81A0
+	.word P4_ServicePrimaryThreadRecord	; 037F81A0
 P2_WramCopy0RuntimeEnd:
 .definelabel P2_WramCopy0ZeroBytes, 0x0
 .definelabel P2_WramCopy0BssStart, P2_WramCopy0RuntimeEnd
 .definelabel P2_WramCopy0BssEnd, P2_WramCopy0BssStart + P2_WramCopy0ZeroBytes
+; P4 服务线程使用的两个栈顶 / Stack tops used by P4 service threads.
+.definelabel P2_P4ServicePrimaryThreadStackTop, P2_WramCopy0RuntimeStart + 0x78
+.definelabel P2_P4ServiceSecondaryThreadStackTop, P2_WramCopy0RuntimeStart
 .headersize 0x037FA800
 P2_WramCopy0LoadEnd:
 
