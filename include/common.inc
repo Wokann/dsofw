@@ -139,8 +139,11 @@
 
 ; NDS memory and video layout
 .definelabel BG_PALETTE,                              0x05000000
+.definelabel BG_PALETTE_SUB,                          BG_PALETTE + 0x400
 .definelabel VRAM_A,                                  0x06800000
+.definelabel VRAM_SUB_BG,                             0x06200000
 .definelabel OAM,                                     0x07000000
+.definelabel OAM_SUB,                                 OAM + 0x400
 .definelabel VramLcdcBytes,                           0x000a4000
 .definelabel MM_PALRAM_SZ,                            0x00000800
 .definelabel MM_OBJRAM_SZ,                            0x00000800

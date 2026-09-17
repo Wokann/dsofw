@@ -273,19 +273,19 @@ loc_02320268:
 	.word 0x000001FF	; 02320268
 pool_0232026C:
 loc_0232026C:
-	.word 0x06800000	; 0232026C
+	.word VRAM_A	; 0232026C
 pool_02320270:
 loc_02320270:
 	.word 0x000A4000	; 02320270
 pool_02320274:
 loc_02320274:
-	.word 0x07000000	; 02320274
+	.word OAM	; 02320274
 pool_02320278:
 loc_02320278:
 	.word 0x00000400	; 02320278
 pool_0232027C:
 loc_0232027C:
-	.word 0x05000000	; 0232027C
+	.word BG_PALETTE	; 0232027C
 pool_02320280:
 loc_02320280:
 	.word P1_IrqHandler_023202A0 + 1	; 02320280
@@ -2391,19 +2391,19 @@ loc_02321218:
 	.word 0x000001FF	; 02321218
 pool_0232121C:
 loc_0232121C:
-	.word 0x06800000	; 0232121C
+	.word VRAM_A	; 0232121C
 pool_02321220:
 loc_02321220:
 	.word 0x000A4000	; 02321220
 pool_02321224:
 loc_02321224:
-	.word 0x07000400	; 02321224
+	.word OAM_SUB	; 02321224
 pool_02321228:
 loc_02321228:
 	.word 0x00000400	; 02321228
 pool_0232122C:
 loc_0232122C:
-	.word 0x05000400	; 0232122C
+	.word BG_PALETTE_SUB	; 0232122C
 pool_02321230:
 loc_02321230:
 	.word REG_BG1CNT	; 02321230
@@ -2493,7 +2493,7 @@ loc_023212A0:
 	.word 0x023B3530	; 023212A0
 pool_023212A4:
 loc_023212A4:
-	.word 0x06200000	; 023212A4
+	.word VRAM_SUB_BG	; 023212A4
 pool_023212A8:
 loc_023212A8:
 	.word P5_Data_023B3D30	; 023212A8
@@ -2502,7 +2502,7 @@ loc_023212AC:
 	.word 0x023B6530	; 023212AC
 pool_023212B0:
 loc_023212B0:
-	.word 0x06203000	; 023212B0
+	.word VRAM_SUB_BG + 0x3000	; 023212B0
 pool_023212B4:
 loc_023212B4:
 	.word 0x023B6D30	; 023212B4
@@ -2511,7 +2511,7 @@ loc_023212B8:
 	.word 0x023B5D30	; 023212B8
 pool_023212BC:
 loc_023212BC:
-	.word 0x06203800	; 023212BC
+	.word VRAM_SUB_BG + 0x3800	; 023212BC
 pool_023212C0:
 loc_023212C0:
 	.word 0x023B6530	; 023212C0
@@ -2520,7 +2520,7 @@ loc_023212C4:
 	.word P5_Data_023B3D30	; 023212C4
 pool_023212C8:
 loc_023212C8:
-	.word 0x06204800	; 023212C8
+	.word VRAM_SUB_BG + 0x4800	; 023212C8
 pool_023212CC:
 loc_023212CC:
 	.word 0x023B4530	; 023212CC
@@ -15070,7 +15070,7 @@ loc_02326C10:
 	.word REG_BG3CNT_SUB	; 02326C10
 pool_02326C14:
 loc_02326C14:
-	.word 0x06200000	; 02326C14
+	.word VRAM_SUB_BG	; 02326C14
 
 ; ===== function loc_02326C18 =====
 loc_02326C18:
@@ -15098,7 +15098,7 @@ loc_02326C3C:
 	.word REG_DISPCNT_A	; 02326C3C
 pool_02326C40:
 loc_02326C40:
-	.word 0x07000000	; 02326C40
+	.word OAM	; 02326C40
 pool_02326C44:
 loc_02326C44:
 	.word 0x06000000	; 02326C44
@@ -15120,7 +15120,7 @@ loc_02326C5C:
 	.word REG_BG2CNT_SUB	; 02326C5C
 pool_02326C60:
 loc_02326C60:
-	.word 0x06200000	; 02326C60
+	.word VRAM_SUB_BG	; 02326C60
 
 ; ===== function loc_02326C64 =====
 loc_02326C64:
@@ -15148,7 +15148,7 @@ loc_02326C88:
 	.word REG_DISPCNT_A	; 02326C88
 pool_02326C8C:
 loc_02326C8C:
-	.word 0x07000000	; 02326C8C
+	.word OAM	; 02326C8C
 pool_02326C90:
 loc_02326C90:
 	.word 0x06000000	; 02326C90
@@ -15173,7 +15173,7 @@ loc_02326CAC:
 	.word 0x00001F00	; 02326CAC
 pool_02326CB0:
 loc_02326CB0:
-	.word 0x06200000	; 02326CB0
+	.word VRAM_SUB_BG	; 02326CB0
 .arm
 
 ; ===== function loc_02326CB4 =====
@@ -15218,7 +15218,7 @@ loc_02326D00:
 	.word 0x00001F00	; 02326D00
 pool_02326D04:
 loc_02326D04:
-	.word 0x06200000	; 02326D04
+	.word VRAM_SUB_BG	; 02326D04
 .arm
 
 ; ===== function loc_02326D08 =====
@@ -16308,7 +16308,7 @@ loc_02327458:
 	.byte 0xC0, 0x46	; 02327478
 pool_02327478:
 loc_02327478:
-	.word 0x06800000	; 02327478
+	.word VRAM_A	; 02327478
 pool_0232747C:
 loc_0232747C:
 	.word 0x00040000	; 0232747C
@@ -16410,7 +16410,7 @@ loc_02327540:
 	.word 0x000001FF	; 02327540
 pool_02327544:
 loc_02327544:
-	.word 0x06800000	; 02327544
+	.word VRAM_A	; 02327544
 pool_02327548:
 loc_02327548:
 	.word 0x000A4000	; 02327548
@@ -16518,25 +16518,25 @@ loc_02327618:
 	.word 0x000001FF	; 02327618
 pool_0232761C:
 loc_0232761C:
-	.word 0x06800000	; 0232761C
+	.word VRAM_A	; 0232761C
 pool_02327620:
 loc_02327620:
 	.word 0x000A4000	; 02327620
 pool_02327624:
 loc_02327624:
-	.word 0x07000000	; 02327624
+	.word OAM	; 02327624
 pool_02327628:
 loc_02327628:
 	.word 0x00000400	; 02327628
 pool_0232762C:
 loc_0232762C:
-	.word 0x05000000	; 0232762C
+	.word BG_PALETTE	; 0232762C
 pool_02327630:
 loc_02327630:
-	.word 0x07000400	; 02327630
+	.word OAM_SUB	; 02327630
 pool_02327634:
 loc_02327634:
-	.word 0x05000400	; 02327634
+	.word BG_PALETTE_SUB	; 02327634
 pool_02327638:
 loc_02327638:
 	.word REG_BG0CNT	; 02327638
@@ -37662,7 +37662,7 @@ loc_0233102C:
 	.word REG_BG1CNT_SUB	; 0233102C
 pool_02331030:
 loc_02331030:
-	.word 0x06200000	; 02331030
+	.word VRAM_SUB_BG	; 02331030
 
 ; ===== function loc_02331034 =====
 ; Returns the main-engine BG1 character-base address.
@@ -37694,7 +37694,7 @@ loc_02331058:
 	.word REG_DISPCNT_A	; 02331058
 pool_0233105C:
 loc_0233105C:
-	.word 0x07000000	; 0233105C
+	.word OAM	; 0233105C
 pool_02331060:
 loc_02331060:
 	.word 0x06000000	; 02331060
@@ -37720,7 +37720,7 @@ loc_02331078:
 	.word REG_BG0CNT_SUB	; 02331078
 pool_0233107C:
 loc_0233107C:
-	.word 0x06200000	; 0233107C
+	.word VRAM_SUB_BG	; 0233107C
 ; ===== function loc_02331090 =====
 ; Returns the main-engine BG0 character-base address.
 ; 返回主引擎 BG0 字符基址。
@@ -37748,7 +37748,7 @@ pool_023310B0:
 pool_023310B4:
 	.word REG_DISPCNT_A	; 023310B4
 pool_023310B8:
-	.word 0x07000000	; 023310B8
+	.word OAM	; 023310B8
 pool_023310BC:
 	.word 0x06000000	; 023310BC
 
@@ -37776,7 +37776,7 @@ loc_023310C8:
 	.word 0x00001F00	; 023310C8
 pool_023310CC:
 loc_023310CC:
-	.word 0x06200000	; 023310CC
+	.word VRAM_SUB_BG	; 023310CC
 
 ; ===== function loc_023310D0 =====
 ; Returns the main-engine BG1 tilemap base from BG1CNT and VRAM bank mode.
@@ -37840,7 +37840,7 @@ loc_0233111C:
 	.word 0x00001F00	; 0233111C
 pool_02331120:
 loc_02331120:
-	.word 0x06200000	; 02331120
+	.word VRAM_SUB_BG	; 02331120
 
 ; ===== function loc_02331124 =====
 ; Returns the main-engine BG0 tilemap base from BG0CNT and VRAM bank mode.
@@ -38299,7 +38299,7 @@ loc_02331484:
 	.word P1_Data_0233420C	; 02331484
 pool_02331488:
 loc_02331488:
-	.word 0x07000400	; 02331488
+	.word OAM_SUB	; 02331488
 
 ; ===== function loc_0233148C =====
 loc_0233148C:
@@ -38323,7 +38323,7 @@ loc_023314AC:
 	.word P1_Data_0233420C	; 023314AC
 pool_023314B0:
 loc_023314B0:
-	.word 0x07000000	; 023314B0
+	.word OAM	; 023314B0
 
 ; ===== function loc_023314B4 =====
 loc_023314B4:
@@ -38395,7 +38395,7 @@ loc_02331524:
 	.word P1_Data_0233420C	; 02331524
 pool_02331528:
 loc_02331528:
-	.word 0x05000400	; 02331528
+	.word BG_PALETTE_SUB	; 02331528
 
 ; ===== function loc_0233152C =====
 loc_0233152C:
@@ -38419,7 +38419,7 @@ loc_0233154C:
 	.word P1_Data_0233420C	; 0233154C
 pool_02331550:
 loc_02331550:
-	.word 0x05000000	; 02331550
+	.word BG_PALETTE	; 02331550
 
 ; ===== function loc_02331554 =====
 loc_02331554:
