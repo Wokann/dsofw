@@ -449,3 +449,21 @@
 ; Lite extension register name from Gericom, reposted by Generic/RSDuck (community source).
 ; https://melonds.kuribo64.net/board/thread.php?pid=5772#5772
 .definelabel REG_NITRO2_REGCNT,                         0x04001080
+
+; ARM7 BIOS 卡带引导状态的固定接口；KOR 替代回调继续使用同一布局，并非固件 BSS。
+; Fixed ARM7 BIOS card-boot interface; KOR replacement callbacks reuse it, not firmware BSS.
+; https://github.com/PikalaxALT/ndsbios/blob/master/bios7.s (FUN_00001C0A / FUN_00001E74)
+.definelabel Bios7CartTransferStateAddress,               0x0380FC00
+.definelabel Bios7CartRomOffset,                         0x00
+.definelabel Bios7CartDestinationOffset,                 0x04
+.definelabel Bios7CartRemainingOffset,                   0x08
+.definelabel Bios7CartBlockBytesOffset,                  0x0C
+.definelabel Bios7CartCommandOffset,                     0x10
+.definelabel Bios7CartReaderOffset,                      0x20
+; 命令子结构相对于状态区 +0x10；两个命令字发送时先高字，再低字。
+; Command substructure at state +0x10; serialize the high command word before the low word.
+.definelabel Bios7CartCmdDmaChannelOffset,                0x00
+.definelabel Bios7CartCmdControlOffset,                   0x04
+.definelabel Bios7CartCmdLowWordOffset,                   0x08
+.definelabel Bios7CartCmdHighWordOffset,                  0x0C
+.definelabel Bios7CartControlOffset, Bios7CartCommandOffset + Bios7CartCmdControlOffset

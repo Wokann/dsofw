@@ -896,6 +896,8 @@ loc_037FADBC:
 	ldr r3,[pool_037FB010]	; 037FAE5A
 	bl P2_CreateThread	; 037FAE5C
 	bl P2_InitializeBootProcedureCallbacks	; 037FAE60
+; KOR 以固件内的装载步骤和分块完成回调替换 BIOS 入口，沿用 BIOS 的状态布局。
+; KOR replaces BIOS load-step and block-completion callbacks, retaining the BIOS state layout.
 	ldr r1,[pool_037FB014]	; 037FAE64
 	ldr r0,[pool_037FB018]	; 037FAE66
 	str r1,[r0,#0x0]	; 037FAE68
@@ -1118,16 +1120,16 @@ loc_037FB00C:
 	.word P2_RunTransferRequestServiceLoop + 1	; 037FB00C
 pool_037FB010:
 loc_037FB010:
-	.word 0x03805C48	; 037FB010
+	.word P2_CartReadBuffer	; 037FB010
 pool_037FB014:
 loc_037FB014:
-	.word 0x037FB2CD	; 037FB014
+	.word P2_StepCartBootLoad + 1	; 037FB014
 pool_037FB018:
 loc_037FB018:
 	.word P2_BssStart + 0xC	; 037FB018
 pool_037FB01C:
 loc_037FB01C:
-	.word 0x037FB21D	; 037FB01C
+	.word P2_OnCartReadBlock + 1	; 037FB01C
 pool_037FB020:
 loc_037FB020:
 	.word P2_BssStart + 0x10	; 037FB020
@@ -1225,8 +1227,11 @@ loc_037FB088:
 	.word P4_InitializeRuntimeContext	; 037FB088
 .thumb
 
-; ===== function loc_037FB08C =====
+; ===== function P2_DisableAndAcknowledgeIrqs =====
 loc_037FB08C:
+; 临时关 IME，屏蔽并确认 r0 指定的中断，再恢复 IME。
+; Mask and acknowledge IRQs selected by r0 while IME is off, then restore IME.
+.func P2_DisableAndAcknowledgeIrqs
 	push {r4,lr}	; 037FB08C
 	ldr r4,[pool_037FB0AC]	; 037FB08E
 	ldrh r3,[r4,#0x0]	; 037FB090
@@ -1242,6 +1247,7 @@ loc_037FB08C:
 	pop {r4}	; 037FB0A4
 	pop {r3}	; 037FB0A6
 	bx r3	; 037FB0A8
+.endfunc
 	.byte 0xC0, 0x46	; 037FB0AC
 pool_037FB0AC:
 loc_037FB0AC:
@@ -1253,27 +1259,34 @@ pool_037FB0B4:
 loc_037FB0B4:
 	.word REG_IF	; 037FB0B4
 
-; ===== function loc_037FB0B8 =====
+; ===== function P2_FinishCartRead =====
 loc_037FB0B8:
+; 等待卡带空闲、停止 DMA，再关闭卡带传输和卡带请求中断。
+; Wait for the card, stop DMA, then disable card-transfer and card-request IRQs.
+.func P2_FinishCartRead
 	push {lr}	; 037FB0B8
 	sub sp,#0x4	; 037FB0BA
 	ldr r0,[pool_037FB0D0]	; 037FB0BC
-	ldr r0,[r0,#0x10]	; 037FB0BE
-	bl loc_037FB1AC	; 037FB0C0
+	ldr r0,[r0,#Bios7CartCommandOffset]	; 037FB0BE
+	bl P2_WaitCartIdleAndStopDma	; 037FB0C0
 	ldr r0,[pool_037FB0D4]	; 037FB0C4
-	bl loc_037FB08C	; 037FB0C6
+	bl P2_DisableAndAcknowledgeIrqs	; 037FB0C6
 	add sp,#0x4	; 037FB0CA
 	pop {r3}	; 037FB0CC
 	bx r3	; 037FB0CE
+.endfunc
 pool_037FB0D0:
 loc_037FB0D0:
-	.word 0x0380FC00	; 037FB0D0
+	.word Bios7CartTransferStateAddress	; 037FB0D0
 pool_037FB0D4:
 loc_037FB0D4:
 	.word 0x00180000	; 037FB0D4
 
-; ===== function loc_037FB0D8 =====
+; ===== function P2_EnableCartReadIrq =====
 loc_037FB0D8:
+; 清传输完成标志，启用卡带传输中断，最后将 IME 置 1。
+; Clear completion flags, enable the card-transfer IRQ, then set IME to 1.
+.func P2_EnableCartReadIrq
 	mov r1,#0x0	; 037FB0D8
 	ldr r0,[pool_037FB0FC]	; 037FB0DA
 	strh r1,[r0,#0x0]	; 037FB0DC
@@ -1292,6 +1305,7 @@ loc_037FB0D8:
 	mov r1,#0x1	; 037FB0F6
 	strh r1,[r0,#0x0]	; 037FB0F8
 	bx lr	; 037FB0FA
+.endfunc
 pool_037FB0FC:
 loc_037FB0FC:
 	.word REG_IME	; 037FB0FC
@@ -1311,40 +1325,48 @@ pool_037FB110:
 loc_037FB110:
 	.word REG_IE	; 037FB110
 
-; ===== function loc_037FB114 =====
+; ===== function P2_PrepareCartReadState =====
 loc_037FB114:
+; r0=总字节数，r1=状态区；设置 512 字节块并准备传输中断。
+; r0=total bytes, r1=state; select 512-byte blocks and prepare the transfer IRQ.
+.func P2_PrepareCartReadState
 	push {lr}	; 037FB114
 	sub sp,#0x4	; 037FB116
-	str r0,[r1,#0x8]	; 037FB118
+	str r0,[r1,#Bios7CartRemainingOffset]	; 037FB118
 	ldr r0,[pool_037FB130]	; 037FB11A
-	str r0,[r1,#0xc]	; 037FB11C
-	ldr r0,[r1,#0x10]	; 037FB11E
-	bl loc_037FB1AC	; 037FB120
-	bl loc_037FB0D8	; 037FB124
+	str r0,[r1,#Bios7CartBlockBytesOffset]	; 037FB11C
+	ldr r0,[r1,#Bios7CartCommandOffset]	; 037FB11E
+	bl P2_WaitCartIdleAndStopDma	; 037FB120
+	bl P2_EnableCartReadIrq	; 037FB124
 	add sp,#0x4	; 037FB128
 	pop {r3}	; 037FB12A
 	bx r3	; 037FB12C
+.endfunc
 	.byte 0xC0, 0x46	; 037FB130
 pool_037FB130:
 loc_037FB130:
-	.word 0x00000200	; 037FB130
+	.word P2_CartReadBlockBytes	; 037FB130
+; r0=ROM 偏移、r1=缓冲区、r3=命令结构；构造 B7 读取并启动 DMA。
+; r0=ROM offset, r1=buffer, r3=command context; form a B7 read and start DMA.
+.func P2_StartCartReadB7
 	push {r4,lr}	; 037FB134
 	lsl r4,r0,#0x18	; 037FB136
-	str r4,[r3,#0x8]	; 037FB138
+	str r4,[r3,#Bios7CartCmdLowWordOffset]	; 037FB138
 	lsr r4,r0,#0x8	; 037FB13A
 	ldr r0,[pool_037FB158]	; 037FB13C
 	orr r4,r0	; 037FB13E
-	str r4,[r3,#0xc]	; 037FB140
+	str r4,[r3,#Bios7CartCmdHighWordOffset]	; 037FB140
 	ldr r4,[pool_037FB15C]	; 037FB142
 	ldr r0,[pool_037FB160]	; 037FB144
 	str r4,[r0,#0x0]	; 037FB146
 	add r0,r1,#0x0	; 037FB148
 	add r1,r2,#0x0	; 037FB14A
 	add r2,r3,#0x0	; 037FB14C
-	bl loc_037FB164	; 037FB14E
+	bl P2_StartCartReadDma	; 037FB14E
 	pop {r4}	; 037FB152
 	pop {r3}	; 037FB154
 	bx r3	; 037FB156
+.endfunc
 pool_037FB158:
 loc_037FB158:
 	.word 0xB7000000	; 037FB158
@@ -1355,15 +1377,18 @@ pool_037FB160:
 loc_037FB160:
 	.word REG_ROMCTRL	; 037FB160
 
-; ===== function loc_037FB164 =====
+; ===== function P2_StartCartReadDma =====
 loc_037FB164:
+; 写命令后，仅对通道 0..3 设置固定卡带源 DMA，再写 ROMCTRL 启动。
+; After writing the command, start fixed-source card DMA and ROMCTRL only for channels 0..3.
+.func P2_StartCartReadDma
 	push {r4,r5,lr}	; 037FB164
 	sub sp,#0x4	; 037FB166
 	add r5,r0,#0x0	; 037FB168
 	add r4,r2,#0x0	; 037FB16A
 	add r0,r4,#0x0	; 037FB16C
-	bl loc_037FB1D4	; 037FB16E
-	ldr r1,[r4,#0x0]	; 037FB172
+	bl P2_WriteCartCommand	; 037FB16E
+	ldr r1,[r4,#Bios7CartCmdDmaChannelOffset]	; 037FB172
 	cmp r1,#0x3	; 037FB174
 	bhi loc_037FB192	; 037FB176
 	mov r0,#0xc	; 037FB178
@@ -1376,7 +1401,7 @@ loc_037FB164:
 	ldr r1,[pool_037FB1A4]	; 037FB186
 	str r1,[r2,#0x8]	; 037FB188
 	ldr r0,[r0,#0x0]	; 037FB18A
-	ldr r1,[r4,#0x4]	; 037FB18C
+	ldr r1,[r4,#Bios7CartCmdControlOffset]	; 037FB18C
 	ldr r0,[pool_037FB1A8]	; 037FB18E
 	str r1,[r0,#0x0]	; 037FB190
 loc_037FB192:
@@ -1384,6 +1409,7 @@ loc_037FB192:
 	pop {r4,r5}	; 037FB194
 	pop {r3}	; 037FB196
 	bx r3	; 037FB198
+.endfunc
 	.byte 0xC0, 0x46	; 037FB19C
 pool_037FB19C:
 loc_037FB19C:
@@ -1398,8 +1424,11 @@ pool_037FB1A8:
 loc_037FB1A8:
 	.word REG_ROMCTRL	; 037FB1A8
 
-; ===== function loc_037FB1AC =====
+; ===== function P2_WaitCartIdleAndStopDma =====
 loc_037FB1AC:
+; 等待 ROMCTRL busy 清零；r0 在 0..3 时停止对应 DMA 通道。
+; Wait for ROMCTRL busy to clear; stop DMA when r0 selects channel 0..3.
+.func P2_WaitCartIdleAndStopDma
 	push {lr}	; 037FB1AC
 	sub sp,#0x4	; 037FB1AE
 	ldr r2,[pool_037FB1CC]	; 037FB1B0
@@ -1416,6 +1445,7 @@ loc_037FB1C4:
 	add sp,#0x4	; 037FB1C4
 	pop {r3}	; 037FB1C6
 	bx r3	; 037FB1C8
+.endfunc
 	.byte 0xC0, 0x46	; 037FB1CC
 pool_037FB1CC:
 loc_037FB1CC:
@@ -1424,13 +1454,16 @@ pool_037FB1D0:
 loc_037FB1D0:
 	.word 0x80000000	; 037FB1D0
 
-; ===== function loc_037FB1D4 =====
+; ===== function P2_WriteCartCommand =====
 loc_037FB1D4:
+; r0=命令结构；先发高字再发低字，各字按高字节优先写入命令端口。
+; r0=command context; send the high word then low word, most-significant byte first.
+.func P2_WriteCartCommand
 	push {r4,r5,r6,r7,lr}	; 037FB1D4
 	sub sp,#0x4	; 037FB1D6
 	add r4,r0,#0x0	; 037FB1D8
-	ldr r0,[r4,#0x0]	; 037FB1DA
-	bl loc_037FB1AC	; 037FB1DC
+	ldr r0,[r4,#Bios7CartCmdDmaChannelOffset]	; 037FB1DA
+	bl P2_WaitCartIdleAndStopDma	; 037FB1DC
 	mov r1,#0xc0	; 037FB1E0
 	ldr r0,[pool_037FB214]	; 037FB1E2
 	strb r1,[r0,#0x0]	; 037FB1E4
@@ -1441,7 +1474,7 @@ loc_037FB1EC:
 	sub r0,r3,r2	; 037FB1EC
 	lsl r0,r0,#0x2	; 037FB1EE
 	add r0,r4,r0	; 037FB1F0
-	ldr r1,[r0,#0x8]	; 037FB1F2
+	ldr r1,[r0,#Bios7CartCmdLowWordOffset]	; 037FB1F2
 	lsl r7,r2,#0x2	; 037FB1F4
 	add r0,r7,r5	; 037FB1F6
 	lsr r6,r1,#0x18	; 037FB1F8
@@ -1458,6 +1491,7 @@ loc_037FB1EC:
 	pop {r4,r5,r6,r7}	; 037FB20E
 	pop {r3}	; 037FB210
 	bx r3	; 037FB212
+.endfunc
 pool_037FB214:
 loc_037FB214:
 	.word REG_AUXSPICNT + 1	; 037FB214
@@ -1466,33 +1500,36 @@ loc_037FB218:
 	.word REG_GCCMDOUT	; 037FB218
 
 ; ===== function loc_037FB21C =====
+; 从中转缓冲区复制固定 512 字节；推进地址并读下一块，或置完成标志。
+; Copy a fixed 512-byte bounce buffer, advance addresses, then read again or signal completion.
+.func P2_OnCartReadBlock
 	push {r4,r5,lr}	; 037FB21C
 	sub sp,#0x4	; 037FB21E
 	ldr r1,[pool_037FB26C]	; 037FB220
-	ldr r5,[r1,#0xc]	; 037FB222
-	ldr r0,[r1,#0x8]	; 037FB224
+	ldr r5,[r1,#Bios7CartBlockBytesOffset]	; 037FB222
+	ldr r0,[r1,#Bios7CartRemainingOffset]	; 037FB224
 	sub r0,r0,r5	; 037FB226
-	str r0,[r1,#0x8]	; 037FB228
-	ldr r0,[r1,#0x0]	; 037FB22A
+	str r0,[r1,#Bios7CartRemainingOffset]	; 037FB228
+	ldr r0,[r1,#Bios7CartRomOffset]	; 037FB22A
 	add r0,r0,r5	; 037FB22C
-	str r0,[r1,#0x0]	; 037FB22E
+	str r0,[r1,#Bios7CartRomOffset]	; 037FB22E
 	ldr r0,[pool_037FB270]	; 037FB230
-	ldr r1,[r1,#0x4]	; 037FB232
-	mov r2,#0x80	; 037FB234
+	ldr r1,[r1,#Bios7CartDestinationOffset]	; 037FB232
+	mov r2,#(P2_CartReadBlockBytes / 4)	; 037FB234
 	bl P2_SwiCpuFastSet	; 037FB236
 	ldr r4,[pool_037FB26C]	; 037FB23A
-	ldr r0,[r4,#0x4]	; 037FB23C
+	ldr r0,[r4,#Bios7CartDestinationOffset]	; 037FB23C
 	add r0,r0,r5	; 037FB23E
-	str r0,[r4,#0x4]	; 037FB240
-	ldr r0,[r4,#0x8]	; 037FB242
+	str r0,[r4,#Bios7CartDestinationOffset]	; 037FB240
+	ldr r0,[r4,#Bios7CartRemainingOffset]	; 037FB242
 	cmp r0,#0x0	; 037FB244
 	ble loc_037FB25A	; 037FB246
-	ldr r0,[r4,#0x0]	; 037FB248
+	ldr r0,[r4,#Bios7CartRomOffset]	; 037FB248
 	ldr r1,[pool_037FB270]	; 037FB24A
 	add r2,r5,#0x0	; 037FB24C
 	add r3,r4,#0x0	; 037FB24E
-	add r3,#0x10	; 037FB250
-	ldr r4,[r4,#0x20]	; 037FB252
+	add r3,#Bios7CartCommandOffset	; 037FB250
+	ldr r4,[r4,#Bios7CartReaderOffset]	; 037FB252
 	bl loc_03805478	; 037FB254
 	b loc_037FB264	; 037FB258
 loc_037FB25A:
@@ -1506,12 +1543,13 @@ loc_037FB264:
 	pop {r4,r5}	; 037FB266
 	pop {r3}	; 037FB268
 	bx r3	; 037FB26A
+.endfunc
 pool_037FB26C:
 loc_037FB26C:
-	.word 0x0380FC00	; 037FB26C
+	.word Bios7CartTransferStateAddress	; 037FB26C
 pool_037FB270:
 loc_037FB270:
-	.word 0x03805C48	; 037FB270
+	.word P2_CartReadBuffer	; 037FB270
 pool_037FB274:
 loc_037FB274:
 	.word Bios7IrqFlagsAddress	; 037FB274
@@ -1519,8 +1557,11 @@ pool_037FB278:
 loc_037FB278:
 	.word 0x00080000	; 037FB278
 
-; ===== function loc_037FB27C =====
+; ===== function P2_StartCartImageRead =====
 loc_037FB27C:
+; r0=ROM 偏移、r1=目标、r2=长度；复用 BIOS 状态，以 DMA3 分块读取。
+; r0=ROM offset, r1=destination, r2=length; reuse BIOS state for block reads via DMA3.
+.func P2_StartCartImageRead
 	push {r4,r5,lr}	; 037FB27C
 	sub sp,#0x4	; 037FB27E
 	ldr r3,[pool_037FB2B8]	; 037FB280
@@ -1528,27 +1569,28 @@ loc_037FB27C:
 	ldr r3,[pool_037FB2BC]	; 037FB284
 	orr r5,r3	; 037FB286
 	ldr r4,[pool_037FB2C0]	; 037FB288
-	str r5,[r4,#0x14]	; 037FB28A
+	str r5,[r4,#Bios7CartControlOffset]	; 037FB28A
 	mov r3,#0x3	; 037FB28C
-	str r3,[r4,#0x10]	; 037FB28E
+	str r3,[r4,#Bios7CartCommandOffset]	; 037FB28E
 	ldr r3,[pool_037FB2C4]	; 037FB290
-	str r3,[r4,#0x20]	; 037FB292
-	str r0,[r4,#0x0]	; 037FB294
-	str r1,[r4,#0x4]	; 037FB296
+	str r3,[r4,#Bios7CartReaderOffset]	; 037FB292
+	str r0,[r4,#Bios7CartRomOffset]	; 037FB294
+	str r1,[r4,#Bios7CartDestinationOffset]	; 037FB296
 	add r0,r2,#0x0	; 037FB298
 	add r1,r4,#0x0	; 037FB29A
-	bl loc_037FB114	; 037FB29C
-	ldr r0,[r4,#0x0]	; 037FB2A0
+	bl P2_PrepareCartReadState	; 037FB29C
+	ldr r0,[r4,#Bios7CartRomOffset]	; 037FB2A0
 	ldr r1,[pool_037FB2C8]	; 037FB2A2
-	ldr r2,[r4,#0xc]	; 037FB2A4
+	ldr r2,[r4,#Bios7CartBlockBytesOffset]	; 037FB2A4
 	add r3,r4,#0x0	; 037FB2A6
-	add r3,#0x10	; 037FB2A8
-	ldr r4,[r4,#0x20]	; 037FB2AA
+	add r3,#Bios7CartCommandOffset	; 037FB2A8
+	ldr r4,[r4,#Bios7CartReaderOffset]	; 037FB2AA
 	bl loc_03805478	; 037FB2AC
 	add sp,#0x4	; 037FB2B0
 	pop {r4,r5}	; 037FB2B2
 	pop {r3}	; 037FB2B4
 	bx r3	; 037FB2B6
+.endfunc
 pool_037FB2B8:
 loc_037FB2B8:
 	.word NdsCartHeaderRamAddress + 0x60	; 037FB2B8
@@ -1557,15 +1599,18 @@ loc_037FB2BC:
 	.word 0xA1000000	; 037FB2BC
 pool_037FB2C0:
 loc_037FB2C0:
-	.word 0x0380FC00	; 037FB2C0
+	.word Bios7CartTransferStateAddress	; 037FB2C0
 pool_037FB2C4:
 loc_037FB2C4:
-	.word 0x037FB135	; 037FB2C4
+	.word P2_StartCartReadB7 + 1	; 037FB2C4
 pool_037FB2C8:
 loc_037FB2C8:
-	.word 0x03805C48	; 037FB2C8
+	.word P2_CartReadBuffer	; 037FB2C8
 
 ; ===== function loc_037FB2CC =====
+; 依次启动/等待 ARM9、ARM7 装载；完成后恢复 BIOS 回调。下方含内嵌分派表。
+; Start/wait for ARM9 then ARM7 loads; restore BIOS callbacks on completion. An inline dispatch table follows.
+P2_StepCartBootLoad:
 	push {r4,r5,lr}	; 037FB2CC
 	sub sp,#0x4	; 037FB2CE
 	ldr r0,[pool_037FB3DC]	; 037FB2D0
@@ -1624,7 +1669,7 @@ loc_037FB30E:
 loc_037FB32A:
 	cmp r2,#0x0	; 037FB32A
 	ble loc_037FB338	; 037FB32C
-	bl loc_037FB27C	; 037FB32E
+	bl P2_StartCartImageRead	; 037FB32E
 	mov r0,#0x1	; 037FB332
 	strh r0,[r4,#0x0]	; 037FB334
 	b loc_037FB3CE	; 037FB336
@@ -1647,7 +1692,7 @@ loc_037FB34A:
 	and r1,r0	; 037FB350
 	cmp r1,#0x0	; 037FB352
 	beq loc_037FB3CE	; 037FB354
-	bl loc_037FB0B8	; 037FB356
+	bl P2_FinishCartRead	; 037FB356
 	mov r0,#0x2	; 037FB35A
 	strh r0,[r4,#0x0]	; 037FB35C
 	b loc_037FB3CE	; 037FB35E
@@ -1685,7 +1730,7 @@ loc_037FB396:
 	beq loc_037FB3AE	; 037FB398
 	cmp r2,#0x0	; 037FB39A
 	ble loc_037FB3A8	; 037FB39C
-	bl loc_037FB27C	; 037FB39E
+	bl P2_StartCartImageRead	; 037FB39E
 	mov r0,#0x3	; 037FB3A2
 	strh r0,[r4,#0x0]	; 037FB3A4
 	b loc_037FB3CE	; 037FB3A6
@@ -1704,7 +1749,7 @@ loc_037FB3B4:
 	and r1,r0	; 037FB3BA
 	cmp r1,#0x0	; 037FB3BC
 	beq loc_037FB3CE	; 037FB3BE
-	bl loc_037FB0B8	; 037FB3C0
+	bl P2_FinishCartRead	; 037FB3C0
 	mov r0,#0x4	; 037FB3C4
 	strh r0,[r4,#0x0]	; 037FB3C6
 	b loc_037FB3CE	; 037FB3C8
@@ -24572,3 +24617,8 @@ P2_CopyDescriptorsEnd:
 .definelabel P2_DeferredPatchPayloadBytes, 20
 .definelabel P2_DeferredPatchDestination, P2_DeferredPatchPayload + P2_DeferredPatchPayloadBytes
 .definelabel P2_DeferredPatchOriginalEntry, P2_DeferredPatchDestination + 4
+
+; 中转缓冲区紧接传输线程栈顶；每次回调固定复制一块，尾块也不缩短。
+; The bounce buffer starts at the transfer-thread stack top; callbacks always copy a full block.
+.definelabel P2_CartReadBuffer, P2_BssStart + 0x4CC
+.definelabel P2_CartReadBlockBytes, 0x200
