@@ -5001,7 +5001,7 @@ loc_0235B5F0:
 	.word 0x0239F47C	; 0235B5F0
 pool_0235B5F4:
 loc_0235B5F4:
-	.word 0x0237339C	; 0235B5F4
+	.word P3_Data_0237339C	; 0235B5F4
 pool_0235B5F8:
 loc_0235B5F8:
 	.word P3_Data_023733AC	; 0235B5F8
@@ -5289,7 +5289,7 @@ loc_0235B7F8:
 	.word 0x0239FE7C	; 0235B7F8
 pool_0235B7FC:
 loc_0235B7FC:
-	.word 0x0237339C	; 0235B7FC
+	.word P3_Data_0237339C	; 0235B7FC
 
 ; ===== function loc_0235B800 =====
 loc_0235B800:
@@ -6251,7 +6251,7 @@ loc_0235BEE0:
 	.word UiBootZeroStart + 0x370	; 0235BEE0
 pool_0235BEE4:
 loc_0235BEE4:
-	.word 0x0237347C	; 0235BEE4
+	.word P3_Data_0237347C	; 0235BEE4
 pool_0235BEE8:
 loc_0235BEE8:
 	.word FirmwareBootSharedAddress + BootSharedSettingsInvalidOffset	; 0235BEE8
@@ -6316,7 +6316,7 @@ loc_0235BF50:
 	.word P5_Data_023B1CE0	; 0235BF50
 pool_0235BF54:
 loc_0235BF54:
-	.word 0x0237347C	; 0235BF54
+	.word P3_Data_0237347C	; 0235BF54
 pool_0235BF58:
 loc_0235BF58:
 	.word 0x00000C00	; 0235BF58
@@ -6484,7 +6484,7 @@ loc_0235C07E:
 	bx r3	; 0235C082
 pool_0235C084:
 loc_0235C084:
-	.word 0x023B1CE0	; 0235C084
+	.word P5_Data_023B1CE0	; 0235C084
 pool_0235C088:
 loc_0235C088:
 	.word 0x023B24E0	; 0235C088
@@ -16146,7 +16146,7 @@ loc_023608FC:
 	.word 0x023B14E0	; 023608FC
 pool_02360900:
 loc_02360900:
-	.word 0x023B1CE0	; 02360900
+	.word P5_Data_023B1CE0	; 02360900
 pool_02360904:
 loc_02360904:
 	.word REG_BG0CNT_SUB	; 02360904
@@ -16277,7 +16277,7 @@ loc_023609C0:
 	.byte 0xC0, 0x46	; 023609D0
 pool_023609D0:
 loc_023609D0:
-	.word 0x023737B8	; 023609D0
+	.word P3_Data_023737B8	; 023609D0
 pool_023609D4:
 loc_023609D4:
 	.word UiBootZeroStart + 0x206C	; 023609D4
@@ -17349,7 +17349,7 @@ loc_023611F8:
 	.word 0x023B14E0	; 023611F8
 pool_023611FC:
 loc_023611FC:
-	.word 0x023B1CE0	; 023611FC
+	.word P5_Data_023B1CE0	; 023611FC
 pool_02361200:
 loc_02361200:
 	.word 0x023BB898	; 02361200
@@ -17799,10 +17799,10 @@ loc_023617FE:
 	bx r3	; 02361802
 pool_02361804:
 loc_02361804:
-	.word 0x023A5FE8	; 02361804
+	.word P5_KeyboardHiraganaCharacterMap	; 02361804
 pool_02361808:
 loc_02361808:
-	.word 0x023A6050	; 02361808
+	.word P5_KeyboardKatakanaCharacterMap	; 02361808
 
 ; ===== function loc_0236180C =====
 loc_0236180C:
@@ -17814,10 +17814,10 @@ loc_0236180C:
 	bx lr	; 02361816
 pool_02361818:
 loc_02361818:
-	.word 0x02373A04	; 02361818
+	.word P3_Data_02373A04	; 02361818
 pool_0236181C:
 loc_0236181C:
-	.word 0x023A60B8	; 0236181C
+	.word P5_KeyboardNumericPrivateCharacterMap	; 0236181C
 
 ; ===== function loc_02361820 =====
 loc_02361820:
@@ -17832,7 +17832,7 @@ loc_0236182C:
 	.word 0x023739F4	; 0236182C
 pool_02361830:
 loc_02361830:
-	.word 0x023A6128	; 02361830
+	.word P5_KeyboardSymbolCharacterMap	; 02361830
 
 ; ===== function loc_02361834 =====
 loc_02361834:
@@ -17847,7 +17847,7 @@ loc_02361840:
 	.word 0x023739E4	; 02361840
 pool_02361844:
 loc_02361844:
-	.word 0x023A5F78	; 02361844
+	.word P5_KeyboardLatin1CharacterMap	; 02361844
 
 ; ===== function loc_02361848 =====
 loc_02361848:
@@ -17864,7 +17864,7 @@ loc_02361858:
 	.word 0x023739D4	; 02361858
 pool_0236185C:
 loc_0236185C:
-	.word 0x023A5FE8	; 0236185C
+	.word P5_KeyboardHiraganaCharacterMap	; 0236185C
 
 ; ===== function loc_02361860 =====
 loc_02361860:
@@ -17876,10 +17876,10 @@ loc_02361860:
 	bx lr	; 0236186A
 pool_0236186C:
 loc_0236186C:
-	.word 0x023739C4	; 0236186C
+	.word P3_Data_023739C4	; 0236186C
 pool_02361870:
 loc_02361870:
-	.word 0x023A5EC0	; 02361870
+	.word P5_AsciiKeyboardCharacterSet1	; 02361870
 
 ; ===== function loc_02361874 =====
 loc_02361874:
@@ -21752,7 +21752,7 @@ loc_02365998:
 	.word 0x023B14E0	; 02365998
 pool_0236599C:
 loc_0236599C:
-	.word 0x023B1CE0	; 0236599C
+	.word P5_Data_023B1CE0	; 0236599C
 pool_023659A0:
 loc_023659A0:
 	.word UiBootZeroStart + 0x95D0	; 023659A0
