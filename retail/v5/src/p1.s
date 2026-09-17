@@ -4,10 +4,13 @@
 .nds
 .create "build/p1.bin", 0x02320000
 .arm
+; ARM9 入口：关中断、建立各模式栈并清零主 RAM。
+; ARM9 entry: masks IRQs, sets mode stacks, then clears main RAM.
+.func P1_Arm9ResetBootstrap
 loc_02320000:
 	mov r12,#0x4000000	; 02320000
-	str r12,[r12,#0x208]	; 02320004
-	bl loc_0232C878	; 02320008
+	str r12,[r12,#0x208]	; 02320004 ; REG_IME = 0
+	bl P1_Arm9ConfigureCp15	; 02320008
 	mov r0,#0x13	; 0232000C
 	msr cpsr_c,r0	; 02320010
 	ldr r0,[pool_0232008C]	; 02320014
@@ -24,11 +27,11 @@ loc_02320000:
 	mov r0,#0x1f	; 02320040
 	msr cpsr_cxsf,r0	; 02320044
 	sub sp,r1,#0x4	; 02320048
-	bl loc_0232C804	; 0232004C
+	bl P1_InitializeDataAndBss	; 0232004C
 	mov r0,#0x0	; 02320050
 	ldr r1,[pool_0232008C]	; 02320054
 	mov r2,#0x4000	; 02320058
-	bl loc_0232DE4C	; 0232005C
+	bl P1_MemFill32	; 0232005C
 	ldr r1,[pool_0232008C]	; 02320060
 	add r1,r1,#0x3fc0	; 02320064
 	add r1,r1,#0x3c	; 02320068
@@ -40,22 +43,26 @@ loc_02320000:
 	ldr r1,[pool_02320098]	; 02320080
 	ldr lr,[pool_0232009C]	; 02320084
 	bx r1	; 02320088
+.endfunc
 pool_0232008C:
 loc_0232008C:
-	.word 0x03000000	; 0232008C
+	.word P1_DtcmRuntimeStart	; 0232008C
 pool_02320090:
 loc_02320090:
 	.word 0x00001000	; 02320090
 pool_02320094:
 loc_02320094:
-	.word 0x01FF8130	; 02320094
+	.word P1_DispatchIrq	; 02320094
 pool_02320098:
 loc_02320098:
-	.word 0x023200A1	; 02320098
+	.word P1_FirmwareMainLoop+1	; 02320098 ; Thumb entry
 pool_0232009C:
 loc_0232009C:
 	.word 0x023FEE00	; 0232009C
 .thumb
+; 固件主循环：初始化运行时服务并调度启动状态。
+; Firmware main loop: initializes runtime services and dispatches boot states.
+P1_FirmwareMainLoop:
 loc_023200A0:
 	push {r4,r5,lr}	; 023200A0
 	sub sp,#0xc	; 023200A2
@@ -104,7 +111,7 @@ loc_023200A0:
 	ldrh r0,[r1,#0x0]	; 02320110
 	mov r0,#0x1	; 02320112
 	strh r0,[r1,#0x0]	; 02320114
-	blx loc_0232C4A8	; 02320116
+	blx P1_Arm9EnableIrqReturnPriorMask	; 02320116
 	mov r0,#0x1	; 0232011A
 	bl loc_0232D4F0	; 0232011C
 	bl loc_0232FDAC	; 02320120
@@ -117,10 +124,10 @@ loc_023200A0:
 	bl loc_02324CB4	; 02320138
 	bl loc_02324DFC	; 0232013C
 	bl loc_02323740	; 02320140
-	bl loc_02325780	; 02320144
+	bl P1_InitializeFirmwareUiContext	; 02320144
 	bl loc_02325884	; 02320148
 	bl loc_023257A4	; 0232014C
-	bl loc_02325778	; 02320150
+	bl P1_GetFirmwareUiContext	; 02320150
 	ldr r0,[r0,#0x0]	; 02320154
 	lsl r0,r0,#0x1b	; 02320156
 	lsr r0,r0,#0x1f	; 02320158
@@ -132,7 +139,7 @@ loc_02320162:
 	bl loc_02320DF0	; 02320162
 	mov r5,#0x1	; 02320166
 loc_02320168:
-	bl loc_02323EC4	; 02320168
+	bl P1_RefreshFirmwareUiRenderBuffers	; 02320168
 	bl loc_02324C88	; 0232016C
 	bl loc_02324A80	; 02320170
 	bl loc_02324C6C	; 02320174
@@ -168,13 +175,24 @@ loc_023201B6:
 	cmp r4,#0x5	; 023201B6
 	bhi loc_02320200	; 023201B8
 	add r0,r4,r4	; 023201BA
+P1_SwitchIndexPC_023201BA:
 	add r0,pc	; 023201BC
-	ldrh r0,[r0,#0x8]	; 023201BE
+	ldrh r0,[r0,#(P1_SwitchTable_023201BA - (P1_SwitchIndexPC_023201BA + 4))]	; 023201BE
 	lsl r0,r0,#0x10	; 023201C0
 	asr r0,r0,#0x10	; 023201C2
+P1_SwitchTargetPC_023201BA:
 	add r0,pc	; 023201C4
 	bx r0	; 023201C6
-	.byte 0x39, 0x00, 0x0D, 0x00, 0x0D, 0x00, 0x0D, 0x00, 0x13, 0x00, 0x27, 0x00	; 023201D4
+; 表项是相对 ADD 所读 PC 的有符号偏移，保留 ARM/Thumb 状态位。
+; Signed offsets from the ADD's PC, including the ARM/Thumb state bit.
+P1_SwitchTable_023201BA:
+	.halfword (loc_02320200 + 1) - (P1_SwitchTargetPC_023201BA + 4)
+	.halfword (loc_023201D4 + 1) - (P1_SwitchTargetPC_023201BA + 4)
+	.halfword (loc_023201D4 + 1) - (P1_SwitchTargetPC_023201BA + 4)
+	.halfword (loc_023201D4 + 1) - (P1_SwitchTargetPC_023201BA + 4)
+	.halfword (loc_023201DA + 1) - (P1_SwitchTargetPC_023201BA + 4)
+	.halfword (loc_023201EE + 1) - (P1_SwitchTargetPC_023201BA + 4)
+P1_SwitchTable_023201BAEnd:
 loc_023201D4:
 	bl loc_02327670	; 023201D4
 	b loc_02320200	; 023201D8
@@ -209,7 +227,7 @@ loc_02320210:
 	.word 0x0232FE88	; 02320210
 pool_02320214:
 loc_02320214:
-	.word 0x04000304	; 02320214
+	.word REG_POWERCNT	; 02320214
 pool_02320218:
 loc_02320218:
 	.word 0xFFFFFDF1	; 02320218
@@ -236,16 +254,17 @@ loc_02320234:
 	.word 0x05000000	; 02320234
 pool_02320238:
 loc_02320238:
-	.word 0x02320249	; 02320238
+	.word P1_IrqHandler_02320248 + 1	; 02320238
 pool_0232023C:
 loc_0232023C:
-	.word 0x04000208	; 0232023C
+	.word REG_IME	; 0232023C
 pool_02320240:
 loc_02320240:
-	.word 0x04001000	; 02320240
+	.word REG_DISPCNT_B	; 02320240
 pool_02320244:
 loc_02320244:
 	.word 0xFFFEFFFF	; 02320244
+P1_IrqHandler_02320248:
 	ldr r1,[pool_02320258]	; 02320248
 	ldr r0,[pool_0232025C]	; 0232024A
 	add r1,r1,r0	; 0232024C
@@ -292,28 +311,57 @@ loc_02320288:
 	cmp r0,#0x9	; 023202A0
 	bhi loc_02320388	; 023202A2
 	add r0,r0,r0	; 023202A4
+P1_SwitchIndexPC_023202A4:
 	add r0,pc	; 023202A6
-	ldrh r0,[r0,#0x8]	; 023202A8
+	ldrh r0,[r0,#(P1_SwitchTable_023202A4 - (P1_SwitchIndexPC_023202A4 + 4))]	; 023202A8
 	lsl r0,r0,#0x10	; 023202AA
 	asr r0,r0,#0x10	; 023202AC
+P1_SwitchTargetPC_023202A4:
 	add r0,pc	; 023202AE
 	bx r0	; 023202B0
-	.byte 0x15, 0x00, 0x8B, 0x00, 0x95, 0x00, 0x9F, 0x00, 0xA7, 0x00, 0xAF, 0x00, 0xB7, 0x00, 0xBF, 0x00	; 023202C2
-	.byte 0xCF, 0x00, 0xC7, 0x00	; 023202C6
+; 表项是相对 ADD 所读 PC 的有符号偏移，保留 ARM/Thumb 状态位。
+; Signed offsets from the ADD's PC, including the ARM/Thumb state bit.
+P1_SwitchTable_023202A4:
+	.halfword (loc_023202C6 + 1) - (P1_SwitchTargetPC_023202A4 + 4)
+	.halfword (loc_0232033C + 1) - (P1_SwitchTargetPC_023202A4 + 4)
+	.halfword (loc_02320346 + 1) - (P1_SwitchTargetPC_023202A4 + 4)
+	.halfword (loc_02320350 + 1) - (P1_SwitchTargetPC_023202A4 + 4)
+	.halfword (loc_02320358 + 1) - (P1_SwitchTargetPC_023202A4 + 4)
+	.halfword (loc_02320360 + 1) - (P1_SwitchTargetPC_023202A4 + 4)
+	.halfword (loc_02320368 + 1) - (P1_SwitchTargetPC_023202A4 + 4)
+	.halfword (loc_02320370 + 1) - (P1_SwitchTargetPC_023202A4 + 4)
+	.halfword (loc_02320380 + 1) - (P1_SwitchTargetPC_023202A4 + 4)
+	.halfword (loc_02320378 + 1) - (P1_SwitchTargetPC_023202A4 + 4)
+P1_SwitchTable_023202A4End:
 loc_023202C6:
 	ldr r0,[pool_023203E4]	; 023202C6
 	ldr r0,[r0,#0x2c]	; 023202C8
 	cmp r0,#0xa	; 023202CA
 	bhi loc_02320388	; 023202CC
 	add r0,r0,r0	; 023202CE
+P1_SwitchIndexPC_023202CE:
 	add r0,pc	; 023202D0
-	ldrh r0,[r0,#0x8]	; 023202D2
+	ldrh r0,[r0,#(P1_SwitchTable_023202CE - (P1_SwitchIndexPC_023202CE + 4))]	; 023202D2
 	lsl r0,r0,#0x10	; 023202D4
 	asr r0,r0,#0x10	; 023202D6
+P1_SwitchTargetPC_023202CE:
 	add r0,pc	; 023202D8
 	bx r0	; 023202DA
-	.byte 0x17, 0x00, 0x1D, 0x00, 0x23, 0x00, 0x2B, 0x00, 0x31, 0x00, 0x37, 0x00, 0x3F, 0x00, 0x47, 0x00	; 023202EC
-	.byte 0x4F, 0x00, 0x55, 0x00, 0x5B, 0x00	; 023202F2
+; 表项是相对 ADD 所读 PC 的有符号偏移，保留 ARM/Thumb 状态位。
+; Signed offsets from the ADD's PC, including the ARM/Thumb state bit.
+P1_SwitchTable_023202CE:
+	.halfword (loc_023202F2 + 1) - (P1_SwitchTargetPC_023202CE + 4)
+	.halfword (loc_023202F8 + 1) - (P1_SwitchTargetPC_023202CE + 4)
+	.halfword (loc_023202FE + 1) - (P1_SwitchTargetPC_023202CE + 4)
+	.halfword (loc_02320306 + 1) - (P1_SwitchTargetPC_023202CE + 4)
+	.halfword (loc_0232030C + 1) - (P1_SwitchTargetPC_023202CE + 4)
+	.halfword (loc_02320312 + 1) - (P1_SwitchTargetPC_023202CE + 4)
+	.halfword (loc_0232031A + 1) - (P1_SwitchTargetPC_023202CE + 4)
+	.halfword (loc_02320322 + 1) - (P1_SwitchTargetPC_023202CE + 4)
+	.halfword (loc_0232032A + 1) - (P1_SwitchTargetPC_023202CE + 4)
+	.halfword (loc_02320330 + 1) - (P1_SwitchTargetPC_023202CE + 4)
+	.halfword (loc_02320336 + 1) - (P1_SwitchTargetPC_023202CE + 4)
+P1_SwitchTable_023202CEEnd:
 loc_023202F2:
 	bl loc_02320AAC	; 023202F2
 	b loc_02320388	; 023202F6
@@ -432,16 +480,16 @@ loc_023203D4:
 	.word 0x0233151C	; 023203D4
 pool_023203D8:
 loc_023203D8:
-	.word 0x02331D80	; 023203D8
+	.word P1_BssStart + 0x1300	; 023203D8
 pool_023203DC:
 loc_023203DC:
 	.word 0x02331530	; 023203DC
 pool_023203E0:
 loc_023203E0:
-	.word 0x02331500	; 023203E0
+	.word P1_BssStart + 0xA80	; 023203E0
 pool_023203E4:
 loc_023203E4:
-	.word 0x02330B80	; 023203E4
+	.word P1_BssStart + 0x100	; 023203E4
 pool_023203E8:
 loc_023203E8:
 	.word 0x02330ACC	; 023203E8
@@ -450,7 +498,7 @@ loc_023203EC:
 	.word 0x023A5AEC	; 023203EC
 pool_023203F0:
 loc_023203F0:
-	.word 0x02330AC0	; 023203F0
+	.word P1_BssStart + 0x40	; 023203F0
 
 ; ===== function loc_023203F4 =====
 loc_023203F4:
@@ -473,13 +521,13 @@ loc_02320402:
 	bx lr	; 02320412
 pool_02320414:
 loc_02320414:
-	.word 0x02331580	; 02320414
+	.word P1_BssStart + 0xB00	; 02320414
 pool_02320418:
 loc_02320418:
-	.word 0x02331D80	; 02320418
+	.word P1_BssStart + 0x1300	; 02320418
 pool_0232041C:
 loc_0232041C:
-	.word 0x02330B80	; 0232041C
+	.word P1_BssStart + 0x100	; 0232041C
 
 ; ===== function loc_02320420 =====
 loc_02320420:
@@ -563,10 +611,10 @@ loc_023204B4:
 	.byte 0xC0, 0x46	; 023204BC
 pool_023204BC:
 loc_023204BC:
-	.word 0x02330B80	; 023204BC
+	.word P1_BssStart + 0x100	; 023204BC
 pool_023204C0:
 loc_023204C0:
-	.word 0x02331500	; 023204C0
+	.word P1_BssStart + 0xA80	; 023204C0
 
 ; ===== function loc_023204C4 =====
 loc_023204C4:
@@ -599,16 +647,16 @@ loc_023204F0:
 	.byte 0xC0, 0x46	; 023204F8
 pool_023204F8:
 loc_023204F8:
-	.word 0x02331580	; 023204F8
+	.word P1_BssStart + 0xB00	; 023204F8
 pool_023204FC:
 loc_023204FC:
 	.word 0x0233151C	; 023204FC
 pool_02320500:
 loc_02320500:
-	.word 0x02330B80	; 02320500
+	.word P1_BssStart + 0x100	; 02320500
 pool_02320504:
 loc_02320504:
-	.word 0x02331500	; 02320504
+	.word P1_BssStart + 0xA80	; 02320504
 
 ; ===== function loc_02320508 =====
 loc_02320508:
@@ -623,7 +671,7 @@ loc_02320508:
 	bgt loc_02320536	; 02320518
 	lsl r0,r1,#0x4	; 0232051A
 	mov r1,#0x1e	; 0232051C
-	blx loc_0232CD38	; 0232051E
+	blx P1_SignedDivMod	; 0232051E
 	add r5,r0,#0x0	; 02320522
 	ldr r0,[pool_02320554]	; 02320524
 	add r1,r5,#0x0	; 02320526
@@ -650,13 +698,13 @@ loc_02320546:
 	bx r3	; 0232054E
 pool_02320550:
 loc_02320550:
-	.word 0x02331580	; 02320550
+	.word P1_BssStart + 0xB00	; 02320550
 pool_02320554:
 loc_02320554:
-	.word 0x0400006C	; 02320554
+	.word REG_MASTER_BRIGHT	; 02320554
 pool_02320558:
 loc_02320558:
-	.word 0x0400106C	; 02320558
+	.word REG_MASTER_BRIGHT_SUB	; 02320558
 
 ; ===== function loc_0232055C =====
 loc_0232055C:
@@ -686,7 +734,7 @@ loc_0232057E:
 	bgt loc_023205A6	; 02320588
 	lsl r0,r0,#0x4	; 0232058A
 	mov r1,#0x1e	; 0232058C
-	blx loc_0232CD38	; 0232058E
+	blx P1_SignedDivMod	; 0232058E
 	add r5,r0,#0x0	; 02320592
 	str r5,[sp,#0x0]	; 02320594
 	ldr r0,[pool_023205F0]	; 02320596
@@ -701,13 +749,23 @@ loc_023205A6:
 	cmp r0,#0x4	; 023205A8
 	bhi loc_023205DA	; 023205AA
 	add r0,r0,r0	; 023205AC
+P1_SwitchIndexPC_023205AC:
 	add r0,pc	; 023205AE
-	ldrh r0,[r0,#0x8]	; 023205B0
+	ldrh r0,[r0,#(P1_SwitchTable_023205AC - (P1_SwitchIndexPC_023205AC + 4))]	; 023205B0
 	lsl r0,r0,#0x10	; 023205B2
 	asr r0,r0,#0x10	; 023205B4
+P1_SwitchTargetPC_023205AC:
 	add r0,pc	; 023205B6
 	bx r0	; 023205B8
-	.byte 0x0B, 0x00, 0x17, 0x00, 0x13, 0x00, 0x0F, 0x00, 0x17, 0x00	; 023205C4
+; 表项是相对 ADD 所读 PC 的有符号偏移，保留 ARM/Thumb 状态位。
+; Signed offsets from the ADD's PC, including the ARM/Thumb state bit.
+P1_SwitchTable_023205AC:
+	.halfword (loc_023205C4 + 1) - (P1_SwitchTargetPC_023205AC + 4)
+	.halfword (loc_023205D0 + 1) - (P1_SwitchTargetPC_023205AC + 4)
+	.halfword (loc_023205CC + 1) - (P1_SwitchTargetPC_023205AC + 4)
+	.halfword (loc_023205C8 + 1) - (P1_SwitchTargetPC_023205AC + 4)
+	.halfword (loc_023205D0 + 1) - (P1_SwitchTargetPC_023205AC + 4)
+P1_SwitchTable_023205ACEnd:
 loc_023205C4:
 	mov r4,#0x1	; 023205C4
 	b loc_023205DA	; 023205C6
@@ -735,13 +793,13 @@ loc_023205E8:
 	.word 0x02330A80	; 023205E8
 pool_023205EC:
 loc_023205EC:
-	.word 0x02331580	; 023205EC
+	.word P1_BssStart + 0xB00	; 023205EC
 pool_023205F0:
 loc_023205F0:
-	.word 0x04001050	; 023205F0
+	.word REG_BLDCNT_SUB	; 023205F0
 pool_023205F4:
 loc_023205F4:
-	.word 0x02330B80	; 023205F4
+	.word P1_BssStart + 0x100	; 023205F4
 
 ; ===== function loc_023205F8 =====
 loc_023205F8:
@@ -899,9 +957,9 @@ loc_02320722:
 	cmp r4,#0x6	; 02320738
 	bne loc_02320792	; 0232073A
 loc_0232073C:
-	bl loc_02325778	; 0232073C
+	bl P1_GetFirmwareUiContext	; 0232073C
 	add r4,r0,#0x0	; 02320740
-	bl loc_02325778	; 02320742
+	bl P1_GetFirmwareUiContext	; 02320742
 	ldr r0,[r0,#0x0]	; 02320746
 	lsl r0,r0,#0x16	; 02320748
 	lsr r0,r0,#0x1f	; 0232074A
@@ -920,7 +978,7 @@ loc_02320756:
 	lsl r0,r2,#0x9	; 02320760
 	orr r1,r0	; 02320762
 	str r1,[r4,#0x0]	; 02320764
-	bl loc_02325778	; 02320766
+	bl P1_GetFirmwareUiContext	; 02320766
 	ldr r0,[r0,#0x0]	; 0232076A
 	lsl r0,r0,#0x16	; 0232076C
 	lsr r0,r0,#0x1f	; 0232076E
@@ -949,13 +1007,13 @@ loc_0232079C:
 	.word 0x02330A80	; 0232079C
 pool_023207A0:
 loc_023207A0:
-	.word 0x02330B80	; 023207A0
+	.word P1_BssStart + 0x100	; 023207A0
 pool_023207A4:
 loc_023207A4:
-	.word 0x02331580	; 023207A4
+	.word P1_BssStart + 0xB00	; 023207A4
 pool_023207A8:
 loc_023207A8:
-	.word 0x02331D80	; 023207A8
+	.word P1_BssStart + 0x1300	; 023207A8
 pool_023207AC:
 loc_023207AC:
 	.word 0x00000800	; 023207AC
@@ -978,7 +1036,7 @@ loc_023207B4:
 	.byte 0xC0, 0x46	; 023207CC
 pool_023207CC:
 loc_023207CC:
-	.word 0x02330B80	; 023207CC
+	.word P1_BssStart + 0x100	; 023207CC
 
 ; ===== function loc_023207D0 =====
 loc_023207D0:
@@ -992,7 +1050,7 @@ loc_023207D0:
 	bgt loc_023207F6	; 023207DE
 	lsl r0,r1,#0x4	; 023207E0
 	mov r1,#0xf	; 023207E2
-	blx loc_0232CD38	; 023207E4
+	blx P1_SignedDivMod	; 023207E4
 	mov r1,#0x10	; 023207E8
 	sub r1,r1,r0	; 023207EA
 	lsl r1,r1,#0x8	; 023207EC
@@ -1015,16 +1073,16 @@ loc_02320804:
 	.byte 0xC0, 0x46	; 0232080C
 pool_0232080C:
 loc_0232080C:
-	.word 0x02331580	; 0232080C
+	.word P1_BssStart + 0xB00	; 0232080C
 pool_02320810:
 loc_02320810:
-	.word 0x04001052	; 02320810
+	.word REG_BLDALPHA_SUB	; 02320810
 pool_02320814:
 loc_02320814:
-	.word 0x04001050	; 02320814
+	.word REG_BLDCNT_SUB	; 02320814
 pool_02320818:
 loc_02320818:
-	.word 0x02330B80	; 02320818
+	.word P1_BssStart + 0x100	; 02320818
 
 ; ===== function loc_0232081C =====
 loc_0232081C:
@@ -1038,7 +1096,7 @@ loc_0232081C:
 	bgt loc_02320842	; 0232082A
 	lsl r0,r1,#0x4	; 0232082C
 	mov r1,#0xf	; 0232082E
-	blx loc_0232CD38	; 02320830
+	blx P1_SignedDivMod	; 02320830
 	mov r1,#0x10	; 02320834
 	sub r1,r1,r0	; 02320836
 	lsl r1,r1,#0x8	; 02320838
@@ -1072,26 +1130,26 @@ loc_02320868:
 	.byte 0xC0, 0x46	; 02320870
 pool_02320870:
 loc_02320870:
-	.word 0x02331580	; 02320870
+	.word P1_BssStart + 0xB00	; 02320870
 pool_02320874:
 loc_02320874:
-	.word 0x04001052	; 02320874
+	.word REG_BLDALPHA_SUB	; 02320874
 pool_02320878:
 loc_02320878:
-	.word 0x04001050	; 02320878
+	.word REG_BLDCNT_SUB	; 02320878
 pool_0232087C:
 loc_0232087C:
-	.word 0x02331D80	; 0232087C
+	.word P1_BssStart + 0x1300	; 0232087C
 pool_02320880:
 loc_02320880:
-	.word 0x02330B80	; 02320880
+	.word P1_BssStart + 0x100	; 02320880
 
 ; ===== function loc_02320884 =====
 loc_02320884:
 	push {r4,r5,lr}	; 02320884
 	sub sp,#0x4	; 02320886
 	mov r5,#0x0	; 02320888
-	bl loc_02325778	; 0232088A
+	bl P1_GetFirmwareUiContext	; 0232088A
 	add r4,r0,#0x0	; 0232088E
 	ldr r0,[pool_02320948]	; 02320890
 	bl loc_02321914	; 02320892
@@ -1103,7 +1161,7 @@ loc_02320884:
 	bgt loc_023208D0	; 023208A0
 	lsl r0,r1,#0x4	; 023208A2
 	mov r1,#0xf	; 023208A4
-	blx loc_0232CD38	; 023208A6
+	blx P1_SignedDivMod	; 023208A6
 	mov r1,#0x10	; 023208AA
 	sub r1,r1,r0	; 023208AC
 	lsl r0,r0,#0x8	; 023208AE
@@ -1188,19 +1246,19 @@ loc_02320948:
 	.word 0x02330C00	; 02320948
 pool_0232094C:
 loc_0232094C:
-	.word 0x02331580	; 0232094C
+	.word P1_BssStart + 0xB00	; 0232094C
 pool_02320950:
 loc_02320950:
-	.word 0x04001052	; 02320950
+	.word REG_BLDALPHA_SUB	; 02320950
 pool_02320954:
 loc_02320954:
-	.word 0x02331D80	; 02320954
+	.word P1_BssStart + 0x1300	; 02320954
 pool_02320958:
 loc_02320958:
 	.word 0xFFFFFDFF	; 02320958
 pool_0232095C:
 loc_0232095C:
-	.word 0x04001000	; 0232095C
+	.word REG_DISPCNT_B	; 0232095C
 pool_02320960:
 loc_02320960:
 	.word 0xFFFFE0FF	; 02320960
@@ -1209,10 +1267,10 @@ loc_02320964:
 	.word 0x00001200	; 02320964
 pool_02320968:
 loc_02320968:
-	.word 0x04001050	; 02320968
+	.word REG_BLDCNT_SUB	; 02320968
 pool_0232096C:
 loc_0232096C:
-	.word 0x02330B80	; 0232096C
+	.word P1_BssStart + 0x100	; 0232096C
 
 ; ===== function loc_02320970 =====
 loc_02320970:
@@ -1235,11 +1293,11 @@ loc_02320970:
 	sub r5,#0x5a	; 02320992
 	add r0,r5,#0x0	; 02320994
 	mov r1,#0x1e	; 02320996
-	blx loc_0232CD38	; 02320998
+	blx P1_SignedDivMod	; 02320998
 	add r4,r1,#0x0	; 0232099C
 	add r0,r5,#0x0	; 0232099E
 	mov r1,#0x1e	; 023209A0
-	blx loc_0232CD38	; 023209A2
+	blx P1_SignedDivMod	; 023209A2
 	mov r1,#0x1	; 023209A6
 	and r0,r1	; 023209A8
 	cmp r0,#0x0	; 023209AA
@@ -1249,7 +1307,7 @@ loc_02320970:
 	mul r5,r0	; 023209B2
 	add r0,r5,#0x0	; 023209B4
 	mov r1,#0x1e	; 023209B6
-	blx loc_0232CD38	; 023209B8
+	blx P1_SignedDivMod	; 023209B8
 	ldr r1,[pool_02320A98]	; 023209BC
 	str r0,[r1,#0x5c]	; 023209BE
 	mov r1,#0x1e	; 023209C0
@@ -1257,7 +1315,7 @@ loc_02320970:
 	mov r0,#0x14	; 023209C4
 	mul r2,r0	; 023209C6
 	add r0,r5,r2	; 023209C8
-	blx loc_0232CD38	; 023209CA
+	blx P1_SignedDivMod	; 023209CA
 	ldr r1,[pool_02320A98]	; 023209CE
 	str r0,[r1,#0x60]	; 023209D0
 	b loc_023209F6	; 023209D2
@@ -1267,14 +1325,14 @@ loc_023209D4:
 	mov r0,#0x1f	; 023209D8
 	mul r5,r0	; 023209DA
 	add r0,r5,#0x0	; 023209DC
-	blx loc_0232CD38	; 023209DE
+	blx P1_SignedDivMod	; 023209DE
 	ldr r1,[pool_02320A98]	; 023209E2
 	str r0,[r1,#0x5c]	; 023209E4
 	mov r0,#0x14	; 023209E6
 	mul r4,r0	; 023209E8
 	add r0,r4,r5	; 023209EA
 	mov r1,#0x1e	; 023209EC
-	blx loc_0232CD38	; 023209EE
+	blx P1_SignedDivMod	; 023209EE
 	ldr r1,[pool_02320A98]	; 023209F2
 	str r0,[r1,#0x60]	; 023209F4
 loc_023209F6:
@@ -1304,13 +1362,13 @@ loc_02320A08:
 	ldr r0,[pool_02320AA4]	; 02320A26
 	cmp r1,r0	; 02320A28
 	bgt loc_02320A48	; 02320A2A
-	bl loc_02325778	; 02320A2C
+	bl P1_GetFirmwareUiContext	; 02320A2C
 	ldr r0,[r0,#0x0]	; 02320A30
 	lsl r0,r0,#0x17	; 02320A32
 	lsr r0,r0,#0x1f	; 02320A34
 	cmp r0,#0x0	; 02320A36
 	bne loc_02320A48	; 02320A38
-	bl loc_02325778	; 02320A3A
+	bl P1_GetFirmwareUiContext	; 02320A3A
 	ldr r0,[r0,#0x0]	; 02320A3E
 	lsl r0,r0,#0x19	; 02320A40
 	lsr r0,r0,#0x1f	; 02320A42
@@ -1322,13 +1380,13 @@ loc_02320A48:
 	ldr r0,[pool_02320AA4]	; 02320A4C
 	cmp r1,r0	; 02320A4E
 	bgt loc_02320A74	; 02320A50
-	bl loc_02325778	; 02320A52
+	bl P1_GetFirmwareUiContext	; 02320A52
 	ldr r0,[r0,#0x0]	; 02320A56
 	lsl r0,r0,#0x17	; 02320A58
 	lsr r0,r0,#0x1f	; 02320A5A
 	cmp r0,#0x0	; 02320A5C
 	bne loc_02320A74	; 02320A5E
-	bl loc_02325778	; 02320A60
+	bl P1_GetFirmwareUiContext	; 02320A60
 	ldr r0,[r0,#0x0]	; 02320A64
 	lsl r0,r0,#0x19	; 02320A66
 	lsr r0,r0,#0x1f	; 02320A68
@@ -1353,13 +1411,13 @@ loc_02320A86:
 	.byte 0xC0, 0x46	; 02320A90
 pool_02320A90:
 loc_02320A90:
-	.word 0x02331580	; 02320A90
+	.word P1_BssStart + 0xB00	; 02320A90
 pool_02320A94:
 loc_02320A94:
 	.word 0x02330C00	; 02320A94
 pool_02320A98:
 loc_02320A98:
-	.word 0x02331D80	; 02320A98
+	.word P1_BssStart + 0x1300	; 02320A98
 pool_02320A9C:
 loc_02320A9C:
 	.word 0x00000100	; 02320A9C
@@ -1371,7 +1429,7 @@ loc_02320AA4:
 	.word 0x00000E10	; 02320AA4
 pool_02320AA8:
 loc_02320AA8:
-	.word 0x02330B80	; 02320AA8
+	.word P1_BssStart + 0x100	; 02320AA8
 
 ; ===== function loc_02320AAC =====
 loc_02320AAC:
@@ -1389,7 +1447,7 @@ loc_02320AAC:
 	bgt loc_02320ADC	; 02320AC4
 	lsl r0,r1,#0x4	; 02320AC6
 	mov r1,#0xf	; 02320AC8
-	blx loc_0232CD38	; 02320ACA
+	blx P1_SignedDivMod	; 02320ACA
 	mov r1,#0x10	; 02320ACE
 	sub r1,r1,r0	; 02320AD0
 	lsl r1,r1,#0x8	; 02320AD2
@@ -1409,16 +1467,16 @@ loc_02320AE6:
 	bx r3	; 02320AEA
 pool_02320AEC:
 loc_02320AEC:
-	.word 0x02331580	; 02320AEC
+	.word P1_BssStart + 0xB00	; 02320AEC
 pool_02320AF0:
 loc_02320AF0:
 	.word 0x02330C00	; 02320AF0
 pool_02320AF4:
 loc_02320AF4:
-	.word 0x04001052	; 02320AF4
+	.word REG_BLDALPHA_SUB	; 02320AF4
 pool_02320AF8:
 loc_02320AF8:
-	.word 0x02330B80	; 02320AF8
+	.word P1_BssStart + 0x100	; 02320AF8
 
 ; ===== function loc_02320AFC =====
 loc_02320AFC:
@@ -1488,7 +1546,7 @@ loc_02320B76:
 	add r5,r0,r1	; 02320B7E
 	ldr r0,[r5,#0x4]	; 02320B80
 	ldr r1,[pool_02320DC8]	; 02320B82
-	blx loc_0232CD38	; 02320B84
+	blx P1_SignedDivMod	; 02320B84
 	ldr r1,[pool_02320DBC]	; 02320B88
 	ldr r1,[r1,#0x10]	; 02320B8A
 	add r6,r1,r0	; 02320B8C
@@ -1498,7 +1556,7 @@ loc_02320B76:
 loc_02320B94:
 	ldr r0,[r5,#0x0]	; 02320B94
 	ldr r1,[pool_02320DC8]	; 02320B96
-	blx loc_0232CD38	; 02320B98
+	blx P1_SignedDivMod	; 02320B98
 	str r0,[sp,#0x0]	; 02320B9C
 	str r6,[sp,#0x4]	; 02320B9E
 	mov r0,#0x1	; 02320BA0
@@ -1723,7 +1781,7 @@ loc_02320D40:
 	blt loc_02320D4A	; 02320D46
 	mov r4,#0x30	; 02320D48
 loc_02320D4A:
-	bl loc_02325778	; 02320D4A
+	bl P1_GetFirmwareUiContext	; 02320D4A
 	mov r1,#0x0	; 02320D4E
 	str r1,[sp,#0x0]	; 02320D50
 	str r4,[sp,#0x4]	; 02320D52
@@ -1768,7 +1826,7 @@ loc_02320D9C:
 	bx r3	; 02320DA2
 pool_02320DA4:
 loc_02320DA4:
-	.word 0x02331500	; 02320DA4
+	.word P1_BssStart + 0xA80	; 02320DA4
 pool_02320DA8:
 loc_02320DA8:
 	.word 0x02331558	; 02320DA8
@@ -1780,13 +1838,13 @@ loc_02320DB0:
 	.word 0x023A508C	; 02320DB0
 pool_02320DB4:
 loc_02320DB4:
-	.word 0x02331D80	; 02320DB4
+	.word P1_BssStart + 0x1300	; 02320DB4
 pool_02320DB8:
 loc_02320DB8:
 	.word 0x023D3ABC	; 02320DB8
 pool_02320DBC:
 loc_02320DBC:
-	.word 0x02331580	; 02320DBC
+	.word P1_BssStart + 0xB00	; 02320DBC
 pool_02320DC0:
 loc_02320DC0:
 	.word 0x02330C00	; 02320DC0
@@ -1801,7 +1859,7 @@ loc_02320DCC:
 	.word 0x023A4FE4	; 02320DCC
 pool_02320DD0:
 loc_02320DD0:
-	.word 0x0232FEA4	; 02320DD0
+	.word P1_Data_0232FEA4	; 02320DD0
 pool_02320DD4:
 loc_02320DD4:
 	.word 0x02330A80	; 02320DD4
@@ -1819,10 +1877,10 @@ loc_02320DE4:
 	.word 0x0000E7FC	; 02320DE4
 pool_02320DE8:
 loc_02320DE8:
-	.word 0x0232FE9C	; 02320DE8
+	.word P1_Data_0232FE9C	; 02320DE8
 pool_02320DEC:
 loc_02320DEC:
-	.word 0x0232FE94	; 02320DEC
+	.word P1_Data_0232FE94	; 02320DEC
 
 ; ===== function loc_02320DF0 =====
 loc_02320DF0:
@@ -2248,7 +2306,7 @@ loc_0232118C:
 	ldr r2,[pool_023212E0]	; 02321190
 	mov r3,#0x61	; 02321192
 	bl loc_02324BF8	; 02321194
-	bl loc_02325778	; 02321198
+	bl P1_GetFirmwareUiContext	; 02321198
 	ldr r0,[r0,#0x0]	; 0232119C
 	lsl r0,r0,#0x17	; 0232119E
 	lsr r0,r0,#0x1f	; 023211A0
@@ -2284,25 +2342,25 @@ loc_023211D0:
 	.word 0x0232FF0C	; 023211D0
 pool_023211D4:
 loc_023211D4:
-	.word 0x02330B80	; 023211D4
+	.word P1_BssStart + 0x100	; 023211D4
 pool_023211D8:
 loc_023211D8:
-	.word 0x02331580	; 023211D8
+	.word P1_BssStart + 0xB00	; 023211D8
 pool_023211DC:
 loc_023211DC:
-	.word 0x02331D80	; 023211DC
+	.word P1_BssStart + 0x1300	; 023211DC
 pool_023211E0:
 loc_023211E0:
-	.word 0x027FFCE4	; 023211E0
+	.word FirmwareUserSettingsSharedAddress + UserSettingsOptionsOffset	; 023211E0
 pool_023211E4:
 loc_023211E4:
-	.word 0x027FFC83	; 023211E4
+	.word FirmwareUserSettingsSharedAddress + UserSettingsBirthMonthOffset	; 023211E4
 pool_023211E8:
 loc_023211E8:
 	.word 0xFFFFFBFF	; 023211E8
 pool_023211EC:
 loc_023211EC:
-	.word 0x04001000	; 023211EC
+	.word REG_DISPCNT_B	; 023211EC
 pool_023211F0:
 loc_023211F0:
 	.word 0xFFFEFFFF	; 023211F0
@@ -2326,13 +2384,13 @@ loc_02321208:
 	.word 0x05000400	; 02321208
 pool_0232120C:
 loc_0232120C:
-	.word 0x0400000A	; 0232120C
+	.word REG_BG1CNT	; 0232120C
 pool_02321210:
 loc_02321210:
-	.word 0x04000014	; 02321210
+	.word REG_BG1HOFS	; 02321210
 pool_02321214:
 loc_02321214:
-	.word 0x04000000	; 02321214
+	.word REG_DISPCNT_A	; 02321214
 pool_02321218:
 loc_02321218:
 	.word 0xFFFFE0FF	; 02321218
@@ -2368,16 +2426,16 @@ loc_02321240:
 	.word 0x0233003C	; 02321240
 pool_02321244:
 loc_02321244:
-	.word 0x04001008	; 02321244
+	.word REG_BG0CNT_SUB	; 02321244
 pool_02321248:
 loc_02321248:
 	.word 0x00001018	; 02321248
 pool_0232124C:
 loc_0232124C:
-	.word 0x04001010	; 0232124C
+	.word REG_BG0HOFS_SUB	; 0232124C
 pool_02321250:
 loc_02321250:
-	.word 0x0400100A	; 02321250
+	.word REG_BG1CNT_SUB	; 02321250
 pool_02321254:
 loc_02321254:
 	.word 0x00004110	; 02321254
@@ -2386,16 +2444,16 @@ loc_02321258:
 	.word 0x00190011	; 02321258
 pool_0232125C:
 loc_0232125C:
-	.word 0x04001014	; 0232125C
+	.word REG_BG1HOFS_SUB	; 0232125C
 pool_02321260:
 loc_02321260:
-	.word 0x0400100E	; 02321260
+	.word REG_BG3CNT_SUB	; 02321260
 pool_02321264:
 loc_02321264:
 	.word 0x00000810	; 02321264
 pool_02321268:
 loc_02321268:
-	.word 0x0400101C	; 02321268
+	.word REG_BG3HOFS_SUB	; 02321268
 pool_0232126C:
 loc_0232126C:
 	.word 0xFFCFFFEF	; 0232126C
@@ -2458,7 +2516,7 @@ loc_023212B8:
 	.word 0x023A5AEC	; 023212B8
 pool_023212BC:
 loc_023212BC:
-	.word 0x027FF890	; 023212BC
+	.word FirmwareBootSharedAddress + BootSharedEventFlagsOffset	; 023212BC
 pool_023212C0:
 loc_023212C0:
 	.word 0x00000102	; 023212C0
@@ -2479,7 +2537,7 @@ loc_023212D4:
 	.word 0x02330ACC	; 023212D4
 pool_023212D8:
 loc_023212D8:
-	.word 0x02330AC0	; 023212D8
+	.word P1_BssStart + 0x40	; 023212D8
 pool_023212DC:
 loc_023212DC:
 	.word 0x02331558	; 023212DC
@@ -2513,13 +2571,24 @@ loc_0232130E:
 	cmp r1,#0x5	; 02321314
 	bhi loc_0232136C	; 02321316
 	add r1,r1,r1	; 02321318
+P1_SwitchIndexPC_02321318:
 	add r1,pc	; 0232131A
-	ldrh r1,[r1,#0x8]	; 0232131C
+	ldrh r1,[r1,#(P1_SwitchTable_02321318 - (P1_SwitchIndexPC_02321318 + 4))]	; 0232131C
 	lsl r1,r1,#0x10	; 0232131E
 	asr r1,r1,#0x10	; 02321320
+P1_SwitchTargetPC_02321318:
 	add r1,pc	; 02321322
 	bx r1	; 02321324
-	.byte 0x0D, 0x00, 0x17, 0x00, 0x21, 0x00, 0x2B, 0x00, 0x35, 0x00, 0x3F, 0x00	; 02321332
+; 表项是相对 ADD 所读 PC 的有符号偏移，保留 ARM/Thumb 状态位。
+; Signed offsets from the ADD's PC, including the ARM/Thumb state bit.
+P1_SwitchTable_02321318:
+	.halfword (loc_02321332 + 1) - (P1_SwitchTargetPC_02321318 + 4)
+	.halfword (loc_0232133C + 1) - (P1_SwitchTargetPC_02321318 + 4)
+	.halfword (loc_02321346 + 1) - (P1_SwitchTargetPC_02321318 + 4)
+	.halfword (loc_02321350 + 1) - (P1_SwitchTargetPC_02321318 + 4)
+	.halfword (loc_0232135A + 1) - (P1_SwitchTargetPC_02321318 + 4)
+	.halfword (loc_02321364 + 1) - (P1_SwitchTargetPC_02321318 + 4)
+P1_SwitchTable_02321318End:
 loc_02321332:
 	ldr r0,[pool_02321424]	; 02321332
 	ldr r2,[pool_02321428]	; 02321334
@@ -2637,10 +2706,10 @@ loc_02321418:
 	.word 0x02330040	; 02321418
 pool_0232141C:
 loc_0232141C:
-	.word 0x02330B80	; 0232141C
+	.word P1_BssStart + 0x100	; 0232141C
 pool_02321420:
 loc_02321420:
-	.word 0x02331D80	; 02321420
+	.word P1_BssStart + 0x1300	; 02321420
 pool_02321424:
 loc_02321424:
 	.word 0x023A6E1C	; 02321424
@@ -2649,7 +2718,7 @@ loc_02321428:
 	.word 0x023A59EC	; 02321428
 pool_0232142C:
 loc_0232142C:
-	.word 0x02331580	; 0232142C
+	.word P1_BssStart + 0xB00	; 0232142C
 pool_02321430:
 loc_02321430:
 	.word 0x023A741C	; 02321430
@@ -2694,7 +2763,7 @@ loc_02321464:
 	.word 0x02330044	; 02321464
 pool_02321468:
 loc_02321468:
-	.word 0x04001000	; 02321468
+	.word REG_DISPCNT_B	; 02321468
 pool_0232146C:
 loc_0232146C:
 	.word 0xFFFFE0FF	; 0232146C
@@ -2703,7 +2772,7 @@ loc_02321470:
 	.word 0x00001100	; 02321470
 pool_02321474:
 loc_02321474:
-	.word 0x04001050	; 02321474
+	.word REG_BLDCNT_SUB	; 02321474
 pool_02321478:
 loc_02321478:
 	.word 0x02330A80	; 02321478
@@ -2718,7 +2787,7 @@ loc_02321484:
 	.word 0x02321555	; 02321484
 pool_02321488:
 loc_02321488:
-	.word 0x0232159D	; 02321488
+	.word P1_IrqHandler_0232159C + 1	; 02321488
 pool_0232148C:
 loc_0232148C:
 	.word 0x00010000	; 0232148C
@@ -2727,7 +2796,7 @@ loc_0232148C:
 loc_02321490:
 	push {lr}	; 02321490
 	sub sp,#0x4	; 02321492
-	bl loc_02325778	; 02321494
+	bl P1_GetFirmwareUiContext	; 02321494
 	ldr r0,[r0,#0x0]	; 02321498
 	lsl r0,r0,#0x17	; 0232149A
 	lsr r0,r0,#0x1f	; 0232149C
@@ -2752,7 +2821,7 @@ loc_023214BC:
 	.byte 0xC0, 0x46	; 023214C4
 pool_023214C4:
 loc_023214C4:
-	.word 0x02331D80	; 023214C4
+	.word P1_BssStart + 0x1300	; 023214C4
 
 ; ===== function loc_023214C8 =====
 loc_023214C8:
@@ -2820,7 +2889,7 @@ loc_02321518:
 	bx r3	; 02321532
 pool_02321534:
 loc_02321534:
-	.word 0x02331D80	; 02321534
+	.word P1_BssStart + 0x1300	; 02321534
 pool_02321538:
 loc_02321538:
 	.word 0x023315B8	; 02321538
@@ -2849,13 +2918,13 @@ loc_02321550:
 	mov r1,#0x0	; 02321558
 	ldr r0,[pool_02321594]	; 0232155A
 	str r1,[r0,#0x20]	; 0232155C
-	bl loc_02325778	; 0232155E
+	bl P1_GetFirmwareUiContext	; 0232155E
 	ldr r0,[r0,#0x0]	; 02321562
 	lsl r0,r0,#0x16	; 02321564
 	lsr r0,r0,#0x1f	; 02321566
 	cmp r0,#0x0	; 02321568
 	beq loc_0232158E	; 0232156A
-	bl loc_02325778	; 0232156C
+	bl P1_GetFirmwareUiContext	; 0232156C
 	ldr r0,[r0,#0x0]	; 02321570
 	lsl r0,r0,#0x15	; 02321572
 	lsr r0,r0,#0x1f	; 02321574
@@ -2865,7 +2934,7 @@ loc_02321550:
 	mov r1,#0x1	; 0232157C
 	bl loc_0232F200	; 0232157E
 loc_02321582:
-	bl loc_02325778	; 02321582
+	bl P1_GetFirmwareUiContext	; 02321582
 	ldr r2,[r0,#0x0]	; 02321586
 	ldr r1,[pool_02321598]	; 02321588
 	orr r2,r1	; 0232158A
@@ -2876,12 +2945,13 @@ loc_0232158E:
 	bx r3	; 02321592
 pool_02321594:
 loc_02321594:
-	.word 0x02331500	; 02321594
+	.word P1_BssStart + 0xA80	; 02321594
 pool_02321598:
 loc_02321598:
 	.word 0x00000400	; 02321598
 
 ; ===== function loc_0232159C =====
+P1_IrqHandler_0232159C:
 	push {r4,lr}	; 0232159C
 	ldr r1,[pool_02321674]	; 0232159E
 	ldr r0,[pool_02321678]	; 023215A0
@@ -2961,7 +3031,7 @@ loc_02321610:
 	ldr r4,[pool_023216A8]	; 0232163E
 	add r0,r4,#0x0	; 02321640
 	mov r1,#0x4	; 02321642
-	blx loc_0232BC04	; 02321644
+	blx P1_CleanDataCacheRange	; 02321644
 	add r0,r4,#0x0	; 02321648
 	mov r1,#0xe	; 0232164A
 	mov r2,#0x4	; 0232164C
@@ -2991,10 +3061,10 @@ loc_02321678:
 	.word 0x00003FF8	; 02321678
 pool_0232167C:
 loc_0232167C:
-	.word 0x02331D80	; 0232167C
+	.word P1_BssStart + 0x1300	; 0232167C
 pool_02321680:
 loc_02321680:
-	.word 0x027FFC82	; 02321680
+	.word FirmwareUserSettingsSharedAddress + UserSettingsThemeOffset	; 02321680
 pool_02321684:
 loc_02321684:
 	.word 0x023BC5C0	; 02321684
@@ -3050,13 +3120,25 @@ loc_023216AC:
 	b loc_02321802	; 023216DA
 loc_023216DC:
 	add r1,r5,r5	; 023216DC
+P1_SwitchIndexPC_023216DC:
 	add r1,pc	; 023216DE
-	ldrh r1,[r1,#0x8]	; 023216E0
+	ldrh r1,[r1,#(P1_SwitchTable_023216DC - (P1_SwitchIndexPC_023216DC + 4))]	; 023216E0
 	lsl r1,r1,#0x10	; 023216E2
 	asr r1,r1,#0x10	; 023216E4
+P1_SwitchTargetPC_023216DC:
 	add r1,pc	; 023216E6
 	bx r1	; 023216E8
-	.byte 0xC9, 0x00, 0x91, 0x00, 0x3B, 0x00, 0x3B, 0x00, 0x0F, 0x00, 0x07, 0x01, 0x11, 0x01	; 023216F8
+; 表项是相对 ADD 所读 PC 的有符号偏移，保留 ARM/Thumb 状态位。
+; Signed offsets from the ADD's PC, including the ARM/Thumb state bit.
+P1_SwitchTable_023216DC:
+	.halfword (loc_023217B2 + 1) - (P1_SwitchTargetPC_023216DC + 4)
+	.halfword (loc_0232177A + 1) - (P1_SwitchTargetPC_023216DC + 4)
+	.halfword (loc_02321724 + 1) - (P1_SwitchTargetPC_023216DC + 4)
+	.halfword (loc_02321724 + 1) - (P1_SwitchTargetPC_023216DC + 4)
+	.halfword (loc_023216F8 + 1) - (P1_SwitchTargetPC_023216DC + 4)
+	.halfword (loc_023217F0 + 1) - (P1_SwitchTargetPC_023216DC + 4)
+	.halfword (loc_023217FA + 1) - (P1_SwitchTargetPC_023216DC + 4)
+P1_SwitchTable_023216DCEnd:
 loc_023216F8:
 	ldr r1,[sp,#0x0]	; 023216F8
 	cmp r1,#0x0	; 023216FA
@@ -3239,7 +3321,7 @@ loc_02321810:
 	ldr r0,[pool_02321870]	; 02321830
 	add r0,r1,r0	; 02321832
 	mov r1,#0xa	; 02321834
-	blx loc_0232CD38	; 02321836
+	blx P1_SignedDivMod	; 02321836
 	str r0,[r4,r7]	; 0232183A
 	ldr r0,[r6,#0x4]	; 0232183C
 	lsl r1,r0,#0x3	; 0232183E
@@ -3250,7 +3332,7 @@ loc_02321810:
 	ldr r0,[pool_02321870]	; 02321848
 	add r0,r1,r0	; 0232184A
 	mov r1,#0xa	; 0232184C
-	blx loc_0232CD38	; 0232184E
+	blx P1_SignedDivMod	; 0232184E
 	str r0,[r6,#0x4]	; 02321852
 	add r5,r5,#0x1	; 02321854
 	cmp r5,#0x4	; 02321856
@@ -3338,10 +3420,10 @@ loc_023218E0:
 	.word 0x00000144	; 023218E0
 pool_023218E4:
 loc_023218E4:
-	.word 0x02331D80	; 023218E4
+	.word P1_BssStart + 0x1300	; 023218E4
 pool_023218E8:
 loc_023218E8:
-	.word 0x0232FED4	; 023218E8
+	.word P1_Data_0232FED4	; 023218E8
 pool_023218EC:
 loc_023218EC:
 	.word 0x0232FF5C	; 023218EC
@@ -3365,7 +3447,7 @@ loc_023218F0:
 	.byte 0xC0, 0x46	; 02321910
 pool_02321910:
 loc_02321910:
-	.word 0x04000050	; 02321910
+	.word REG_BLDCNT	; 02321910
 
 ; ===== function loc_02321914 =====
 loc_02321914:
@@ -3407,7 +3489,7 @@ loc_02321948:
 	bgt loc_0232196E	; 02321958
 	lsl r0,r0,#0x4	; 0232195A
 	mov r1,#0xf	; 0232195C
-	blx loc_0232CD38	; 0232195E
+	blx P1_SignedDivMod	; 0232195E
 	mov r1,#0x10	; 02321962
 	sub r1,r1,r0	; 02321964
 	lsl r0,r0,#0x8	; 02321966
@@ -3422,7 +3504,7 @@ loc_0232196E:
 	.byte 0xC0, 0x46	; 02321978
 pool_02321978:
 loc_02321978:
-	.word 0x04000052	; 02321978
+	.word REG_BLDALPHA	; 02321978
 
 ; ===== function loc_0232197C =====
 loc_0232197C:
@@ -3512,7 +3594,7 @@ loc_023219F4:
 	bx r3	; 02321A1E
 pool_02321A20:
 loc_02321A20:
-	.word 0x023AE498	; 02321A20
+	.word P5_Data_023AE498	; 02321A20
 
 ; ===== function loc_02321A24 =====
 loc_02321A24:
@@ -3621,7 +3703,7 @@ loc_02321AF0:
 	.word 0x00001000	; 02321AF0
 pool_02321AF4:
 loc_02321AF4:
-	.word 0x0232FEE4	; 02321AF4
+	.word P1_Data_0232FEE4	; 02321AF4
 pool_02321AF8:
 loc_02321AF8:
 	.word 0x023D3C10	; 02321AF8
@@ -3870,7 +3952,7 @@ loc_02321CA8:
 	lsl r0,r0,#0xc	; 02321CB2
 	ldr r2,[sp,#0x18]	; 02321CB4
 	sub r1,r2,r1	; 02321CB6
-	blx loc_0232CD38	; 02321CB8
+	blx P1_SignedDivMod	; 02321CB8
 	add r5,r0,#0x0	; 02321CBC
 	ldr r0,[pool_02321CFC]	; 02321CBE
 	sub r0,r0,r5	; 02321CC0
@@ -3908,7 +3990,7 @@ loc_02321D00:
 	bx r3	; 02321D02
 pool_02321D04:
 loc_02321D04:
-	.word 0x02324339	; 02321D04
+	.word loc_02324338 + 1	; 02321D04
 
 ; ===== function loc_02321D08 =====
 loc_02321D08:
@@ -3916,7 +3998,7 @@ loc_02321D08:
 	bx r3	; 02321D0A
 pool_02321D0C:
 loc_02321D0C:
-	.word 0x02324349	; 02321D0C
+	.word loc_02324348 + 1	; 02321D0C
 
 ; ===== function loc_02321D10 =====
 loc_02321D10:
@@ -3924,7 +4006,7 @@ loc_02321D10:
 	bx r3	; 02321D12
 pool_02321D14:
 loc_02321D14:
-	.word 0x0232435D	; 02321D14
+	.word loc_0232435C + 1	; 02321D14
 
 ; ===== function loc_02321D18 =====
 loc_02321D18:
@@ -3995,7 +4077,7 @@ loc_02321D84:
 	str r1,[r0,#0x0]	; 02321D8A
 	lsl r0,r1,#0x4	; 02321D8C
 	mov r1,#0xf	; 02321D8E
-	blx loc_0232CD38	; 02321D90
+	blx P1_SignedDivMod	; 02321D90
 	mov r3,#0x10	; 02321D94
 	sub r1,r3,r0	; 02321D96
 	lsl r0,r0,#0x8	; 02321D98
@@ -4045,28 +4127,28 @@ loc_02321DE2:
 	.byte 0xC0, 0x46	; 02321DF8
 pool_02321DF8:
 loc_02321DF8:
-	.word 0x02331E04	; 02321DF8
+	.word P1_BssStart + 0x1384	; 02321DF8
 pool_02321DFC:
 loc_02321DFC:
-	.word 0x02331E00	; 02321DFC
+	.word P1_BssStart + 0x1380	; 02321DFC
 pool_02321E00:
 loc_02321E00:
-	.word 0x02331DF8	; 02321E00
+	.word P1_BssStart + 0x1378	; 02321E00
 pool_02321E04:
 loc_02321E04:
-	.word 0x04000052	; 02321E04
+	.word REG_BLDALPHA	; 02321E04
 pool_02321E08:
 loc_02321E08:
-	.word 0x02331DF0	; 02321E08
+	.word P1_BssStart + 0x1370	; 02321E08
 pool_02321E0C:
 loc_02321E0C:
-	.word 0x04000000	; 02321E0C
+	.word REG_DISPCNT_A	; 02321E0C
 pool_02321E10:
 loc_02321E10:
 	.word 0xFFFFE0FF	; 02321E10
 pool_02321E14:
 loc_02321E14:
-	.word 0x04000050	; 02321E14
+	.word REG_BLDCNT	; 02321E14
 
 ; ===== function loc_02321E18 =====
 loc_02321E18:
@@ -4087,10 +4169,10 @@ loc_02321E18:
 	bx r3	; 02321E36
 pool_02321E38:
 loc_02321E38:
-	.word 0x04000050	; 02321E38
+	.word REG_BLDCNT	; 02321E38
 pool_02321E3C:
 loc_02321E3C:
-	.word 0x02331E04	; 02321E3C
+	.word P1_BssStart + 0x1384	; 02321E3C
 
 ; ===== function loc_02321E40 =====
 loc_02321E40:
@@ -4118,16 +4200,16 @@ loc_02321E40:
 	.byte 0xC0, 0x46	; 02321E78
 pool_02321E78:
 loc_02321E78:
-	.word 0x02331DFC	; 02321E78
+	.word P1_BssStart + 0x137C	; 02321E78
 pool_02321E7C:
 loc_02321E7C:
-	.word 0x02331DF4	; 02321E7C
+	.word P1_BssStart + 0x1374	; 02321E7C
 pool_02321E80:
 loc_02321E80:
 	.word 0x02331E08	; 02321E80
 pool_02321E84:
 loc_02321E84:
-	.word 0x02331EC4	; 02321E84
+	.word P1_BssStart + 0x1444	; 02321E84
 
 ; ===== function loc_02321E88 =====
 loc_02321E88:
@@ -4154,7 +4236,7 @@ loc_02321EAA:
 	ldrsh r0,[r1,r0]	; 02321EAC
 	lsl r0,r0,#0x6	; 02321EAE
 	mov r1,#0xf	; 02321EB0
-	blx loc_0232CD38	; 02321EB2
+	blx P1_SignedDivMod	; 02321EB2
 	sub r0,#0x30	; 02321EB6
 	cmp r0,#0x0	; 02321EB8
 	ble loc_02321EC0	; 02321EBA
@@ -4168,12 +4250,13 @@ loc_02321EC2:
 	bx r3	; 02321EC6
 pool_02321EC8:
 loc_02321EC8:
-	.word 0x02331EC4	; 02321EC8
+	.word P1_BssStart + 0x1444	; 02321EC8
 pool_02321ECC:
 loc_02321ECC:
-	.word 0x02330074	; 02321ECC
+	.word P1_Data_02330074	; 02321ECC
 
 ; ===== function loc_02321ED0 =====
+P1_Entry_02321ED0:
 	push {r4,lr}	; 02321ED0
 	sub sp,#0x128	; 02321ED2
 	add r4,r0,#0x0	; 02321ED4
@@ -4183,7 +4266,7 @@ loc_02321ECC:
 	ldr r1,[pool_02321F44]	; 02321EDC
 	add r1,r4,r1	; 02321EDE
 	mov r2,#0x30	; 02321EE0
-	bl loc_0232CAA8	; 02321EE2
+	bl P1_Utf16StrNCpy	; 02321EE2
 	mov r1,#0x0	; 02321EE6
 	add r0,sp,#0x40	; 02321EE8
 	strh r1,[r0,#0x20]	; 02321EEA
@@ -4192,7 +4275,7 @@ loc_02321ECC:
 	ldr r1,[pool_02321F48]	; 02321EF0
 	add r1,r4,r1	; 02321EF2
 	mov r2,#0x60	; 02321EF4
-	bl loc_0232CAA8	; 02321EF6
+	bl P1_Utf16StrNCpy	; 02321EF6
 	mov r1,#0x0	; 02321EFA
 	add r0,sp,#0x120	; 02321EFC
 	add r0,#0x2	; 02321EFE
@@ -4317,7 +4400,7 @@ loc_02321F60:
 	str r1,[r0,#0x0]	; 02321FE4
 	ldr r0,[pool_023220F4]	; 02321FE6
 	str r1,[r0,#0x0]	; 02321FE8
-	bl loc_0232D8C4	; 02321FEA
+	bl P1_GetMainBg1TilemapBase	; 02321FEA
 	add r5,r0,#0x0	; 02321FEE
 	mov r3,#0x0	; 02321FF0
 	str r3,[sp,#0x0]	; 02321FF2
@@ -4338,7 +4421,7 @@ loc_02321FFC:
 	add r3,r3,#0x1	; 0232200C
 	cmp r3,#0x18	; 0232200E
 	blt loc_02321FF4	; 02322010
-	bl loc_0232D828	; 02322012
+	bl P1_GetMainBg1CharacterBase	; 02322012
 	add r1,r0,#0x0	; 02322016
 	mov r0,#0x0	; 02322018
 	str r0,[sp,#0x4]	; 0232201A
@@ -4359,7 +4442,7 @@ loc_02321FFC:
 	ldr r0,[pool_02322110]	; 0232203E
 	strh r1,[r0,#0x0]	; 02322040
 	mov r1,#0x2	; 02322042
-	blx loc_0232BC04	; 02322044
+	blx P1_CleanDataCacheRange	; 02322044
 	ldr r0,[pool_02322110]	; 02322048
 	mov r1,#0x0	; 0232204A
 	mov r2,#0x2	; 0232204C
@@ -4404,13 +4487,13 @@ loc_02321FFC:
 	bx r3	; 023220B2
 pool_023220B4:
 loc_023220B4:
-	.word 0x027FFC82	; 023220B4
+	.word FirmwareUserSettingsSharedAddress + UserSettingsThemeOffset	; 023220B4
 pool_023220B8:
 loc_023220B8:
-	.word 0x02331DF0	; 023220B8
+	.word P1_BssStart + 0x1370	; 023220B8
 pool_023220BC:
 loc_023220BC:
-	.word 0x04000000	; 023220BC
+	.word REG_DISPCNT_A	; 023220BC
 pool_023220C0:
 loc_023220C0:
 	.word 0xFFFFE0FF	; 023220C0
@@ -4419,40 +4502,40 @@ loc_023220C4:
 	.word 0x00001F00	; 023220C4
 pool_023220C8:
 loc_023220C8:
-	.word 0x04000050	; 023220C8
+	.word REG_BLDCNT	; 023220C8
 pool_023220CC:
 loc_023220CC:
-	.word 0x04000008	; 023220CC
+	.word REG_BG0CNT	; 023220CC
 pool_023220D0:
 loc_023220D0:
-	.word 0x0400000A	; 023220D0
+	.word REG_BG1CNT	; 023220D0
 pool_023220D4:
 loc_023220D4:
 	.word 0x00000D08	; 023220D4
 pool_023220D8:
 loc_023220D8:
-	.word 0x0400000C	; 023220D8
+	.word REG_BG2CNT	; 023220D8
 pool_023220DC:
 loc_023220DC:
 	.word 0x00000E10	; 023220DC
 pool_023220E0:
 loc_023220E0:
-	.word 0x0400000E	; 023220E0
+	.word REG_BG3CNT	; 023220E0
 pool_023220E4:
 loc_023220E4:
 	.word 0x00000F10	; 023220E4
 pool_023220E8:
 loc_023220E8:
-	.word 0x04000010	; 023220E8
+	.word REG_BG0HOFS	; 023220E8
 pool_023220EC:
 loc_023220EC:
-	.word 0x04000014	; 023220EC
+	.word REG_BG1HOFS	; 023220EC
 pool_023220F0:
 loc_023220F0:
-	.word 0x04000018	; 023220F0
+	.word REG_BG2HOFS	; 023220F0
 pool_023220F4:
 loc_023220F4:
-	.word 0x0400001C	; 023220F4
+	.word REG_BG3HOFS	; 023220F4
 pool_023220F8:
 loc_023220F8:
 	.word 0x00003000	; 023220F8
@@ -4473,7 +4556,7 @@ loc_0232210C:
 	.word 0x023BBFC0	; 0232210C
 pool_02322110:
 loc_02322110:
-	.word 0x02331DEC	; 02322110
+	.word P1_BssStart + 0x136C	; 02322110
 pool_02322114:
 loc_02322114:
 	.word 0x023BC9C0	; 02322114
@@ -4549,10 +4632,10 @@ loc_02322188:
 	.byte 0xC0, 0x46	; 02322190
 pool_02322190:
 loc_02322190:
-	.word 0x02330074	; 02322190
+	.word P1_Data_02330074	; 02322190
 pool_02322194:
 loc_02322194:
-	.word 0x02331EC4	; 02322194
+	.word P1_BssStart + 0x1444	; 02322194
 pool_02322198:
 loc_02322198:
 	.word 0x02331ED0	; 02322198
@@ -4561,13 +4644,13 @@ loc_0232219C:
 	.word 0x023A6174	; 0232219C
 pool_023221A0:
 loc_023221A0:
-	.word 0x02330076	; 023221A0
+	.word P1_Data_02330076	; 023221A0
 pool_023221A4:
 loc_023221A4:
 	.word 0x02331F54	; 023221A4
 pool_023221A8:
 loc_023221A8:
-	.word 0x02330078	; 023221A8
+	.word P1_Data_02330078	; 023221A8
 
 ; ===== function loc_023221AC =====
 loc_023221AC:
@@ -4625,7 +4708,7 @@ loc_02322208:
 	.word 0x02331F54	; 02322208
 pool_0232220C:
 loc_0232220C:
-	.word 0x02331EC4	; 0232220C
+	.word P1_BssStart + 0x1444	; 0232220C
 
 ; ===== function loc_02322210 =====
 loc_02322210:
@@ -4708,7 +4791,7 @@ loc_02322286:
 	ldrsh r0,[r1,r0]	; 023222A0
 	lsl r0,r0,#0x6	; 023222A2
 	mov r1,#0xf	; 023222A4
-	blx loc_0232CD38	; 023222A6
+	blx P1_SignedDivMod	; 023222A6
 	add r1,r6,#0x0	; 023222AA
 	add r1,#0x40	; 023222AC
 	sub r0,r1,r0	; 023222AE
@@ -4764,17 +4847,26 @@ loc_023222C2:
 	mov r1,#0x0	; 02322316
 	bl loc_0232926C	; 02322318
 	add r6,r0,#0x0	; 0232231C
-	bl 0x0236782c	; 0232231E
+	bl P3_Entry_0236782C	; 0232231E
 	cmp r0,#0x3	; 02322322
 	bhi loc_02322352	; 02322324
 	add r0,r0,r0	; 02322326
+P1_SwitchIndexPC_02322326:
 	add r0,pc	; 02322328
-	ldrh r0,[r0,#0x8]	; 0232232A
+	ldrh r0,[r0,#(P1_SwitchTable_02322326 - (P1_SwitchIndexPC_02322326 + 4))]	; 0232232A
 	lsl r0,r0,#0x10	; 0232232C
 	asr r0,r0,#0x10	; 0232232E
+P1_SwitchTargetPC_02322326:
 	add r0,pc	; 02322330
 	bx r0	; 02322332
-	.byte 0x09, 0x00, 0x0F, 0x00, 0x15, 0x00, 0x1B, 0x00	; 0232233C
+; 表项是相对 ADD 所读 PC 的有符号偏移，保留 ARM/Thumb 状态位。
+; Signed offsets from the ADD's PC, including the ARM/Thumb state bit.
+P1_SwitchTable_02322326:
+	.halfword (loc_0232233C + 1) - (P1_SwitchTargetPC_02322326 + 4)
+	.halfword (loc_02322342 + 1) - (P1_SwitchTargetPC_02322326 + 4)
+	.halfword (loc_02322348 + 1) - (P1_SwitchTargetPC_02322326 + 4)
+	.halfword (loc_0232234E + 1) - (P1_SwitchTargetPC_02322326 + 4)
+P1_SwitchTable_02322326End:
 loc_0232233C:
 	mov r0,#0x13	; 0232233C
 	str r0,[sp,#0x14]	; 0232233E
@@ -4878,10 +4970,10 @@ loc_023223F6:
 	.byte 0xC0, 0x46	; 02322400
 pool_02322400:
 loc_02322400:
-	.word 0x02331EC4	; 02322400
+	.word P1_BssStart + 0x1444	; 02322400
 pool_02322404:
 loc_02322404:
-	.word 0x02330074	; 02322404
+	.word P1_Data_02330074	; 02322404
 pool_02322408:
 loc_02322408:
 	.word 0x0233007A	; 02322408
@@ -4911,6 +5003,7 @@ loc_02322428:
 	.word 0x0000A3DC	; 02322428
 
 ; ===== function loc_0232242C =====
+P1_Entry_0232242C:
 	push {r4,r5,r6,r7,lr}	; 0232242C
 	sub sp,#0x4	; 0232242E
 	mov r1,#0x1	; 02322430
@@ -4946,7 +5039,7 @@ loc_02322442:
 	.byte 0xC0, 0x46	; 02322474
 pool_02322474:
 loc_02322474:
-	.word 0x02331EC4	; 02322474
+	.word P1_BssStart + 0x1444	; 02322474
 pool_02322478:
 loc_02322478:
 	.word 0x02331ED0	; 02322478
@@ -4964,13 +5057,24 @@ loc_02322484:
 	cmp r0,#0x5	; 02322488
 	bhi loc_023224CE	; 0232248A
 	add r0,r0,r0	; 0232248C
+P1_SwitchIndexPC_0232248C:
 	add r0,pc	; 0232248E
-	ldrh r0,[r0,#0x8]	; 02322490
+	ldrh r0,[r0,#(P1_SwitchTable_0232248C - (P1_SwitchIndexPC_0232248C + 4))]	; 02322490
 	lsl r0,r0,#0x10	; 02322492
 	asr r0,r0,#0x10	; 02322494
+P1_SwitchTargetPC_0232248C:
 	add r0,pc	; 02322496
 	bx r0	; 02322498
-	.byte 0x0D, 0x00, 0x11, 0x00, 0x19, 0x00, 0x21, 0x00, 0x25, 0x00, 0x2D, 0x00	; 023224A6
+; 表项是相对 ADD 所读 PC 的有符号偏移，保留 ARM/Thumb 状态位。
+; Signed offsets from the ADD's PC, including the ARM/Thumb state bit.
+P1_SwitchTable_0232248C:
+	.halfword (loc_023224A6 + 1) - (P1_SwitchTargetPC_0232248C + 4)
+	.halfword (loc_023224AA + 1) - (P1_SwitchTargetPC_0232248C + 4)
+	.halfword (loc_023224B2 + 1) - (P1_SwitchTargetPC_0232248C + 4)
+	.halfword (loc_023224BA + 1) - (P1_SwitchTargetPC_0232248C + 4)
+	.halfword (loc_023224BE + 1) - (P1_SwitchTargetPC_0232248C + 4)
+	.halfword (loc_023224C6 + 1) - (P1_SwitchTargetPC_0232248C + 4)
+P1_SwitchTable_0232248CEnd:
 loc_023224A6:
 	mov r0,#0x0	; 023224A6
 	bx lr	; 023224A8
@@ -5003,10 +5107,10 @@ loc_023224CE:
 	.byte 0xC0, 0x46	; 023224D4
 pool_023224D4:
 loc_023224D4:
-	.word 0x02331E08	; 023224D4
+	.word P1_BssStart + 0x1388	; 023224D4
 pool_023224D8:
 loc_023224D8:
-	.word 0x02331E88	; 023224D8
+	.word P1_BssStart + 0x1408	; 023224D8
 
 ; ===== function loc_023224DC =====
 loc_023224DC:
@@ -5015,13 +5119,24 @@ loc_023224DC:
 	cmp r0,#0x5	; 023224E0
 	bhi loc_02322506	; 023224E2
 	add r0,r0,r0	; 023224E4
+P1_SwitchIndexPC_023224E4:
 	add r0,pc	; 023224E6
-	ldrh r0,[r0,#0x8]	; 023224E8
+	ldrh r0,[r0,#(P1_SwitchTable_023224E4 - (P1_SwitchIndexPC_023224E4 + 4))]	; 023224E8
 	lsl r0,r0,#0x10	; 023224EA
 	asr r0,r0,#0x10	; 023224EC
+P1_SwitchTargetPC_023224E4:
 	add r0,pc	; 023224EE
 	bx r0	; 023224F0
-	.byte 0x11, 0x00, 0x11, 0x00, 0x0D, 0x00, 0x0D, 0x00, 0x0D, 0x00, 0x11, 0x00	; 023224FE
+; 表项是相对 ADD 所读 PC 的有符号偏移，保留 ARM/Thumb 状态位。
+; Signed offsets from the ADD's PC, including the ARM/Thumb state bit.
+P1_SwitchTable_023224E4:
+	.halfword (loc_02322502 + 1) - (P1_SwitchTargetPC_023224E4 + 4)
+	.halfword (loc_02322502 + 1) - (P1_SwitchTargetPC_023224E4 + 4)
+	.halfword (loc_023224FE + 1) - (P1_SwitchTargetPC_023224E4 + 4)
+	.halfword (loc_023224FE + 1) - (P1_SwitchTargetPC_023224E4 + 4)
+	.halfword (loc_023224FE + 1) - (P1_SwitchTargetPC_023224E4 + 4)
+	.halfword (loc_02322502 + 1) - (P1_SwitchTargetPC_023224E4 + 4)
+P1_SwitchTable_023224E4End:
 loc_023224FE:
 	mov r0,#0x1	; 023224FE
 	bx lr	; 02322500
@@ -5034,7 +5149,7 @@ loc_02322506:
 	.byte 0xC0, 0x46	; 0232250C
 pool_0232250C:
 loc_0232250C:
-	.word 0x02331E08	; 0232250C
+	.word P1_BssStart + 0x1388	; 0232250C
 
 ; ===== function loc_02322510 =====
 loc_02322510:
@@ -5044,13 +5159,24 @@ loc_02322510:
 	cmp r0,#0x5	; 02322516
 	bhi loc_02322556	; 02322518
 	add r0,r0,r0	; 0232251A
+P1_SwitchIndexPC_0232251A:
 	add r0,pc	; 0232251C
-	ldrh r0,[r0,#0x8]	; 0232251E
+	ldrh r0,[r0,#(P1_SwitchTable_0232251A - (P1_SwitchIndexPC_0232251A + 4))]	; 0232251E
 	lsl r0,r0,#0x10	; 02322520
 	asr r0,r0,#0x10	; 02322522
+P1_SwitchTargetPC_0232251A:
 	add r0,pc	; 02322524
 	bx r0	; 02322526
-	.byte 0x1D, 0x00, 0x1D, 0x00, 0x0D, 0x00, 0x0D, 0x00, 0x0D, 0x00, 0x1D, 0x00	; 02322534
+; 表项是相对 ADD 所读 PC 的有符号偏移，保留 ARM/Thumb 状态位。
+; Signed offsets from the ADD's PC, including the ARM/Thumb state bit.
+P1_SwitchTable_0232251A:
+	.halfword (loc_02322544 + 1) - (P1_SwitchTargetPC_0232251A + 4)
+	.halfword (loc_02322544 + 1) - (P1_SwitchTargetPC_0232251A + 4)
+	.halfword (loc_02322534 + 1) - (P1_SwitchTargetPC_0232251A + 4)
+	.halfword (loc_02322534 + 1) - (P1_SwitchTargetPC_0232251A + 4)
+	.halfword (loc_02322534 + 1) - (P1_SwitchTargetPC_0232251A + 4)
+	.halfword (loc_02322544 + 1) - (P1_SwitchTargetPC_0232251A + 4)
+P1_SwitchTable_0232251AEnd:
 loc_02322534:
 	ldr r1,[pool_02322574]	; 02322534
 	ldr r2,[r1,#0x0]	; 02322536
@@ -5087,7 +5213,7 @@ loc_0232256C:
 	.byte 0xC0, 0x46	; 02322574
 pool_02322574:
 loc_02322574:
-	.word 0x04000000	; 02322574
+	.word REG_DISPCNT_A	; 02322574
 pool_02322578:
 loc_02322578:
 	.word 0xFFFFE0FF	; 02322578
@@ -5096,13 +5222,13 @@ loc_0232257C:
 	.word 0x00001000	; 0232257C
 pool_02322580:
 loc_02322580:
-	.word 0x02331DF0	; 02322580
+	.word P1_BssStart + 0x1370	; 02322580
 pool_02322584:
 loc_02322584:
-	.word 0x02331DF4	; 02322584
+	.word P1_BssStart + 0x1374	; 02322584
 pool_02322588:
 loc_02322588:
-	.word 0x04000050	; 02322588
+	.word REG_BLDCNT	; 02322588
 
 ; ===== function loc_0232258C =====
 loc_0232258C:
@@ -5178,40 +5304,40 @@ loc_02322616:
 	ldr r4,[sp,#0x24]	; 0232261C
 	add r0,r4,#0x0	; 0232261E
 	mov r1,#0xa	; 02322620
-	blx loc_0232CF44	; 02322622
+	blx P1_UnsignedDivMod	; 02322622
 	str r0,[sp,#0x10]	; 02322626
 	add r0,r4,#0x0	; 02322628
 	mov r1,#0xa	; 0232262A
-	blx loc_0232CF44	; 0232262C
+	blx P1_UnsignedDivMod	; 0232262C
 	add r7,r1,#0x0	; 02322630
 	ldr r4,[sp,#0x28]	; 02322632
 	add r0,r4,#0x0	; 02322634
 	mov r1,#0xa	; 02322636
-	blx loc_0232CF44	; 02322638
+	blx P1_UnsignedDivMod	; 02322638
 	str r0,[sp,#0x14]	; 0232263C
 	add r0,r4,#0x0	; 0232263E
 	mov r1,#0xa	; 02322640
-	blx loc_0232CF44	; 02322642
+	blx P1_UnsignedDivMod	; 02322642
 	str r1,[sp,#0xc]	; 02322646
 	ldr r0,[pool_023227D0]	; 02322648
 	ldrb r4,[r0,#0x0]	; 0232264A
 	add r0,r4,#0x0	; 0232264C
 	mov r1,#0xa	; 0232264E
-	blx loc_0232CD38	; 02322650
+	blx P1_SignedDivMod	; 02322650
 	str r0,[sp,#0x18]	; 02322654
 	add r0,r4,#0x0	; 02322656
 	mov r1,#0xa	; 02322658
-	blx loc_0232CD38	; 0232265A
+	blx P1_SignedDivMod	; 0232265A
 	str r1,[sp,#0x8]	; 0232265E
 	ldr r0,[pool_023227D0]	; 02322660
 	ldrb r4,[r0,#0x1]	; 02322662
 	add r0,r4,#0x0	; 02322664
 	mov r1,#0xa	; 02322666
-	blx loc_0232CD38	; 02322668
+	blx P1_SignedDivMod	; 02322668
 	str r0,[sp,#0x1c]	; 0232266C
 	add r0,r4,#0x0	; 0232266E
 	mov r1,#0xa	; 02322670
-	blx loc_0232CD38	; 02322672
+	blx P1_SignedDivMod	; 02322672
 	add r6,r1,#0x0	; 02322676
 	mov r4,#0x0	; 02322678
 	str r4,[sp,#0x20]	; 0232267A
@@ -5366,7 +5492,7 @@ loc_023227C8:
 	bx r3	; 023227CE
 pool_023227D0:
 loc_023227D0:
-	.word 0x027FFCD2	; 023227D0
+	.word FirmwareUserSettingsSharedAddress + UserSettingsAlarmHourOffset	; 023227D0
 pool_023227D4:
 loc_023227D4:
 	.word 0x023C1178	; 023227D4
@@ -5375,7 +5501,7 @@ loc_023227D8:
 	.word 0x023A5884	; 023227D8
 pool_023227DC:
 loc_023227DC:
-	.word 0x0233004C	; 023227DC
+	.word P1_Data_0233004C	; 023227DC
 
 ; ===== function loc_023227E0 =====
 loc_023227E0:
@@ -5422,7 +5548,7 @@ loc_02322826:
 loc_0232282C:
 	add r0,r4,#0x0	; 0232282C
 	ldr r1,[pool_02322880]	; 0232282E
-	blx loc_0232CF44	; 02322830
+	blx P1_UnsignedDivMod	; 02322830
 	add r6,r0,#0x0	; 02322834
 	ldr r0,[pool_02322880]	; 02322836
 	add r1,r6,#0x0	; 02322838
@@ -5430,7 +5556,7 @@ loc_0232282C:
 	sub r4,r4,r1	; 0232283C
 	add r0,r4,#0x0	; 0232283E
 	mov r1,#0x3c	; 02322840
-	blx loc_0232CF44	; 02322842
+	blx P1_UnsignedDivMod	; 02322842
 	add r7,r0,#0x0	; 02322846
 	mov r0,#0x3c	; 02322848
 	add r1,r7,#0x0	; 0232284A
@@ -5455,7 +5581,7 @@ loc_0232282C:
 	bx r3	; 02322876
 pool_02322878:
 loc_02322878:
-	.word 0x027FFCD2	; 02322878
+	.word FirmwareUserSettingsSharedAddress + UserSettingsAlarmHourOffset	; 02322878
 pool_0232287C:
 loc_0232287C:
 	.word 0x00015180	; 0232287C
@@ -5527,7 +5653,7 @@ loc_023228FC:
 	.byte 0xC0, 0x46	; 02322904
 pool_02322904:
 loc_02322904:
-	.word 0x02331E08	; 02322904
+	.word P1_BssStart + 0x1388	; 02322904
 
 ; ===== function loc_02322908 =====
 loc_02322908:
@@ -5566,24 +5692,25 @@ loc_0232294A:
 	bx r3	; 0232294E
 pool_02322950:
 loc_02322950:
-	.word 0x02331DFC	; 02322950
+	.word P1_BssStart + 0x137C	; 02322950
 pool_02322954:
 loc_02322954:
 	.word 0x01FF0000	; 02322954
 pool_02322958:
 loc_02322958:
-	.word 0x04000014	; 02322958
+	.word REG_BG1HOFS	; 02322958
 pool_0232295C:
 loc_0232295C:
-	.word 0x04000018	; 0232295C
+	.word REG_BG2HOFS	; 0232295C
 pool_02322960:
 loc_02322960:
-	.word 0x0400001C	; 02322960
+	.word REG_BG3HOFS	; 02322960
 pool_02322964:
 loc_02322964:
 	.word 0x02331E08	; 02322964
 
 ; ===== function loc_02322968 =====
+P1_Entry_02322968:
 	push {lr}	; 02322968
 	sub sp,#0x4	; 0232296A
 	ldr r0,[pool_02322984]	; 0232296C
@@ -5599,7 +5726,7 @@ loc_0232297C:
 	.byte 0xC0, 0x46	; 02322984
 pool_02322984:
 loc_02322984:
-	.word 0x02331DFC	; 02322984
+	.word P1_BssStart + 0x137C	; 02322984
 
 ; ===== function loc_02322988 =====
 loc_02322988:
@@ -5617,7 +5744,7 @@ loc_02322988:
 	str r1,[r0,#0x0]	; 0232299E
 	lsl r0,r1,#0x4	; 023229A0
 	mov r1,#0x10	; 023229A2
-	blx loc_0232CD38	; 023229A4
+	blx P1_SignedDivMod	; 023229A4
 	add r3,r0,#0x0	; 023229A8
 	ldr r0,[pool_023229F8]	; 023229AA
 	mov r1,#0x1f	; 023229AC
@@ -5649,13 +5776,13 @@ loc_023229EA:
 	bx r3	; 023229EE
 pool_023229F0:
 loc_023229F0:
-	.word 0x02331DFC	; 023229F0
+	.word P1_BssStart + 0x137C	; 023229F0
 pool_023229F4:
 loc_023229F4:
-	.word 0x02331DF4	; 023229F4
+	.word P1_BssStart + 0x1374	; 023229F4
 pool_023229F8:
 loc_023229F8:
-	.word 0x04000050	; 023229F8
+	.word REG_BLDCNT	; 023229F8
 pool_023229FC:
 loc_023229FC:
 	.word 0x02331E08	; 023229FC
@@ -5668,7 +5795,7 @@ loc_02322A00:
 	.byte 0xC0, 0x46	; 02322A08
 pool_02322A08:
 loc_02322A08:
-	.word 0x02331EC4	; 02322A08
+	.word P1_BssStart + 0x1444	; 02322A08
 
 ; ===== function loc_02322A0C =====
 loc_02322A0C:
@@ -5676,7 +5803,7 @@ loc_02322A0C:
 	bx r3	; 02322A0E
 pool_02322A10:
 loc_02322A10:
-	.word 0x02322135	; 02322A10
+	.word loc_02322134 + 1	; 02322A10
 
 ; ===== function loc_02322A14 =====
 loc_02322A14:
@@ -5709,7 +5836,7 @@ loc_02322A42:
 	bx r3	; 02322A46
 pool_02322A48:
 loc_02322A48:
-	.word 0x02331E08	; 02322A48
+	.word P1_BssStart + 0x1388	; 02322A48
 pool_02322A4C:
 loc_02322A4C:
 	.word 0x02331E10	; 02322A4C
@@ -5719,7 +5846,11 @@ loc_02322A50:
 pool_02322A54:
 loc_02322A54:
 	.word 0x02331E3C	; 02322A54
-	.byte 0x00, 0x4B, 0x18, 0x47, 0x2D, 0x24, 0x32, 0x02	; 02322A60
+P1_Entry_02322A58:
+	ldr r3,[pool_02322A5C]	; 02322A58
+	bx r3	; 02322A5A
+pool_02322A5C:
+	.word P1_Entry_0232242C + 1	; 02322A5C
 
 ; ===== function loc_02322A60 =====
 loc_02322A60:
@@ -5785,11 +5916,11 @@ loc_02322AC8:
 	str r0,[r2,#0x0]	; 02322AD2
 	ldr r0,[sp,#0x44]	; 02322AD4
 	mov r1,#0xc	; 02322AD6
-	blx loc_0232CF44	; 02322AD8
+	blx P1_UnsignedDivMod	; 02322AD8
 	add r4,r0,#0x0	; 02322ADC
 	ldr r0,[sp,#0x40]	; 02322ADE
 	mov r1,#0xc	; 02322AE0
-	blx loc_0232CF44	; 02322AE2
+	blx P1_UnsignedDivMod	; 02322AE2
 	mov r0,#0x5	; 02322AE6
 	mul r1,r0	; 02322AE8
 	add r5,r4,r1	; 02322AEA
@@ -5911,12 +6042,12 @@ loc_02322AC8:
 	ldr r0,[pool_02322CB0]	; 02322C08
 	ldrb r0,[r0,#0x1]	; 02322C0A
 	mov r1,#0xc	; 02322C0C
-	blx loc_0232CD38	; 02322C0E
+	blx P1_SignedDivMod	; 02322C0E
 	add r4,r0,#0x0	; 02322C12
 	ldr r0,[pool_02322CB0]	; 02322C14
 	ldrb r0,[r0,#0x0]	; 02322C16
 	mov r1,#0xc	; 02322C18
-	blx loc_0232CD38	; 02322C1A
+	blx P1_SignedDivMod	; 02322C1A
 	mov r0,#0x5	; 02322C1E
 	mul r1,r0	; 02322C20
 	add r5,r4,r1	; 02322C22
@@ -5960,7 +6091,7 @@ loc_02322AC8:
 	bx r3	; 02322C7E
 pool_02322C80:
 loc_02322C80:
-	.word 0x02331FD8	; 02322C80
+	.word P1_BssStart + 0x1558	; 02322C80
 pool_02322C84:
 loc_02322C84:
 	.word 0x023C1178	; 02322C84
@@ -5975,10 +6106,10 @@ loc_02322C90:
 	.word 0x00001000	; 02322C90
 pool_02322C94:
 loc_02322C94:
-	.word 0x023305A0	; 02322C94
+	.word P1_Data_023305A0	; 02322C94
 pool_02322C98:
 loc_02322C98:
-	.word 0x02330618	; 02322C98
+	.word P1_Data_02330618	; 02322C98
 pool_02322C9C:
 loc_02322C9C:
 	.word 0xC0000300	; 02322C9C
@@ -5996,7 +6127,7 @@ loc_02322CAC:
 	.word 0x00006000	; 02322CAC
 pool_02322CB0:
 loc_02322CB0:
-	.word 0x027FFCD2	; 02322CB0
+	.word FirmwareUserSettingsSharedAddress + UserSettingsAlarmHourOffset	; 02322CB0
 pool_02322CB4:
 loc_02322CB4:
 	.word 0x00004000	; 02322CB4
@@ -6135,7 +6266,7 @@ loc_02322DB8:
 	push {r4,r5,r6,r7,lr}	; 02322DB8
 	sub sp,#0x4	; 02322DBA
 	add r4,r0,#0x0	; 02322DBC
-	blx loc_02326CC8	; 02322DBE
+	blx P1_GetMainBg2TilemapAddress	; 02322DBE
 	add r7,r0,#0x0	; 02322DC2
 	cmp r4,#0x0	; 02322DC4
 	beq loc_02322DCC	; 02322DC6
@@ -6197,7 +6328,7 @@ loc_02322E08:
 	add r0,r6,#0x7	; 02322E2A
 	sub r0,r0,r5	; 02322E2C
 	mov r1,#0x7	; 02322E2E
-	blx loc_0232CD38	; 02322E30
+	blx P1_SignedDivMod	; 02322E30
 	add r0,r1,r4	; 02322E34
 	cmp r0,#0x23	; 02322E36
 	ble loc_02322E3E	; 02322E38
@@ -6249,14 +6380,14 @@ loc_02322E6C:
 	str r0,[r4,#0x4]	; 02322E86
 	ldr r0,[sp,#0x50]	; 02322E88
 	str r0,[r4,#0x0]	; 02322E8A
-	bl loc_0232D828	; 02322E8C
+	bl P1_GetMainBg1CharacterBase	; 02322E8C
 	add r1,r0,#0x0	; 02322E90
 	mov r0,#0x0	; 02322E92
 	str r0,[sp,#0x34]	; 02322E94
 	ldr r0,[sp,#0x34]	; 02322E96
 	ldr r2,[pool_023230A4]	; 02322E98
 	blx loc_0232DE78	; 02322E9A
-	bl loc_0232D828	; 02322E9E
+	bl P1_GetMainBg1CharacterBase	; 02322E9E
 	add r5,r0,#0x0	; 02322EA2
 	bl loc_02324CAC	; 02322EA4
 	mov r1,#0x0	; 02322EA8
@@ -6280,40 +6411,51 @@ loc_02322E6C:
 	cmp r0,#0x5	; 02322ED2
 	bhi loc_02322EF0	; 02322ED4
 	add r0,r0,r0	; 02322ED6
+P1_SwitchIndexPC_02322ED6:
 	add r0,pc	; 02322ED8
-	ldrh r0,[r0,#0x8]	; 02322EDA
+	ldrh r0,[r0,#(P1_SwitchTable_02322ED6 - (P1_SwitchIndexPC_02322ED6 + 4))]	; 02322EDA
 	lsl r0,r0,#0x10	; 02322EDC
 	asr r0,r0,#0x10	; 02322EDE
+P1_SwitchTargetPC_02322ED6:
 	add r0,pc	; 02322EE0
 	bx r0	; 02322EE2
-	.byte 0x0D, 0x00, 0x21, 0x00, 0x21, 0x00, 0x17, 0x00, 0x21, 0x00, 0x21, 0x00	; 02322EF0
+; 表项是相对 ADD 所读 PC 的有符号偏移，保留 ARM/Thumb 状态位。
+; Signed offsets from the ADD's PC, including the ARM/Thumb state bit.
+P1_SwitchTable_02322ED6:
+	.halfword (loc_02322EF0 + 1) - (P1_SwitchTargetPC_02322ED6 + 4)
+	.halfword (loc_02322F04 + 1) - (P1_SwitchTargetPC_02322ED6 + 4)
+	.halfword (loc_02322F04 + 1) - (P1_SwitchTargetPC_02322ED6 + 4)
+	.halfword (loc_02322EFA + 1) - (P1_SwitchTargetPC_02322ED6 + 4)
+	.halfword (loc_02322F04 + 1) - (P1_SwitchTargetPC_02322ED6 + 4)
+	.halfword (loc_02322F04 + 1) - (P1_SwitchTargetPC_02322ED6 + 4)
+P1_SwitchTable_02322ED6End:
 loc_02322EF0:
 	add r0,sp,#0x90	; 02322EF0
 	ldr r1,[pool_023230B0]	; 02322EF2
-	bl loc_0232CAE0	; 02322EF4
+	bl P1_Utf16StrCpy	; 02322EF4
 	b loc_02322F0C	; 02322EF8
 loc_02322EFA:
 	add r0,sp,#0x90	; 02322EFA
 	ldr r1,[pool_023230B4]	; 02322EFC
-	bl loc_0232CAE0	; 02322EFE
+	bl P1_Utf16StrCpy	; 02322EFE
 	b loc_02322F0C	; 02322F02
 loc_02322F04:
 	add r0,sp,#0x90	; 02322F04
 	ldr r1,[pool_023230B8]	; 02322F06
-	bl loc_0232CAE0	; 02322F08
+	bl P1_Utf16StrCpy	; 02322F08
 loc_02322F0C:
 	add r0,sp,#0x90	; 02322F0C
 	mov r1,#0x59	; 02322F0E
-	bl loc_0232CA2C	; 02322F10
+	bl P1_Utf16StrChr	; 02322F10
 	add r1,sp,#0x24	; 02322F14
 	mov r2,#0x2	; 02322F16
-	bl loc_0232CAA8	; 02322F18
+	bl P1_Utf16StrNCpy	; 02322F18
 	add r0,sp,#0x90	; 02322F1C
 	mov r1,#0x4d	; 02322F1E
-	bl loc_0232CA2C	; 02322F20
+	bl P1_Utf16StrChr	; 02322F20
 	add r1,sp,#0x2c	; 02322F24
 	mov r2,#0x2	; 02322F26
-	bl loc_0232CAA8	; 02322F28
+	bl P1_Utf16StrNCpy	; 02322F28
 	ldr r0,[pool_023230BC]	; 02322F2C
 	mov r1,#0x0	; 02322F2E
 	bl loc_02329198	; 02322F30
@@ -6377,20 +6519,20 @@ loc_02322F8A:
 	add r0,r0,#0x7	; 02322FB0
 	sub r0,r0,r5	; 02322FB2
 	mov r1,#0x7	; 02322FB4
-	blx loc_0232CD38	; 02322FB6
+	blx P1_SignedDivMod	; 02322FB6
 	add r7,r1,#0x0	; 02322FBA
 	ldr r0,[r4,#0x0]	; 02322FBC
 	add r0,r7,r0	; 02322FBE
 	sub r0,r0,#0x1	; 02322FC0
 	mov r1,#0x7	; 02322FC2
-	blx loc_0232CD38	; 02322FC4
+	blx P1_SignedDivMod	; 02322FC4
 	lsl r0,r1,#0x4	; 02322FC8
 	strh r0,[r4,#0xc]	; 02322FCA
 	ldr r0,[r4,#0x0]	; 02322FCC
 	add r0,r7,r0	; 02322FCE
 	sub r0,r0,#0x1	; 02322FD0
 	mov r1,#0x7	; 02322FD2
-	blx loc_0232CD38	; 02322FD4
+	blx P1_SignedDivMod	; 02322FD4
 	lsl r0,r0,#0x4	; 02322FD8
 	strh r0,[r4,#0xe]	; 02322FDA
 	add r4,sp,#0x20	; 02322FDC
@@ -6402,7 +6544,7 @@ loc_02322FE6:
 	add r0,r7,r5	; 02322FE6
 	str r0,[sp,#0x10]	; 02322FE8
 	mov r1,#0x7	; 02322FEA
-	blx loc_0232CD38	; 02322FEC
+	blx P1_SignedDivMod	; 02322FEC
 	add r6,r1,#0x0	; 02322FF0
 	add r0,sp,#0x90	; 02322FF2
 	add r1,r5,#0x1	; 02322FF4
@@ -6423,7 +6565,7 @@ loc_02322FE6:
 	strh r0,[r4,#0x0]	; 02323014
 	ldr r0,[sp,#0x10]	; 02323016
 	mov r1,#0x7	; 02323018
-	blx loc_0232CD38	; 0232301A
+	blx P1_SignedDivMod	; 0232301A
 	mov r1,#0x2	; 0232301E
 	ldrsh r1,[r4,r1]	; 02323020
 	ldr r2,[pool_023230C4]	; 02323022
@@ -6498,7 +6640,7 @@ loc_023230A8:
 	.word 0x00000100	; 023230A8
 pool_023230AC:
 loc_023230AC:
-	.word 0x027FFCE4	; 023230AC
+	.word FirmwareUserSettingsSharedAddress + UserSettingsOptionsOffset	; 023230AC
 pool_023230B0:
 loc_023230B0:
 	.word 0x023306C8	; 023230B0
@@ -6532,7 +6674,7 @@ loc_023230D4:
 	.word 0x02331FE4	; 023230D4
 pool_023230D8:
 loc_023230D8:
-	.word 0x02322D59	; 023230D8
+	.word loc_02322D58 + 1	; 023230D8
 
 ; ===== function loc_023230DC =====
 loc_023230DC:
@@ -6545,7 +6687,7 @@ loc_023230E4:
 	.word 0x02331FE4	; 023230E4
 pool_023230E8:
 loc_023230E8:
-	.word 0x02322E4D	; 023230E8
+	.word loc_02322E4C + 1	; 023230E8
 
 ; ===== function loc_023230EC =====
 loc_023230EC:
@@ -6558,7 +6700,7 @@ loc_023230F4:
 	.word 0x02331FE4	; 023230F4
 pool_023230F8:
 loc_023230F8:
-	.word 0x02322E4D	; 023230F8
+	.word loc_02322E4C + 1	; 023230F8
 
 ; ===== function loc_023230FC =====
 loc_023230FC:
@@ -6580,7 +6722,7 @@ loc_02323114:
 	ldr r0,[r0,#0x4]	; 02323116
 	lsl r0,r0,#0x4	; 02323118
 	mov r1,#0xa	; 0232311A
-	blx loc_0232CD38	; 0232311C
+	blx P1_SignedDivMod	; 0232311C
 	add r4,r0,#0x0	; 02323120
 	sub r4,#0x10	; 02323122
 	add r0,sp,#0x10	; 02323124
@@ -6672,10 +6814,10 @@ loc_02323146:
 	ldr r2,[pool_023232D8]	; 023231E4
 	mov r3,#0xa	; 023231E6
 	bl loc_02323C40	; 023231E8
-	bl loc_02325778	; 023231EC
+	bl P1_GetFirmwareUiContext	; 023231EC
 	ldr r0,[r0,#0x4]	; 023231F0
 	mov r1,#0x14	; 023231F2
-	blx loc_0232CF44	; 023231F4
+	blx P1_UnsignedDivMod	; 023231F4
 	cmp r1,#0x1	; 023231F8
 	bne loc_02323222	; 023231FA
 	add r0,sp,#0xc	; 023231FC
@@ -6786,10 +6928,10 @@ loc_023232B6:
 	.byte 0xC0, 0x46	; 023232C0
 pool_023232C0:
 loc_023232C0:
-	.word 0x0233207C	; 023232C0
+	.word P1_BssStart + 0x15FC	; 023232C0
 pool_023232C4:
 loc_023232C4:
-	.word 0x02331FF8	; 023232C4
+	.word P1_BssStart + 0x1578	; 023232C4
 pool_023232C8:
 loc_023232C8:
 	.word 0x02331FFC	; 023232C8
@@ -6807,13 +6949,13 @@ loc_023232D8:
 	.word 0x023A580C	; 023232D8
 pool_023232DC:
 loc_023232DC:
-	.word 0x023306F8	; 023232DC
+	.word P1_Data_023306F8	; 023232DC
 pool_023232E0:
 loc_023232E0:
-	.word 0x02331FF4	; 023232E0
+	.word P1_BssStart + 0x1574	; 023232E0
 pool_023232E4:
 loc_023232E4:
-	.word 0x027FFCE4	; 023232E4
+	.word FirmwareUserSettingsSharedAddress + UserSettingsOptionsOffset	; 023232E4
 
 ; ===== function loc_023232E8 =====
 loc_023232E8:
@@ -6856,7 +6998,7 @@ loc_02323334:
 	.word 0x02332028	; 02323334
 pool_02323338:
 loc_02323338:
-	.word 0x0233207C	; 02323338
+	.word P1_BssStart + 0x15FC	; 02323338
 
 ; ===== function loc_0232333C =====
 loc_0232333C:
@@ -6864,7 +7006,7 @@ loc_0232333C:
 	bx r3	; 0232333E
 pool_02323340:
 loc_02323340:
-	.word 0x023230FD	; 02323340
+	.word loc_023230FC + 1	; 02323340
 
 ; ===== function loc_02323344 =====
 loc_02323344:
@@ -6890,7 +7032,7 @@ loc_02323360:
 	bx lr	; 02323366
 pool_02323368:
 loc_02323368:
-	.word 0x0233207C	; 02323368
+	.word P1_BssStart + 0x15FC	; 02323368
 
 ; ===== function loc_0232336C =====
 loc_0232336C:
@@ -6898,7 +7040,7 @@ loc_0232336C:
 	bx r3	; 0232336E
 pool_02323370:
 loc_02323370:
-	.word 0x023232E9	; 02323370
+	.word loc_023232E8 + 1	; 02323370
 
 ; ===== function loc_02323374 =====
 loc_02323374:
@@ -6916,13 +7058,13 @@ loc_02323374:
 	mov r1,#0x6	; 0232338C
 	ldrsh r1,[r2,r1]	; 0232338E
 	sub r1,#0xf	; 02323390
-	blx loc_0232CD38	; 02323392
+	blx P1_SignedDivMod	; 02323392
 	pop {r4}	; 02323396
 	pop {r3}	; 02323398
 	bx r3	; 0232339A
 pool_0232339C:
 loc_0232339C:
-	.word 0x02332088	; 0232339C
+	.word P1_BssStart + 0x1608	; 0232339C
 
 ; ===== function loc_023233A0 =====
 loc_023233A0:
@@ -6932,7 +7074,7 @@ loc_023233A0:
 	ldr r0,[r0,#0x20]	; 023233A6
 	add r0,r0,#0x1	; 023233A8
 	mov r1,#0x3	; 023233AA
-	blx loc_0232CD38	; 023233AC
+	blx P1_SignedDivMod	; 023233AC
 	cmp r0,#0x0	; 023233B0
 	bne loc_023233B6	; 023233B2
 	mov r0,#0x1	; 023233B4
@@ -6942,7 +7084,7 @@ loc_023233B6:
 	bx r3	; 023233BA
 pool_023233BC:
 loc_023233BC:
-	.word 0x02332308	; 023233BC
+	.word P1_BssStart + 0x1888	; 023233BC
 
 ; ===== function loc_023233C0 =====
 loc_023233C0:
@@ -6955,7 +7097,7 @@ loc_023233C0:
 	add r0,sp,#0x0	; 023233CC
 	add r1,r4,#0x2	; 023233CE
 	ldrb r2,[r4,#0x1]	; 023233D0
-	bl loc_0232CAA8	; 023233D2
+	bl P1_Utf16StrNCpy	; 023233D2
 	mov r2,#0x0	; 023233D6
 	ldrb r0,[r4,#0x1]	; 023233D8
 	lsl r0,r0,#0x1	; 023233DA
@@ -7014,13 +7156,22 @@ loc_02323430:
 	cmp r1,#0x3	; 0232343C
 	bhi loc_023234B0	; 0232343E
 	add r1,r1,r1	; 02323440
+P1_SwitchIndexPC_02323440:
 	add r1,pc	; 02323442
-	ldrh r1,[r1,#0x8]	; 02323444
+	ldrh r1,[r1,#(P1_SwitchTable_02323440 - (P1_SwitchIndexPC_02323440 + 4))]	; 02323444
 	lsl r1,r1,#0x10	; 02323446
 	asr r1,r1,#0x10	; 02323448
+P1_SwitchTargetPC_02323440:
 	add r1,pc	; 0232344A
 	bx r1	; 0232344C
-	.byte 0x09, 0x00, 0x0B, 0x00, 0x63, 0x00, 0x3D, 0x00	; 02323456
+; 表项是相对 ADD 所读 PC 的有符号偏移，保留 ARM/Thumb 状态位。
+; Signed offsets from the ADD's PC, including the ARM/Thumb state bit.
+P1_SwitchTable_02323440:
+	.halfword (loc_02323456 + 1) - (P1_SwitchTargetPC_02323440 + 4)
+	.halfword (loc_02323458 + 1) - (P1_SwitchTargetPC_02323440 + 4)
+	.halfword (loc_023234B0 + 1) - (P1_SwitchTargetPC_02323440 + 4)
+	.halfword (loc_0232348A + 1) - (P1_SwitchTargetPC_02323440 + 4)
+P1_SwitchTable_02323440End:
 loc_02323456:
 	b loc_02323528	; 02323456
 loc_02323458:
@@ -7084,11 +7235,11 @@ loc_023234B6:
 	add r7,r0,#0x0	; 023234C6
 	add r0,r5,#0x0	; 023234C8
 	mov r1,#0x3	; 023234CA
-	blx loc_0232CD38	; 023234CC
+	blx P1_SignedDivMod	; 023234CC
 	add r6,r1,#0x0	; 023234D0
 	add r0,r5,#0x0	; 023234D2
 	mov r1,#0x3	; 023234D4
-	blx loc_0232CD38	; 023234D6
+	blx P1_SignedDivMod	; 023234D6
 	add r2,r0,#0x0	; 023234DA
 	str r4,[sp,#0x0]	; 023234DC
 	add r0,r5,#0x0	; 023234DE
@@ -7132,7 +7283,7 @@ loc_02323528:
 	bx r3	; 0232352E
 pool_02323530:
 loc_02323530:
-	.word 0x02332088	; 02323530
+	.word P1_BssStart + 0x1608	; 02323530
 pool_02323534:
 loc_02323534:
 	.word 0x023306FC	; 02323534
@@ -7141,7 +7292,7 @@ loc_02323538:
 	.word 0x02332094	; 02323538
 pool_0232353C:
 loc_0232353C:
-	.word 0x02332308	; 0232353C
+	.word P1_BssStart + 0x1888	; 0232353C
 pool_02323540:
 loc_02323540:
 	.word 0x023C1178	; 02323540
@@ -7157,7 +7308,7 @@ loc_02323548:
 	bx lr	; 0232354E
 pool_02323550:
 loc_02323550:
-	.word 0x02332088	; 02323550
+	.word P1_BssStart + 0x1608	; 02323550
 
 ; ===== function loc_02323554 =====
 loc_02323554:
@@ -7211,7 +7362,7 @@ loc_02323588:
 	.byte 0xC0, 0x46	; 023235B4
 pool_023235B4:
 loc_023235B4:
-	.word 0x02332088	; 023235B4
+	.word P1_BssStart + 0x1608	; 023235B4
 pool_023235B8:
 loc_023235B8:
 	.word 0x0000035A	; 023235B8
@@ -7223,7 +7374,7 @@ loc_023235C0:
 	.word 0x00000358	; 023235C0
 pool_023235C4:
 loc_023235C4:
-	.word 0x02332308	; 023235C4
+	.word P1_BssStart + 0x1888	; 023235C4
 
 ; ===== function loc_023235C8 =====
 loc_023235C8:
@@ -7276,7 +7427,7 @@ loc_023235FA:
 	bx r3	; 02323622
 pool_02323624:
 loc_02323624:
-	.word 0x02332088	; 02323624
+	.word P1_BssStart + 0x1608	; 02323624
 pool_02323628:
 loc_02323628:
 	.word 0x000002A4	; 02323628
@@ -7344,7 +7495,7 @@ loc_02323692:
 	bx r3	; 02323696
 pool_02323698:
 loc_02323698:
-	.word 0x02332330	; 02323698
+	.word P1_BssStart + 0x18B0	; 02323698
 pool_0232369C:
 loc_0232369C:
 	.word 0x0000FFF5	; 0232369C
@@ -7365,7 +7516,7 @@ loc_023236B0:
 	.byte 0xC0, 0x46	; 023236B8
 pool_023236B8:
 loc_023236B8:
-	.word 0x02332334	; 023236B8
+	.word P1_BssStart + 0x18B4	; 023236B8
 	.byte 0x02, 0x21, 0x02, 0x48, 0x01, 0x60, 0x02, 0x4B, 0x18, 0x47, 0xC0, 0x46, 0x34, 0x23, 0x33, 0x02	; 023236CC
 	.byte 0x25, 0x94, 0x32, 0x02	; 023236D0
 
@@ -7396,7 +7547,7 @@ loc_023236F8:
 	.word 0x00001000	; 023236F8
 pool_023236FC:
 loc_023236FC:
-	.word 0x02332334	; 023236FC
+	.word P1_BssStart + 0x18B4	; 023236FC
 
 ; ===== function loc_02323700 =====
 loc_02323700:
@@ -7406,7 +7557,7 @@ loc_02323700:
 	.byte 0xC0, 0x46	; 02323708
 pool_02323708:
 loc_02323708:
-	.word 0x0232A269	; 02323708
+	.word loc_0232A268 + 1	; 02323708
 
 ; ===== function loc_0232370C =====
 loc_0232370C:
@@ -7418,13 +7569,13 @@ loc_0232370C:
 	.byte 0xC0, 0x46	; 02323718
 pool_02323718:
 loc_02323718:
-	.word 0x0232AE6D	; 02323718
+	.word loc_0232AE6C + 1	; 02323718
 loc_0232371C:
 	ldr r3,[pool_02323720]	; 0232371C
 	bx r3	; 0232371E
 pool_02323720:
 loc_02323720:
-	.word 0x0232A261	; 02323720
+	.word loc_0232A260 + 1	; 02323720
 
 ; ===== function loc_02323724 =====
 loc_02323724:
@@ -7439,7 +7590,7 @@ loc_02323730:
 	.word 0x0233232C	; 02323730
 pool_02323734:
 loc_02323734:
-	.word 0x0232AE6D	; 02323734
+	.word loc_0232AE6C + 1	; 02323734
 
 ; ===== function loc_02323738 =====
 loc_02323738:
@@ -7447,7 +7598,7 @@ loc_02323738:
 	bx r3	; 0232373A
 pool_0232373C:
 loc_0232373C:
-	.word 0x02329D75	; 0232373C
+	.word loc_02329D74 + 1	; 0232373C
 
 ; ===== function loc_02323740 =====
 loc_02323740:
@@ -7506,7 +7657,7 @@ loc_023237A2:
 	ldr r0,[r5,#0x10]	; 023237A2
 	bl loc_023238E0	; 023237A4
 	mov r1,#0x4	; 023237A8
-	blx loc_0232CD38	; 023237AA
+	blx P1_SignedDivMod	; 023237AA
 	str r0,[sp,#0xc]	; 023237AE
 	mov r4,#0x0	; 023237B0
 	ldr r0,[sp,#0x40]	; 023237B2
@@ -7925,6 +8076,7 @@ loc_02323A34:
 	bx r3	; 02323A5E
 
 ; ===== function loc_02323A60 =====
+P1_Entry_02323A60:
 	push {r4,lr}	; 02323A60
 	sub sp,#0x18	; 02323A62
 	add r4,r0,#0x0	; 02323A64
@@ -7998,9 +8150,30 @@ loc_02323AEC:
 	pop {r4}	; 02323B3A
 	pop {r3}	; 02323B3C
 	bx r3	; 02323B3E
-	.byte 0x10, 0xB5, 0x86, 0xB0, 0x04, 0x1C, 0x08, 0x98, 0x00, 0x90, 0x09, 0x98, 0x01, 0x90, 0x0A, 0x98	; 02323B50
-	.byte 0x02, 0x90, 0x0B, 0x98, 0x03, 0x90, 0x00, 0x20, 0xC0, 0x43, 0x04, 0x90, 0x08, 0x1C, 0x11, 0x1C	; 02323B60
-	.byte 0x22, 0x1C, 0x00, 0xF0, 0xC3, 0xF8, 0x06, 0xB0, 0x10, 0xBC, 0x08, 0xBC, 0x18, 0x47, 0x00, 0x00	; 02323B70
+P1_Entry_02323B40:
+	push {r4,lr}	; 02323B40
+	sub sp,#0x18	; 02323B42
+	add r4,r0,#0x0	; 02323B44
+	ldr r0,[sp,#0x20]	; 02323B46
+	str r0,[sp,#0x0]	; 02323B48
+	ldr r0,[sp,#0x24]	; 02323B4A
+	str r0,[sp,#0x4]	; 02323B4C
+	ldr r0,[sp,#0x28]	; 02323B4E
+	str r0,[sp,#0x8]	; 02323B50
+	ldr r0,[sp,#0x2c]	; 02323B52
+	str r0,[sp,#0xc]	; 02323B54
+	mov r0,#0x0	; 02323B56
+	mvn r0,r0	; 02323B58
+	str r0,[sp,#0x10]	; 02323B5A
+	add r0,r1,#0x0	; 02323B5C
+	add r1,r2,#0x0	; 02323B5E
+	add r2,r4,#0x0	; 02323B60
+	bl loc_02323CEC	; 02323B62
+	add sp,#0x18	; 02323B66
+	pop {r4}	; 02323B68
+	pop {r3}	; 02323B6A
+	bx r3	; 02323B6C
+	.byte 0x00, 0x00	; 02323B6E
 
 ; ===== function loc_02323B70 =====
 loc_02323B70:
@@ -8027,6 +8200,7 @@ loc_02323B70:
 	bx r3	; 02323B9A
 
 ; ===== function loc_02323B9C =====
+P1_Entry_02323B9C:
 	push {r4,r5,lr}	; 02323B9C
 	sub sp,#0x14	; 02323B9E
 	add r4,r0,#0x0	; 02323BA0
@@ -8094,6 +8268,7 @@ loc_02323BEC:
 	bx r3	; 02323C16
 
 ; ===== function loc_02323C18 =====
+P1_Entry_02323C18:
 	push {r4,r5,lr}	; 02323C18
 	sub sp,#0x14	; 02323C1A
 	add r4,r0,#0x0	; 02323C1C
@@ -8465,7 +8640,7 @@ loc_02323EAC:
 	.byte 0xC0, 0x46	; 02323EB4
 pool_02323EB4:
 loc_02323EB4:
-	.word 0x02333FC0	; 02323EB4
+	.word P1_BssStart + 0x3540	; 02323EB4
 pool_02323EB8:
 loc_02323EB8:
 	.word 0x023333C0	; 02323EB8
@@ -8477,6 +8652,9 @@ loc_02323EC0:
 	.word 0x023339F0	; 02323EC0
 
 ; ===== function loc_02323EC4 =====
+; 更新 UI 工作缓冲区、清理其数据缓存，并在 VBlank 前提交。
+; Updates UI work buffers, cleans their D-cache, then commits before VBlank.
+.func P1_RefreshFirmwareUiRenderBuffers
 loc_02323EC4:
 	push {r4,r5,r6,r7,lr}	; 02323EC4
 	sub sp,#0xc	; 02323EC6
@@ -8550,10 +8728,10 @@ loc_02323F04:
 	blt loc_02323F04	; 02323F50
 	add r0,r3,#0x0	; 02323F52
 	ldr r1,[pool_02323F88]	; 02323F54
-	blx loc_0232BC04	; 02323F56
+	blx P1_CleanDataCacheRange	; 02323F56
 	ldr r0,[pool_02323F80]	; 02323F5A
 	ldr r1,[pool_02323F88]	; 02323F5C
-	blx loc_0232BC04	; 02323F5E
+	blx P1_CleanDataCacheRange	; 02323F5E
 	mov r1,#0x1	; 02323F62
 	ldr r0,[pool_02323F7C]	; 02323F64
 	str r1,[r0,#0x60]	; 02323F66
@@ -8562,15 +8740,16 @@ loc_02323F04:
 	pop {r4,r5,r6,r7}	; 02323F6E
 	pop {r3}	; 02323F70
 	bx r3	; 02323F72
+.endfunc
 pool_02323F74:
 loc_02323F74:
-	.word 0x023339C0	; 02323F74
+	.word P1_BssStart + 0x2F40	; 02323F74
 pool_02323F78:
 loc_02323F78:
 	.word 0x023333C0	; 02323F78
 pool_02323F7C:
 loc_02323F7C:
-	.word 0x02333FC0	; 02323F7C
+	.word P1_BssStart + 0x3540	; 02323F7C
 pool_02323F80:
 loc_02323F80:
 	.word 0x023339F0	; 02323F80
@@ -8613,10 +8792,10 @@ loc_02323FA4:
 	.byte 0xC0, 0x46	; 02323FB8
 pool_02323FB8:
 loc_02323FB8:
-	.word 0x02333FC0	; 02323FB8
+	.word P1_BssStart + 0x3540	; 02323FB8
 pool_02323FBC:
 loc_02323FBC:
-	.word 0x023339C0	; 02323FBC
+	.word P1_BssStart + 0x2F40	; 02323FBC
 
 ; ===== function loc_02323FC0 =====
 loc_02323FC0:
@@ -8742,12 +8921,43 @@ loc_02324098:
 pool_0232409C:
 loc_0232409C:
 	.word 0x00000604	; 0232409C
-	.byte 0x00, 0x04, 0x02, 0x0C, 0x05, 0x48, 0xC1, 0x88, 0x91, 0x43, 0xC1, 0x80, 0x81, 0x88, 0x91, 0x43	; 023240B0
-	.byte 0x81, 0x80, 0x01, 0x89, 0x91, 0x43, 0x01, 0x81, 0x70, 0x47, 0xC0, 0x46, 0x24, 0x40, 0x33, 0x02	; 023240C0
-	.byte 0x00, 0x21, 0x01, 0x48, 0x41, 0x62, 0x70, 0x47, 0x24, 0x40, 0x33, 0x02, 0x01, 0x21, 0x01, 0x48	; 023240D0
-	.byte 0x41, 0x62, 0x70, 0x47, 0x24, 0x40, 0x33, 0x02, 0x01, 0x48, 0x00, 0x68, 0x70, 0x47, 0xC0, 0x46	; 023240E0
-	.byte 0x24, 0x40, 0x33, 0x02, 0x01, 0x49, 0x48, 0x81, 0x70, 0x47, 0xC0, 0x46, 0x24, 0x40, 0x33, 0x02	; 023240F0
-	.byte 0x01, 0x48, 0x80, 0x69, 0x70, 0x47, 0xC0, 0x46, 0x24, 0x40, 0x33, 0x02	; 023240FC
+	.byte 0x00, 0x04, 0x02, 0x0C, 0x05, 0x48, 0xC1, 0x88, 0x91, 0x43, 0xC1, 0x80, 0x81, 0x88, 0x91, 0x43	; 023240A0
+	.byte 0x81, 0x80, 0x01, 0x89, 0x91, 0x43, 0x01, 0x81, 0x70, 0x47, 0xC0, 0x46, 0x24, 0x40, 0x33, 0x02	; 023240B0
+P1_Entry_023240C0:
+	mov r1,#0x0	; 023240C0
+	ldr r0,[pool_023240C8]	; 023240C2
+	str r1,[r0,#0x24]	; 023240C4
+	bx lr	; 023240C6
+pool_023240C8:
+	.word P1_BssStart + 0x35A4	; 023240C8
+P1_Entry_023240CC:
+	mov r1,#0x1	; 023240CC
+	ldr r0,[pool_023240D4]	; 023240CE
+	str r1,[r0,#0x24]	; 023240D0
+	bx lr	; 023240D2
+pool_023240D4:
+	.word P1_BssStart + 0x35A4	; 023240D4
+P1_Entry_023240D8:
+	ldr r0,[pool_023240E0]	; 023240D8
+	ldr r0,[r0,#0x0]	; 023240DA
+	bx lr	; 023240DC
+	.byte 0xC0, 0x46	; 023240DE
+pool_023240E0:
+	.word P1_BssStart + 0x35A4	; 023240E0
+P1_Entry_023240E4:
+	ldr r1,[pool_023240EC]	; 023240E4
+	strh r0,[r1,#0xa]	; 023240E6
+	bx lr	; 023240E8
+	.byte 0xC0, 0x46	; 023240EA
+pool_023240EC:
+	.word P1_BssStart + 0x35A4	; 023240EC
+P1_Entry_023240F0:
+	ldr r0,[pool_023240F8]	; 023240F0
+	ldr r0,[r0,#0x18]	; 023240F2
+	bx lr	; 023240F4
+	.byte 0xC0, 0x46	; 023240F6
+pool_023240F8:
+	.word P1_BssStart + 0x35A4	; 023240F8
 
 ; ===== function loc_023240FC =====
 loc_023240FC:
@@ -8757,7 +8967,7 @@ loc_023240FC:
 	.byte 0xC0, 0x46	; 02324104
 pool_02324104:
 loc_02324104:
-	.word 0x02334024	; 02324104
+	.word P1_BssStart + 0x35A4	; 02324104
 
 ; ===== function loc_02324108 =====
 loc_02324108:
@@ -8767,7 +8977,7 @@ loc_02324108:
 	.byte 0xC0, 0x46	; 02324110
 pool_02324110:
 loc_02324110:
-	.word 0x02334024	; 02324110
+	.word P1_BssStart + 0x35A4	; 02324110
 
 ; ===== function loc_02324114 =====
 loc_02324114:
@@ -8777,7 +8987,7 @@ loc_02324114:
 	.byte 0xC0, 0x46	; 0232411C
 pool_0232411C:
 loc_0232411C:
-	.word 0x02334024	; 0232411C
+	.word P1_BssStart + 0x35A4	; 0232411C
 
 ; ===== function loc_02324120 =====
 loc_02324120:
@@ -8787,7 +8997,7 @@ loc_02324120:
 	.byte 0xC0, 0x46	; 02324128
 pool_02324128:
 loc_02324128:
-	.word 0x02334024	; 02324128
+	.word P1_BssStart + 0x35A4	; 02324128
 	.byte 0x02, 0x49, 0x09, 0x89, 0x01, 0x40, 0x08, 0x1C, 0x70, 0x47, 0xC0, 0x46, 0x24, 0x40, 0x33, 0x02	; 0232413C
 
 ; ===== function loc_0232413C =====
@@ -8800,7 +9010,7 @@ loc_0232413C:
 	.byte 0xC0, 0x46	; 02324148
 pool_02324148:
 loc_02324148:
-	.word 0x02334024	; 02324148
+	.word P1_BssStart + 0x35A4	; 02324148
 
 ; ===== function loc_0232414C =====
 loc_0232414C:
@@ -8812,7 +9022,7 @@ loc_0232414C:
 	.byte 0xC0, 0x46	; 02324158
 pool_02324158:
 loc_02324158:
-	.word 0x02334024	; 02324158
+	.word P1_BssStart + 0x35A4	; 02324158
 
 ; ===== function loc_0232415C =====
 loc_0232415C:
@@ -8946,19 +9156,19 @@ loc_0232423E:
 	.byte 0xC0, 0x46	; 02324248
 pool_02324248:
 loc_02324248:
-	.word 0x04000130	; 02324248
+	.word REG_KEYINPUT	; 02324248
 pool_0232424C:
 loc_0232424C:
-	.word 0x027FFFA8	; 0232424C
+	.word FirmwareSystemWorkAddress + SystemWorkKeyXYStateOffset	; 0232424C
 pool_02324250:
 loc_02324250:
 	.word 0x00002FFF	; 02324250
 pool_02324254:
 loc_02324254:
-	.word 0x02334024	; 02324254
+	.word P1_BssStart + 0x35A4	; 02324254
 pool_02324258:
 loc_02324258:
-	.word 0x02334030	; 02324258
+	.word P1_BssStart + 0x35B0	; 02324258
 
 ; ===== function loc_0232425C =====
 loc_0232425C:
@@ -8973,7 +9183,7 @@ loc_0232425C:
 	bx r3	; 0232426E
 pool_02324270:
 loc_02324270:
-	.word 0x02334024	; 02324270
+	.word P1_BssStart + 0x35A4	; 02324270
 
 ; ===== function loc_02324274 =====
 loc_02324274:
@@ -9016,15 +9226,69 @@ loc_023242B0:
 	add sp,#0x4	; 023242B0
 	pop {r3}	; 023242B2
 	bx r3	; 023242B4
-	.byte 0x00, 0x00, 0x30, 0xB5, 0x81, 0xB0, 0x05, 0x1C, 0x0C, 0x1C, 0x00, 0xF0, 0x42, 0xF8, 0x00, 0x28	; 023242C6
-	.byte 0x11, 0xD1, 0x28, 0x1C, 0x21, 0x1C, 0x00, 0xF0, 0x34, 0xF8, 0x01, 0x28, 0x0D, 0xD1, 0xFF, 0xF7	; 023242D6
-	.byte 0x0C, 0xFF, 0x1E, 0x28, 0x09, 0xD9, 0xFF, 0xF7, 0x08, 0xFF, 0x1E, 0x38, 0x0A, 0x21, 0x08, 0xF0	; 023242E6
-	.byte 0x2E, 0xEE, 0x00, 0x29, 0x01, 0xD1, 0x01, 0x20, 0x00, 0xE0, 0x00, 0x20, 0x01, 0xB0, 0x30, 0xBC	; 023242F6
-	.byte 0x08, 0xBC, 0x18, 0x47, 0x00, 0x00, 0x10, 0xB5, 0x04, 0x1C, 0xFF, 0xF7, 0x24, 0xFF, 0x00, 0x28	; 02324306
-	.byte 0x10, 0xD1, 0x20, 0x1C, 0xFF, 0xF7, 0x17, 0xFF, 0x00, 0x28, 0x0D, 0xD0, 0xFF, 0xF7, 0xE1, 0xFE	; 02324316
-	.byte 0x1E, 0x28, 0x09, 0xD9, 0xFF, 0xF7, 0xDD, 0xFE, 0x1E, 0x38, 0x0A, 0x21, 0x08, 0xF0, 0x10, 0xEE	; 02324326
-	.byte 0x00, 0x29, 0x01, 0xD1, 0x01, 0x20, 0x00, 0xE0, 0x00, 0x20, 0x10, 0xBC, 0x08, 0xBC, 0x18, 0x47	; 02324336
-	.byte 0x00, 0x00	; 02324338
+	.byte 0x00, 0x00	; 023242B6
+P1_Entry_023242B8:
+	push {r4,r5,lr}	; 023242B8
+	sub sp,#0x4	; 023242BA
+	add r5,r0,#0x0	; 023242BC
+	add r4,r1,#0x0	; 023242BE
+	bl loc_02324348	; 023242C0
+	cmp r0,#0x0	; 023242C4
+	bne P1_Entry_023242EC	; 023242C6
+	add r0,r5,#0x0	; 023242C8
+	add r1,r4,#0x0	; 023242CA
+	bl loc_02324338	; 023242CC
+	cmp r0,#0x1	; 023242D0
+	bne P1_Entry_023242F0	; 023242D2
+	bl P1_Entry_023240F0	; 023242D4
+	cmp r0,#0x1e	; 023242D8
+	bls P1_Entry_023242F0	; 023242DA
+	bl P1_Entry_023240F0	; 023242DC
+	sub r0,#0x1e	; 023242E0
+	mov r1,#0xa	; 023242E2
+	blx P1_UnsignedDivMod	; 023242E4
+	cmp r1,#0x0	; 023242E8
+	bne P1_Entry_023242F0	; 023242EA
+P1_Entry_023242EC:
+	mov r0,#0x1	; 023242EC
+	b P1_Entry_023242F2	; 023242EE
+P1_Entry_023242F0:
+	mov r0,#0x0	; 023242F0
+P1_Entry_023242F2:
+	add sp,#0x4	; 023242F2
+	pop {r4,r5}	; 023242F4
+	pop {r3}	; 023242F6
+	bx r3	; 023242F8
+	.byte 0x00, 0x00	; 023242FA
+P1_Entry_023242FC:
+	push {r4,lr}	; 023242FC
+	add r4,r0,#0x0	; 023242FE
+	bl loc_0232414C	; 02324300
+	cmp r0,#0x0	; 02324304
+	bne P1_Entry_0232432A	; 02324306
+	add r0,r4,#0x0	; 02324308
+	bl loc_0232413C	; 0232430A
+	cmp r0,#0x0	; 0232430E
+	beq P1_Entry_0232432E	; 02324310
+	bl P1_Entry_023240D8	; 02324312
+	cmp r0,#0x1e	; 02324316
+	bls P1_Entry_0232432E	; 02324318
+	bl P1_Entry_023240D8	; 0232431A
+	sub r0,#0x1e	; 0232431E
+	mov r1,#0xa	; 02324320
+	blx P1_UnsignedDivMod	; 02324322
+	cmp r1,#0x0	; 02324326
+	bne P1_Entry_0232432E	; 02324328
+P1_Entry_0232432A:
+	mov r0,#0x1	; 0232432A
+	b P1_Entry_02324330	; 0232432C
+P1_Entry_0232432E:
+	mov r0,#0x0	; 0232432E
+P1_Entry_02324330:
+	pop {r4}	; 02324330
+	pop {r3}	; 02324332
+	bx r3	; 02324334
+	.byte 0x00, 0x00	; 02324336
 
 ; ===== function loc_02324338 =====
 loc_02324338:
@@ -9226,7 +9490,7 @@ loc_02324492:
 	sub r0,r6,r4	; 02324496
 	lsl r0,r0,#0xc	; 02324498
 	ldr r1,[sp,#0x4]	; 0232449A
-	blx loc_0232CD38	; 0232449C
+	blx P1_SignedDivMod	; 0232449C
 	str r0,[sp,#0xc]	; 023244A0
 	mov r6,#0x0	; 023244A2
 	add r7,r6,#0x0	; 023244A4
@@ -9261,7 +9525,7 @@ loc_023244D4:
 	sub r0,r7,r5	; 023244D8
 	lsl r0,r0,#0xc	; 023244DA
 	ldr r1,[sp,#0x8]	; 023244DC
-	blx loc_0232CD38	; 023244DE
+	blx P1_SignedDivMod	; 023244DE
 	str r0,[sp,#0x10]	; 023244E2
 	mov r6,#0x0	; 023244E4
 	add r7,r6,#0x0	; 023244E6
@@ -9325,7 +9589,7 @@ loc_02324518:
 	str r0,[sp,#0x14]	; 02324548
 	lsl r0,r0,#0x4	; 0232454A
 	mov r1,#0x8	; 0232454C
-	blx loc_0232CD38	; 0232454E
+	blx P1_SignedDivMod	; 0232454E
 	ldr r1,[r5,#0x0]	; 02324552
 	ldr r2,[sp,#0x14]	; 02324554
 	cmp r4,r2	; 02324556
@@ -9380,14 +9644,27 @@ loc_023245A4:
 	cmp r0,#0x8	; 023245A8
 	bhi loc_023245FA	; 023245AA
 	add r0,r0,r0	; 023245AC
+P1_SwitchIndexPC_023245AC:
 	add r0,pc	; 023245AE
-	ldrh r0,[r0,#0x8]	; 023245B0
+	ldrh r0,[r0,#(P1_SwitchTable_023245AC - (P1_SwitchIndexPC_023245AC + 4))]	; 023245B0
 	lsl r0,r0,#0x10	; 023245B2
 	asr r0,r0,#0x10	; 023245B4
+P1_SwitchTargetPC_023245AC:
 	add r0,pc	; 023245B6
 	bx r0	; 023245B8
-	.byte 0x41, 0x00, 0x13, 0x00, 0x1F, 0x00, 0x41, 0x00, 0x2B, 0x00, 0x41, 0x00, 0x41, 0x00, 0x41, 0x00	; 023245CA
-	.byte 0x37, 0x00	; 023245CC
+; 表项是相对 ADD 所读 PC 的有符号偏移，保留 ARM/Thumb 状态位。
+; Signed offsets from the ADD's PC, including the ARM/Thumb state bit.
+P1_SwitchTable_023245AC:
+	.halfword (loc_023245FA + 1) - (P1_SwitchTargetPC_023245AC + 4)
+	.halfword (loc_023245CC + 1) - (P1_SwitchTargetPC_023245AC + 4)
+	.halfword (loc_023245D8 + 1) - (P1_SwitchTargetPC_023245AC + 4)
+	.halfword (loc_023245FA + 1) - (P1_SwitchTargetPC_023245AC + 4)
+	.halfword (loc_023245E4 + 1) - (P1_SwitchTargetPC_023245AC + 4)
+	.halfword (loc_023245FA + 1) - (P1_SwitchTargetPC_023245AC + 4)
+	.halfword (loc_023245FA + 1) - (P1_SwitchTargetPC_023245AC + 4)
+	.halfword (loc_023245FA + 1) - (P1_SwitchTargetPC_023245AC + 4)
+	.halfword (loc_023245F0 + 1) - (P1_SwitchTargetPC_023245AC + 4)
+P1_SwitchTable_023245ACEnd:
 loc_023245CC:
 	ldr r0,[pool_02324600]	; 023245CC
 	mov r1,#0x0	; 023245CE
@@ -9423,6 +9700,7 @@ loc_02324604:
 	.word 0x00000600	; 02324604
 
 ; ===== function loc_02324608 =====
+P1_Entry_02324608:
 	push {lr}	; 02324608
 	sub sp,#0x4	; 0232460A
 	mov r0,#0x0	; 0232460C
@@ -9433,7 +9711,7 @@ loc_02324604:
 	blx loc_0232DE78	; 02324616
 	ldr r0,[pool_02324628]	; 0232461A
 	ldr r1,[pool_0232462C]	; 0232461C
-	blx loc_0232BC04	; 0232461E
+	blx P1_CleanDataCacheRange	; 0232461E
 	add sp,#0x4	; 02324622
 	pop {r3}	; 02324624
 	bx r3	; 02324626
@@ -9546,7 +9824,7 @@ loc_02324686:
 	ldr r0,[sp,#0x48]	; 023246F8
 	sub r0,r0,#0x1	; 023246FA
 	ldr r1,[sp,#0x38]	; 023246FC
-	blx loc_0232CD38	; 023246FE
+	blx P1_SignedDivMod	; 023246FE
 	add r0,r0,#0x1	; 02324702
 	strh r0,[r4,#0x18]	; 02324704
 	b loc_02324712	; 02324706
@@ -9613,7 +9891,7 @@ loc_02324772:
 	.byte 0xC0, 0x46	; 0232477C
 pool_0232477C:
 loc_0232477C:
-	.word 0x02330708	; 0232477C
+	.word P1_Data_02330708	; 0232477C
 pool_02324780:
 loc_02324780:
 	.word 0x0000FFFF	; 02324780
@@ -9628,11 +9906,11 @@ loc_02324784:
 	str r3,[sp,#0x18]	; 0232478E
 	ldr r0,[sp,#0x4c]	; 02324790
 	mov r1,#0x8	; 02324792
-	blx loc_0232CD38	; 02324794
+	blx P1_SignedDivMod	; 02324794
 	add r6,r0,#0x0	; 02324798
 	ldr r0,[sp,#0x50]	; 0232479A
 	mov r1,#0x8	; 0232479C
-	blx loc_0232CD38	; 0232479E
+	blx P1_SignedDivMod	; 0232479E
 	mul r6,r0	; 023247A2
 	ldr r1,[sp,#0x54]	; 023247A4
 	ldrh r0,[r5,#0xc]	; 023247A6
@@ -9649,7 +9927,7 @@ loc_02324784:
 	ldr r1,[sp,#0x50]	; 023247C0
 	mul r0,r1	; 023247C2
 	mov r1,#0x2	; 023247C4
-	blx loc_0232CD38	; 023247C6
+	blx P1_SignedDivMod	; 023247C6
 	add r2,r0,#0x0	; 023247CA
 	ldr r0,[sp,#0x20]	; 023247CC
 	ldr r1,[r5,#0x14]	; 023247CE
@@ -9750,7 +10028,7 @@ loc_0232485E:
 	bl loc_02328CC8	; 02324890
 	add r0,r6,#0x0	; 02324894
 	mov r1,#0x4	; 02324896
-	blx loc_0232CD38	; 02324898
+	blx P1_SignedDivMod	; 02324898
 	add sp,#0x34	; 0232489C
 	pop {r4,r5,r6,r7}	; 0232489E
 	pop {r3}	; 023248A0
@@ -9823,11 +10101,11 @@ loc_02324920:
 	add r5,r1,#0x0	; 02324924
 	sub r0,r0,#0x1	; 02324926
 	mov r1,#0x8	; 02324928
-	blx loc_0232CD38	; 0232492A
+	blx P1_SignedDivMod	; 0232492A
 	add r4,r0,#0x1	; 0232492E
 	sub r0,r5,#0x1	; 02324930
 	mov r1,#0x8	; 02324932
-	blx loc_0232CD38	; 02324934
+	blx P1_SignedDivMod	; 02324934
 	add r0,r0,#0x1	; 02324938
 	cmp r4,#0x2	; 0232493A
 	bgt loc_0232494A	; 0232493C
@@ -10088,13 +10366,13 @@ loc_02324AB0:
 	mul r2,r1	; 02324AD2
 	mul r0,r2	; 02324AD4
 	mov r1,#0x2	; 02324AD6
-	blx loc_0232CD38	; 02324AD8
+	blx P1_SignedDivMod	; 02324AD8
 	add r7,r0,#0x0	; 02324ADC
 	ldr r0,[r5,#0x24]	; 02324ADE
 	ldr r0,[r0,#0x14]	; 02324AE0
 	add r0,r0,r4	; 02324AE2
 	add r1,r7,#0x0	; 02324AE4
-	blx loc_0232BC04	; 02324AE6
+	blx P1_CleanDataCacheRange	; 02324AE6
 	ldr r1,[r5,#0x24]	; 02324AEA
 	ldrh r0,[r1,#0x10]	; 02324AEC
 	cmp r0,#0x0	; 02324AEE
@@ -10299,7 +10577,7 @@ loc_02324C2C:
 	bx r3	; 02324C62
 pool_02324C64:
 loc_02324C64:
-	.word 0x027FFCE4	; 02324C64
+	.word FirmwareUserSettingsSharedAddress + UserSettingsOptionsOffset	; 02324C64
 pool_02324C68:
 loc_02324C68:
 	.word 0x00010000	; 02324C68
@@ -10316,7 +10594,7 @@ loc_02324C6C:
 	.byte 0xC0, 0x46	; 02324C7C
 pool_02324C7C:
 loc_02324C7C:
-	.word 0x0233464C	; 02324C7C
+	.word P1_BssStart + 0x3BCC	; 02324C7C
 pool_02324C80:
 loc_02324C80:
 	.word 0x0234467C	; 02324C80
@@ -10334,7 +10612,7 @@ loc_02324C88:
 	bx lr	; 02324C92
 pool_02324C94:
 loc_02324C94:
-	.word 0x0233464C	; 02324C94
+	.word P1_BssStart + 0x3BCC	; 02324C94
 pool_02324C98:
 loc_02324C98:
 	.word 0x0233467C	; 02324C98
@@ -10346,7 +10624,11 @@ loc_02324C9C:
 pool_02324CA0:
 loc_02324CA0:
 	.word 0x0235469C	; 02324CA0
-	.byte 0x00, 0x48, 0x70, 0x47, 0x7C, 0x46, 0x35, 0x02	; 02324CAC
+P1_Entry_02324CA4:
+	ldr r0,[pool_02324CA8]	; 02324CA4
+	bx lr	; 02324CA6
+pool_02324CA8:
+	.word 0x0235467C	; 02324CA8
 
 ; ===== function loc_02324CAC =====
 loc_02324CAC:
@@ -10512,10 +10794,10 @@ loc_02324DAE:
 	.byte 0xC0, 0x46	; 02324DC4
 pool_02324DC4:
 loc_02324DC4:
-	.word 0x02354704	; 02324DC4
+	.word P1_BssStart + 0x23C84	; 02324DC4
 pool_02324DC8:
 loc_02324DC8:
-	.word 0x02354700	; 02324DC8
+	.word P1_BssStart + 0x23C80	; 02324DC8
 pool_02324DCC:
 loc_02324DCC:
 	.word 0x0000FFFF	; 02324DCC
@@ -10531,7 +10813,7 @@ loc_02324DD4:
 	bx lr	; 02324DDA
 pool_02324DDC:
 loc_02324DDC:
-	.word 0x02330728	; 02324DDC
+	.word P1_Data_02330728	; 02324DDC
 
 ; ===== function loc_02324DE0 =====
 loc_02324DE0:
@@ -10541,10 +10823,10 @@ loc_02324DE0:
 	bx r3	; 02324DE6
 pool_02324DE8:
 loc_02324DE8:
-	.word 0x023546FC	; 02324DE8
+	.word P1_BssStart + 0x23C7C	; 02324DE8
 pool_02324DEC:
 loc_02324DEC:
-	.word 0x02324D31	; 02324DEC
+	.word loc_02324D30 + 1	; 02324DEC
 
 ; ===== function loc_02324DF0 =====
 loc_02324DF0:
@@ -10554,7 +10836,7 @@ loc_02324DF0:
 	.byte 0xC0, 0x46	; 02324DF8
 pool_02324DF8:
 loc_02324DF8:
-	.word 0x023546FC	; 02324DF8
+	.word P1_BssStart + 0x23C7C	; 02324DF8
 
 ; ===== function loc_02324DFC =====
 loc_02324DFC:
@@ -10599,10 +10881,10 @@ loc_02324E40:
 	.word 0x02354700	; 02324E40
 pool_02324E44:
 loc_02324E44:
-	.word 0x027FFCE4	; 02324E44
+	.word FirmwareUserSettingsSharedAddress + UserSettingsOptionsOffset	; 02324E44
 pool_02324E48:
 loc_02324E48:
-	.word 0x023546FC	; 02324E48
+	.word P1_BssStart + 0x23C7C	; 02324E48
 
 ; ===== function loc_02324E4C =====
 loc_02324E4C:
@@ -10647,21 +10929,116 @@ loc_02324E88:
 pool_02324E8C:
 loc_02324E8C:
 	.word 0x31544144	; 02324E8C
-	.byte 0x01, 0x48, 0xC0, 0x69, 0x70, 0x47, 0xC0, 0x46, 0x30, 0x4B, 0x35, 0x02, 0x00, 0xB5, 0x81, 0xB0	; 02324EA0
-	.byte 0x06, 0x48, 0x07, 0x49, 0x35, 0x22, 0xFF, 0xF7, 0x7B, 0xFE, 0x06, 0x48, 0x04, 0x49, 0x36, 0x22	; 02324EB0
-	.byte 0xFF, 0xF7, 0x76, 0xFE, 0x01, 0xB0, 0x08, 0xBC, 0x18, 0x47, 0xC0, 0x46, 0x90, 0x4B, 0x35, 0x02	; 02324EC0
-	.byte 0x84, 0x5B, 0x3A, 0x02, 0xBC, 0x4B, 0x35, 0x02, 0x70, 0xB5, 0x00, 0x24, 0xE5, 0x43, 0x27, 0x48	; 02324ED0
-	.byte 0x81, 0x69, 0x02, 0x29, 0x45, 0xD1, 0xC0, 0x69, 0x01, 0x28, 0x42, 0xD1, 0x26, 0x1C, 0x24, 0x48	; 02324EE0
-	.byte 0x24, 0x49, 0xFF, 0xF7, 0x45, 0xFA, 0x22, 0x48, 0x01, 0x21, 0xFF, 0xF7, 0x37, 0xFA, 0x00, 0x28	; 02324EF0
-	.byte 0x03, 0xD0, 0x01, 0x24, 0x1D, 0x48, 0x04, 0x62, 0x09, 0xE0, 0x1D, 0x48, 0x21, 0x00, 0xFF, 0xF7	; 02324F00
-	.byte 0x2D, 0xFA, 0x00, 0x28, 0x03, 0xD0, 0x21, 0x00, 0x18, 0x48, 0x01, 0x62, 0x01, 0x26, 0x20, 0x20	; 02324F10
-	.byte 0xFF, 0xF7, 0x1C, 0xF9, 0x00, 0x28, 0x06, 0xD0, 0x00, 0x21, 0x14, 0x48, 0x01, 0x62, 0x1D, 0x20	; 02324F20
-	.byte 0xFE, 0xF7, 0x00, 0xFC, 0x1D, 0xE0, 0x10, 0x20, 0xFF, 0xF7, 0x10, 0xF9, 0x00, 0x28, 0x06, 0xD0	; 02324F30
-	.byte 0x01, 0x21, 0x0E, 0x48, 0x01, 0x62, 0x1D, 0x20, 0xFE, 0xF7, 0xF4, 0xFB, 0x11, 0xE0, 0x01, 0x20	; 02324F40
-	.byte 0xFF, 0xF7, 0x04, 0xF9, 0x00, 0x28, 0x01, 0xD1, 0x00, 0x2C, 0x02, 0xD0, 0x07, 0x48, 0x05, 0x6A	; 02324F50
-	.byte 0x07, 0xE0, 0x02, 0x20, 0xFF, 0xF7, 0xFA, 0xF8, 0x00, 0x28, 0x01, 0xD1, 0x00, 0x2E, 0x00, 0xD0	; 02324F60
-	.byte 0x00, 0x25, 0x28, 0x1C, 0x70, 0xBC, 0x08, 0xBC, 0x18, 0x47, 0xC0, 0x46, 0x30, 0x4B, 0x35, 0x02	; 02324F70
-	.byte 0x58, 0x4B, 0x35, 0x02, 0x1C, 0x4B, 0x3A, 0x02	; 02324F78
+	.byte 0x01, 0x48, 0xC0, 0x69, 0x70, 0x47, 0xC0, 0x46, 0x30, 0x4B, 0x35, 0x02	; 02324E90
+P1_Entry_02324E9C:
+	push {lr}	; 02324E9C
+	sub sp,#0x4	; 02324E9E
+	ldr r0,[pool_02324EBC]	; 02324EA0
+	ldr r1,[pool_02324EC0]	; 02324EA2
+	mov r2,#0x35	; 02324EA4
+	bl loc_02324BA0	; 02324EA6
+	ldr r0,[pool_02324EC4]	; 02324EAA
+	ldr r1,[pool_02324EC0]	; 02324EAC
+	mov r2,#0x36	; 02324EAE
+	bl loc_02324BA0	; 02324EB0
+	add sp,#0x4	; 02324EB4
+	pop {r3}	; 02324EB6
+	bx r3	; 02324EB8
+	.byte 0xC0, 0x46	; 02324EBA
+pool_02324EBC:
+	.word 0x02354B90	; 02324EBC
+pool_02324EC0:
+	.word 0x023A5B84	; 02324EC0
+pool_02324EC4:
+	.word 0x02354BBC	; 02324EC4
+P1_Entry_02324EC8:
+	push {r4,r5,r6,lr}	; 02324EC8
+	mov r4,#0x0	; 02324ECA
+	mvn r5,r4	; 02324ECC
+	ldr r0,[pool_02324F6C]	; 02324ECE
+	ldr r1,[r0,#0x18]	; 02324ED0
+	cmp r1,#0x2	; 02324ED2
+	bne P1_Entry_02324F62	; 02324ED4
+	ldr r0,[r0,#0x1c]	; 02324ED6
+	cmp r0,#0x1	; 02324ED8
+	bne P1_Entry_02324F62	; 02324EDA
+	add r6,r4,#0x0	; 02324EDC
+	ldr r0,[pool_02324F70]	; 02324EDE
+	ldr r1,[pool_02324F74]	; 02324EE0
+	bl loc_02324370	; 02324EE2
+	ldr r0,[pool_02324F70]	; 02324EE6
+	mov r1,#0x1	; 02324EE8
+	bl loc_0232435C	; 02324EEA
+	cmp r0,#0x0	; 02324EEE
+	beq P1_Entry_02324EFA	; 02324EF0
+	mov r4,#0x1	; 02324EF2
+	ldr r0,[pool_02324F6C]	; 02324EF4
+	str r4,[r0,#0x20]	; 02324EF6
+	b P1_Entry_02324F0E	; 02324EF8
+P1_Entry_02324EFA:
+	ldr r0,[pool_02324F70]	; 02324EFA
+	lsl r1,r4,#0	; 02324EFC
+	bl loc_0232435C	; 02324EFE
+	cmp r0,#0x0	; 02324F02
+	beq P1_Entry_02324F0E	; 02324F04
+	lsl r1,r4,#0	; 02324F06
+	ldr r0,[pool_02324F6C]	; 02324F08
+	str r1,[r0,#0x20]	; 02324F0A
+	mov r6,#0x1	; 02324F0C
+P1_Entry_02324F0E:
+	mov r0,#0x20	; 02324F0E
+	bl loc_0232414C	; 02324F10
+	cmp r0,#0x0	; 02324F14
+	beq P1_Entry_02324F26	; 02324F16
+	mov r1,#0x0	; 02324F18
+	ldr r0,[pool_02324F6C]	; 02324F1A
+	str r1,[r0,#0x20]	; 02324F1C
+	mov r0,#0x1d	; 02324F1E
+	bl loc_02323724	; 02324F20
+	b P1_Entry_02324F62	; 02324F24
+P1_Entry_02324F26:
+	mov r0,#0x10	; 02324F26
+	bl loc_0232414C	; 02324F28
+	cmp r0,#0x0	; 02324F2C
+	beq P1_Entry_02324F3E	; 02324F2E
+	mov r1,#0x1	; 02324F30
+	ldr r0,[pool_02324F6C]	; 02324F32
+	str r1,[r0,#0x20]	; 02324F34
+	mov r0,#0x1d	; 02324F36
+	bl loc_02323724	; 02324F38
+	b P1_Entry_02324F62	; 02324F3C
+P1_Entry_02324F3E:
+	mov r0,#0x1	; 02324F3E
+	bl loc_0232414C	; 02324F40
+	cmp r0,#0x0	; 02324F44
+	bne P1_Entry_02324F4C	; 02324F46
+	cmp r4,#0x0	; 02324F48
+	beq P1_Entry_02324F52	; 02324F4A
+P1_Entry_02324F4C:
+	ldr r0,[pool_02324F6C]	; 02324F4C
+	ldr r5,[r0,#0x20]	; 02324F4E
+	b P1_Entry_02324F62	; 02324F50
+P1_Entry_02324F52:
+	mov r0,#0x2	; 02324F52
+	bl loc_0232414C	; 02324F54
+	cmp r0,#0x0	; 02324F58
+	bne P1_Entry_02324F60	; 02324F5A
+	cmp r6,#0x0	; 02324F5C
+	beq P1_Entry_02324F62	; 02324F5E
+P1_Entry_02324F60:
+	mov r5,#0x0	; 02324F60
+P1_Entry_02324F62:
+	add r0,r5,#0x0	; 02324F62
+	pop {r4,r5,r6}	; 02324F64
+	pop {r3}	; 02324F66
+	bx r3	; 02324F68
+	.byte 0xC0, 0x46	; 02324F6A
+pool_02324F6C:
+	.word P1_BssStart + 0x240B0	; 02324F6C
+pool_02324F70:
+	.word 0x02354B58	; 02324F70
+pool_02324F74:
+	.word 0x023A4B1C	; 02324F74
 
 ; ===== function loc_02324F78 =====
 loc_02324F78:
@@ -10690,7 +11067,7 @@ loc_02324F98:
 	sub r0,r1,r2	; 02324FA4
 	mov r2,#0x78	; 02324FA6
 	mul r0,r2	; 02324FA8
-	blx loc_0232CD38	; 02324FAA
+	blx P1_SignedDivMod	; 02324FAA
 	ldr r1,[pool_02325058]	; 02324FAE
 	str r0,[r1,#0x0]	; 02324FB0
 	b loc_02325050	; 02324FB2
@@ -10765,7 +11142,7 @@ loc_02325028:
 	sub r0,r1,r2	; 02325034
 	mov r2,#0x78	; 02325036
 	mul r0,r2	; 02325038
-	blx loc_0232CD38	; 0232503A
+	blx P1_SignedDivMod	; 0232503A
 	mov r1,#0x78	; 0232503E
 	sub r1,r1,r0	; 02325040
 	ldr r0,[pool_02325058]	; 02325042
@@ -10781,7 +11158,7 @@ loc_02325050:
 	.byte 0xC0, 0x46	; 02325058
 pool_02325058:
 loc_02325058:
-	.word 0x02354B30	; 02325058
+	.word P1_BssStart + 0x240B0	; 02325058
 
 ; ===== function loc_0232505C =====
 loc_0232505C:
@@ -10796,7 +11173,7 @@ loc_0232506A:
 	bx lr	; 0232506A
 pool_0232506C:
 loc_0232506C:
-	.word 0x02354B30	; 0232506C
+	.word P1_BssStart + 0x240B0	; 0232506C
 
 ; ===== function loc_02325070 =====
 loc_02325070:
@@ -10806,7 +11183,7 @@ loc_02325070:
 	.byte 0xC0, 0x46	; 02325078
 pool_02325078:
 loc_02325078:
-	.word 0x02354B30	; 02325078
+	.word P1_BssStart + 0x240B0	; 02325078
 
 ; ===== function loc_0232507C =====
 loc_0232507C:
@@ -10816,7 +11193,7 @@ loc_0232507C:
 	bx lr	; 02325082
 pool_02325084:
 loc_02325084:
-	.word 0x02354B30	; 02325084
+	.word P1_BssStart + 0x240B0	; 02325084
 
 ; ===== function loc_02325088 =====
 loc_02325088:
@@ -10856,7 +11233,7 @@ loc_023250C4:
 	.word 0x023A5B84	; 023250C4
 pool_023250C8:
 loc_023250C8:
-	.word 0x02354B30	; 023250C8
+	.word P1_BssStart + 0x240B0	; 023250C8
 
 ; ===== function loc_023250CC =====
 loc_023250CC:
@@ -10883,7 +11260,7 @@ loc_023250F0:
 	bx r3	; 023250F6
 pool_023250F8:
 loc_023250F8:
-	.word 0x02354B30	; 023250F8
+	.word P1_BssStart + 0x240B0	; 023250F8
 
 ; ===== function loc_023250FC =====
 loc_023250FC:
@@ -10990,7 +11367,7 @@ loc_023251D8:
 	bx r3	; 023251DE
 pool_023251E0:
 loc_023251E0:
-	.word 0x02354B30	; 023251E0
+	.word P1_BssStart + 0x240B0	; 023251E0
 pool_023251E4:
 loc_023251E4:
 	.word 0x023C1178	; 023251E4
@@ -11074,13 +11451,13 @@ loc_0232524C:
 	.byte 0xC0, 0x46	; 02325270
 pool_02325270:
 loc_02325270:
-	.word 0x02354B30	; 02325270
+	.word P1_BssStart + 0x240B0	; 02325270
 pool_02325274:
 loc_02325274:
 	.word 0x02354B58	; 02325274
 pool_02325278:
 loc_02325278:
-	.word 0x0232441D	; 02325278
+	.word loc_0232441C + 1	; 02325278
 
 ; ===== function loc_0232527C =====
 loc_0232527C:
@@ -11102,7 +11479,7 @@ loc_0232527C:
 	blx loc_0232DE78	; 0232529C
 	bl loc_0232459C	; 023252A0
 	ldr r1,[pool_023252C4]	; 023252A4
-	blx loc_0232BC04	; 023252A6
+	blx P1_CleanDataCacheRange	; 023252A6
 	mov r0,#0x8	; 023252AA
 	bl loc_023245A4	; 023252AC
 	add sp,#0x4	; 023252B0
@@ -11111,7 +11488,7 @@ loc_0232527C:
 	.byte 0xC0, 0x46	; 023252B8
 pool_023252B8:
 loc_023252B8:
-	.word 0x0400100E	; 023252B8
+	.word REG_BG3CNT_SUB	; 023252B8
 pool_023252BC:
 loc_023252BC:
 	.word 0x00000810	; 023252BC
@@ -11144,10 +11521,10 @@ loc_023252E6:
 	bx lr	; 023252E6
 pool_023252E8:
 loc_023252E8:
-	.word 0x02354B30	; 023252E8
+	.word P1_BssStart + 0x240B0	; 023252E8
 pool_023252EC:
 loc_023252EC:
-	.word 0x02330170	; 023252EC
+	.word P1_Data_02330170	; 023252EC
 
 ; ===== function loc_023252F0 =====
 loc_023252F0:
@@ -11157,7 +11534,7 @@ loc_023252F0:
 	bx lr	; 023252F6
 pool_023252F8:
 loc_023252F8:
-	.word 0x02354BE8	; 023252F8
+	.word P1_BssStart + 0x24168	; 023252F8
 
 ; ===== function loc_023252FC =====
 loc_023252FC:
@@ -11167,7 +11544,7 @@ loc_023252FC:
 	bx lr	; 02325302
 pool_02325304:
 loc_02325304:
-	.word 0x02354BE8	; 02325304
+	.word P1_BssStart + 0x24168	; 02325304
 
 ; ===== function loc_02325308 =====
 loc_02325308:
@@ -11187,18 +11564,89 @@ loc_0232531C:
 	.byte 0xC0, 0x46	; 02325320
 pool_02325320:
 loc_02325320:
-	.word 0x02354BE8	; 02325320
-	.byte 0x06, 0x49, 0x0A, 0x68, 0x02, 0x20, 0x02, 0x40, 0x00, 0x2A, 0x04, 0xD0, 0x08, 0x6A, 0x00, 0x28	; 02325334
-	.byte 0x01, 0xD1, 0x01, 0x20, 0x70, 0x47, 0x00, 0x20, 0x70, 0x47, 0xC0, 0x46, 0xE8, 0x4B, 0x35, 0x02	; 02325344
-	.byte 0x06, 0x49, 0x0A, 0x68, 0x06, 0x48, 0x40, 0x68, 0x13, 0x1C, 0x03, 0x40, 0x00, 0x2B, 0x04, 0xD0	; 02325354
-	.byte 0x04, 0x20, 0x82, 0x43, 0x0A, 0x60, 0x01, 0x20, 0x88, 0x66, 0x70, 0x47, 0xE8, 0x4B, 0x35, 0x02	; 02325364
-	.byte 0x74, 0x01, 0x33, 0x02, 0x06, 0x49, 0x0A, 0x68, 0x06, 0x48, 0x40, 0x68, 0x13, 0x1C, 0x03, 0x40	; 02325374
-	.byte 0x00, 0x2B, 0x04, 0xD1, 0x04, 0x20, 0x02, 0x43, 0x0A, 0x60, 0x01, 0x20, 0x88, 0x66, 0x70, 0x47	; 02325384
-	.byte 0xE8, 0x4B, 0x35, 0x02, 0x74, 0x01, 0x33, 0x02, 0x06, 0x49, 0x0A, 0x68, 0x06, 0x48, 0x00, 0x68	; 02325394
-	.byte 0x13, 0x1C, 0x03, 0x40, 0x00, 0x2B, 0x04, 0xD0, 0x02, 0x20, 0x82, 0x43, 0x0A, 0x60, 0x01, 0x20	; 023253A4
-	.byte 0x88, 0x62, 0x70, 0x47, 0xE8, 0x4B, 0x35, 0x02, 0x74, 0x01, 0x33, 0x02, 0x06, 0x49, 0x0A, 0x68	; 023253B4
-	.byte 0x06, 0x48, 0x00, 0x68, 0x13, 0x1C, 0x03, 0x40, 0x00, 0x2B, 0x04, 0xD1, 0x02, 0x20, 0x02, 0x43	; 023253C4
-	.byte 0x0A, 0x60, 0x01, 0x20, 0x88, 0x62, 0x70, 0x47, 0xE8, 0x4B, 0x35, 0x02, 0x74, 0x01, 0x33, 0x02	; 023253D4
+	.word P1_BssStart + 0x24168	; 02325320
+	.byte 0x06, 0x49, 0x0A, 0x68, 0x02, 0x20, 0x02, 0x40, 0x00, 0x2A, 0x04, 0xD0, 0x08, 0x6A, 0x00, 0x28	; 02325324
+	.byte 0x01, 0xD1, 0x01, 0x20, 0x70, 0x47, 0x00, 0x20, 0x70, 0x47, 0xC0, 0x46, 0xE8, 0x4B, 0x35, 0x02	; 02325334
+P1_Entry_02325344:
+	ldr r1,[pool_02325360]	; 02325344
+	ldr r2,[r1,#0x0]	; 02325346
+	ldr r0,[pool_02325364]	; 02325348
+	ldr r0,[r0,#0x4]	; 0232534A
+	add r3,r2,#0x0	; 0232534C
+	and r3,r0	; 0232534E
+	cmp r3,#0x0	; 02325350
+	beq P1_Entry_0232535E	; 02325352
+	mov r0,#0x4	; 02325354
+	bic r2,r0	; 02325356
+	str r2,[r1,#0x0]	; 02325358
+	mov r0,#0x1	; 0232535A
+	str r0,[r1,#0x68]	; 0232535C
+P1_Entry_0232535E:
+	bx lr	; 0232535E
+pool_02325360:
+	.word P1_BssStart + 0x24168	; 02325360
+pool_02325364:
+	.word P1_Data_02330174	; 02325364
+P1_Entry_02325368:
+	ldr r1,[pool_02325384]	; 02325368
+	ldr r2,[r1,#0x0]	; 0232536A
+	ldr r0,[pool_02325388]	; 0232536C
+	ldr r0,[r0,#0x4]	; 0232536E
+	add r3,r2,#0x0	; 02325370
+	and r3,r0	; 02325372
+	cmp r3,#0x0	; 02325374
+	bne P1_Entry_02325382	; 02325376
+	mov r0,#0x4	; 02325378
+	orr r2,r0	; 0232537A
+	str r2,[r1,#0x0]	; 0232537C
+	mov r0,#0x1	; 0232537E
+	str r0,[r1,#0x68]	; 02325380
+P1_Entry_02325382:
+	bx lr	; 02325382
+pool_02325384:
+	.word P1_BssStart + 0x24168	; 02325384
+pool_02325388:
+	.word P1_Data_02330174	; 02325388
+P1_Entry_0232538C:
+	ldr r1,[pool_023253A8]	; 0232538C
+	ldr r2,[r1,#0x0]	; 0232538E
+	ldr r0,[pool_023253AC]	; 02325390
+	ldr r0,[r0,#0x0]	; 02325392
+	add r3,r2,#0x0	; 02325394
+	and r3,r0	; 02325396
+	cmp r3,#0x0	; 02325398
+	beq P1_Entry_023253A6	; 0232539A
+	mov r0,#0x2	; 0232539C
+	bic r2,r0	; 0232539E
+	str r2,[r1,#0x0]	; 023253A0
+	mov r0,#0x1	; 023253A2
+	str r0,[r1,#0x28]	; 023253A4
+P1_Entry_023253A6:
+	bx lr	; 023253A6
+pool_023253A8:
+	.word P1_BssStart + 0x24168	; 023253A8
+pool_023253AC:
+	.word P1_Data_02330174	; 023253AC
+P1_Entry_023253B0:
+	ldr r1,[pool_023253CC]	; 023253B0
+	ldr r2,[r1,#0x0]	; 023253B2
+	ldr r0,[pool_023253D0]	; 023253B4
+	ldr r0,[r0,#0x0]	; 023253B6
+	add r3,r2,#0x0	; 023253B8
+	and r3,r0	; 023253BA
+	cmp r3,#0x0	; 023253BC
+	bne P1_Entry_023253CA	; 023253BE
+	mov r0,#0x2	; 023253C0
+	orr r2,r0	; 023253C2
+	str r2,[r1,#0x0]	; 023253C4
+	mov r0,#0x1	; 023253C6
+	str r0,[r1,#0x28]	; 023253C8
+P1_Entry_023253CA:
+	bx lr	; 023253CA
+pool_023253CC:
+	.word P1_BssStart + 0x24168	; 023253CC
+pool_023253D0:
+	.word P1_Data_02330174	; 023253D0
 
 ; ===== function loc_023253D4 =====
 loc_023253D4:
@@ -11210,7 +11658,7 @@ loc_023253D4:
 	bx lr	; 023253DE
 pool_023253E0:
 loc_023253E0:
-	.word 0x02354BE8	; 023253E0
+	.word P1_BssStart + 0x24168	; 023253E0
 
 ; ===== function loc_023253E4 =====
 loc_023253E4:
@@ -11222,7 +11670,7 @@ loc_023253E4:
 	bx lr	; 023253EE
 pool_023253F0:
 loc_023253F0:
-	.word 0x02354BE8	; 023253F0
+	.word P1_BssStart + 0x24168	; 023253F0
 
 ; ===== function loc_023253F4 =====
 loc_023253F4:
@@ -11278,22 +11726,39 @@ loc_0232544C:
 	.word 0x02354C00	; 0232544C
 pool_02325450:
 loc_02325450:
-	.word 0x02330174	; 02325450
+	.word P1_Data_02330174	; 02325450
 pool_02325454:
 loc_02325454:
-	.word 0x02354BE8	; 02325454
+	.word P1_BssStart + 0x24168	; 02325454
 pool_02325458:
 loc_02325458:
 	.word 0x02354BF4	; 02325458
 pool_0232545C:
 loc_0232545C:
-	.word 0x02330180	; 0232545C
+	.word P1_Data_02330180	; 0232545C
 pool_02325460:
 loc_02325460:
-	.word 0x02330182	; 02325460
-	.byte 0x8A, 0x01, 0x05, 0x49, 0x89, 0x58, 0x88, 0x42, 0x04, 0xD0, 0x04, 0x49, 0x88, 0x50, 0x01, 0x21	; 02325474
-	.byte 0x03, 0x48, 0x81, 0x50, 0x70, 0x47, 0xC0, 0x46, 0x00, 0x4C, 0x35, 0x02, 0x04, 0x4C, 0x35, 0x02	; 02325484
-	.byte 0x10, 0x4C, 0x35, 0x02	; 02325488
+	.word P1_Data_02330182	; 02325460
+P1_Entry_02325464:
+	lsl r2,r1,#0x6	; 02325464
+	ldr r1,[pool_0232547C]	; 02325466
+	ldr r1,[r1,r2]	; 02325468
+	cmp r0,r1	; 0232546A
+	beq P1_Entry_02325478	; 0232546C
+	ldr r1,[pool_02325480]	; 0232546E
+	str r0,[r1,r2]	; 02325470
+	mov r1,#0x1	; 02325472
+	ldr r0,[pool_02325484]	; 02325474
+	str r1,[r0,r2]	; 02325476
+P1_Entry_02325478:
+	bx lr	; 02325478
+	.byte 0xC0, 0x46	; 0232547A
+pool_0232547C:
+	.word P1_BssStart + 0x24180	; 0232547C
+pool_02325480:
+	.word P1_BssStart + 0x24184	; 02325480
+pool_02325484:
+	.word P1_BssStart + 0x24190	; 02325484
 
 ; ===== function loc_02325488 =====
 loc_02325488:
@@ -11386,13 +11851,13 @@ loc_02325512:
 	bx r3	; 02325526
 pool_02325528:
 loc_02325528:
-	.word 0x02354BE8	; 02325528
+	.word P1_BssStart + 0x24168	; 02325528
 pool_0232552C:
 loc_0232552C:
 	.word 0x02354C00	; 0232552C
 pool_02325530:
 loc_02325530:
-	.word 0x02330174	; 02325530
+	.word P1_Data_02330174	; 02325530
 pool_02325534:
 loc_02325534:
 	.word 0x023A5ACC	; 02325534
@@ -11494,13 +11959,13 @@ loc_023255EC:
 	.word 0x02354C00	; 023255EC
 pool_023255F0:
 loc_023255F0:
-	.word 0x02354BE8	; 023255F0
+	.word P1_BssStart + 0x24168	; 023255F0
 pool_023255F4:
 loc_023255F4:
 	.word 0x02354BF4	; 023255F4
 pool_023255F8:
 loc_023255F8:
-	.word 0x0233017C	; 023255F8
+	.word P1_Data_0233017C	; 023255F8
 pool_023255FC:
 loc_023255FC:
 	.word 0x023C1178	; 023255FC
@@ -11543,7 +12008,7 @@ loc_0232560C:
 	.byte 0xC0, 0x46	; 02325644
 pool_02325644:
 loc_02325644:
-	.word 0x02354C00	; 02325644
+	.word P1_BssStart + 0x24180	; 02325644
 pool_02325648:
 loc_02325648:
 	.word 0x023A5ACC	; 02325648
@@ -11618,10 +12083,10 @@ loc_023256C0:
 	.word 0x02354C00	; 023256C0
 pool_023256C4:
 loc_023256C4:
-	.word 0x02330174	; 023256C4
+	.word P1_Data_02330174	; 023256C4
 pool_023256C8:
 loc_023256C8:
-	.word 0x02354BE8	; 023256C8
+	.word P1_BssStart + 0x24168	; 023256C8
 pool_023256CC:
 loc_023256CC:
 	.word 0x02354BF4	; 023256CC
@@ -11636,24 +12101,37 @@ loc_023256D0:
 	cmp r1,#0x8	; 023256DA
 	bhi loc_02325734	; 023256DC
 	add r0,r1,r1	; 023256DE
+P1_SwitchIndexPC_023256DE:
 	add r0,pc	; 023256E0
-	ldrh r0,[r0,#0x8]	; 023256E2
+	ldrh r0,[r0,#(P1_SwitchTable_023256DE - (P1_SwitchIndexPC_023256DE + 4))]	; 023256E2
 	lsl r0,r0,#0x10	; 023256E4
 	asr r0,r0,#0x10	; 023256E6
+P1_SwitchTargetPC_023256DE:
 	add r0,pc	; 023256E8
 	bx r0	; 023256EA
-	.byte 0x49, 0x00, 0x13, 0x00, 0x21, 0x00, 0x49, 0x00, 0x2F, 0x00, 0x49, 0x00, 0x49, 0x00, 0x49, 0x00	; 023256FC
-	.byte 0x3D, 0x00	; 023256FE
+; 表项是相对 ADD 所读 PC 的有符号偏移，保留 ARM/Thumb 状态位。
+; Signed offsets from the ADD's PC, including the ARM/Thumb state bit.
+P1_SwitchTable_023256DE:
+	.halfword (loc_02325734 + 1) - (P1_SwitchTargetPC_023256DE + 4)
+	.halfword (loc_023256FE + 1) - (P1_SwitchTargetPC_023256DE + 4)
+	.halfword (loc_0232570C + 1) - (P1_SwitchTargetPC_023256DE + 4)
+	.halfword (loc_02325734 + 1) - (P1_SwitchTargetPC_023256DE + 4)
+	.halfword (loc_0232571A + 1) - (P1_SwitchTargetPC_023256DE + 4)
+	.halfword (loc_02325734 + 1) - (P1_SwitchTargetPC_023256DE + 4)
+	.halfword (loc_02325734 + 1) - (P1_SwitchTargetPC_023256DE + 4)
+	.halfword (loc_02325734 + 1) - (P1_SwitchTargetPC_023256DE + 4)
+	.halfword (loc_02325728 + 1) - (P1_SwitchTargetPC_023256DE + 4)
+P1_SwitchTable_023256DEEnd:
 loc_023256FE:
-	bl loc_0232D8F8	; 023256FE
+	bl P1_GetSubBg0TilemapBase	; 023256FE
 	add r4,r0,#0x0	; 02325702
-	bl loc_0232D858	; 02325704
+	bl P1_GetSubBg0CharacterBase	; 02325704
 	add r6,r0,#0x0	; 02325708
 	b loc_02325734	; 0232570A
 loc_0232570C:
-	bl loc_0232D8A4	; 0232570C
+	bl P1_GetSubBg1TilemapBase	; 0232570C
 	add r4,r0,#0x0	; 02325710
-	bl loc_0232D80C	; 02325712
+	bl P1_GetSubBg1CharacterBase	; 02325712
 	add r6,r0,#0x0	; 02325716
 	b loc_02325734	; 02325718
 loc_0232571A:
@@ -11704,15 +12182,20 @@ pool_02325774:
 loc_02325774:
 	.word 0x00000100	; 02325774
 
-; ===== function loc_02325778 =====
+; Returns the fixed firmware UI/boot shared-context address.
+; 返回固件 UI/启动共享上下文的固定地址。
+.func P1_GetFirmwareUiContext
 loc_02325778:
 	ldr r0,[pool_0232577C]	; 02325778
 	bx lr	; 0232577A
+.endfunc
 pool_0232577C:
 loc_0232577C:
 	.word 0x02354C90	; 0232577C
 
-; ===== function loc_02325780 =====
+; Initializes the first known fields of the shared firmware UI/boot context.
+; 初始化固件 UI/启动共享上下文中已确认的首批字段。
+P1_InitializeFirmwareUiContext:
 loc_02325780:
 	mov r2,#0x0	; 02325780
 	ldr r1,[pool_02325798]	; 02325782
@@ -11728,7 +12211,7 @@ loc_02325780:
 	.byte 0xC0, 0x46	; 02325798
 pool_02325798:
 loc_02325798:
-	.word 0x02354C90	; 02325798
+	.word P1_BssStart + 0x24210	; 02325798
 pool_0232579C:
 loc_0232579C:
 	.word 0x00000200	; 0232579C
@@ -11740,7 +12223,7 @@ loc_023257A0:
 loc_023257A4:
 	push {r4,r5,r6,r7,lr}	; 023257A4
 	sub sp,#0x4	; 023257A6
-	bl loc_02325778	; 023257A8
+	bl P1_GetFirmwareUiContext	; 023257A8
 	add r5,r0,#0x0	; 023257AC
 	ldr r0,[pool_0232586C]	; 023257AE
 	ldrh r1,[r0,#0x0]	; 023257B0
@@ -11846,10 +12329,10 @@ loc_02325862:
 	.byte 0xC0, 0x46	; 0232586C
 pool_0232586C:
 loc_0232586C:
-	.word 0x04000130	; 0232586C
+	.word REG_KEYINPUT	; 0232586C
 pool_02325870:
 loc_02325870:
-	.word 0x027FFFA8	; 02325870
+	.word FirmwareSystemWorkAddress + SystemWorkKeyXYStateOffset	; 02325870
 pool_02325874:
 loc_02325874:
 	.word 0x00002FFF	; 02325874
@@ -11858,16 +12341,16 @@ loc_02325878:
 	.word 0x00000E03	; 02325878
 pool_0232587C:
 loc_0232587C:
-	.word 0x027FFCE4	; 0232587C
+	.word FirmwareUserSettingsSharedAddress + UserSettingsOptionsOffset	; 0232587C
 pool_02325880:
 loc_02325880:
-	.word 0x027FF890	; 02325880
+	.word FirmwareBootSharedAddress + BootSharedEventFlagsOffset	; 02325880
 
 ; ===== function loc_02325884 =====
 loc_02325884:
 	push {r4,r5,r6,r7,lr}	; 02325884
 	sub sp,#0x4	; 02325886
-	bl loc_02325778	; 02325888
+	bl P1_GetFirmwareUiContext	; 02325888
 	add r1,r0,#0x0	; 0232588C
 	ldr r0,[pool_02325A1C]	; 0232588E
 	ldrh r2,[r0,#0x0]	; 02325890
@@ -12083,28 +12566,28 @@ loc_02325A02:
 	.byte 0xC0, 0x46	; 02325A1C
 pool_02325A1C:
 loc_02325A1C:
-	.word 0x04000130	; 02325A1C
+	.word REG_KEYINPUT	; 02325A1C
 pool_02325A20:
 loc_02325A20:
-	.word 0x027FFFA8	; 02325A20
+	.word FirmwareSystemWorkAddress + SystemWorkKeyXYStateOffset	; 02325A20
 pool_02325A24:
 loc_02325A24:
 	.word 0x00002FFF	; 02325A24
 pool_02325A28:
 loc_02325A28:
-	.word 0x027FFCE4	; 02325A28
+	.word FirmwareUserSettingsSharedAddress + UserSettingsOptionsOffset	; 02325A28
 pool_02325A2C:
 loc_02325A2C:
 	.word 0xFFFFFEFF	; 02325A2C
 pool_02325A30:
 loc_02325A30:
-	.word 0x027FF890	; 02325A30
+	.word FirmwareBootSharedAddress + BootSharedEventFlagsOffset	; 02325A30
 pool_02325A34:
 loc_02325A34:
 	.word 0x00000D03	; 02325A34
 pool_02325A38:
 loc_02325A38:
-	.word 0x027FFE1F	; 02325A38
+	.word NdsCartHeaderRamAddress + 0x1F	; 02325A38
 
 ; ===== function loc_02325A3C =====
 loc_02325A3C:
@@ -12129,7 +12612,7 @@ loc_02325A58:
 	.byte 0xC0, 0x46	; 02325A60
 pool_02325A60:
 loc_02325A60:
-	.word 0x0233018C	; 02325A60
+	.word P1_Data_0233018C	; 02325A60
 
 ; ===== function loc_02325A64 =====
 loc_02325A64:
@@ -12139,16 +12622,16 @@ loc_02325A64:
 	add r4,r1,#0x0	; 02325A6A
 	add r0,r4,#0x0	; 02325A6C
 	mov r1,#0xa	; 02325A6E
-	blx loc_0232CD38	; 02325A70
+	blx P1_SignedDivMod	; 02325A70
 	mov r1,#0xa	; 02325A74
-	blx loc_0232CD38	; 02325A76
+	blx P1_SignedDivMod	; 02325A76
 	lsl r1,r1,#0x1	; 02325A7A
 	ldr r0,[pool_02325AA0]	; 02325A7C
 	ldrh r0,[r0,r1]	; 02325A7E
 	strh r0,[r5,#0x0]	; 02325A80
 	add r0,r4,#0x0	; 02325A82
 	mov r1,#0xa	; 02325A84
-	blx loc_0232CD38	; 02325A86
+	blx P1_SignedDivMod	; 02325A86
 	lsl r1,r1,#0x1	; 02325A8A
 	ldr r0,[pool_02325AA0]	; 02325A8C
 	ldrh r0,[r0,r1]	; 02325A8E
@@ -12162,7 +12645,7 @@ loc_02325A64:
 	bx r3	; 02325A9E
 pool_02325AA0:
 loc_02325AA0:
-	.word 0x0233018C	; 02325AA0
+	.word P1_Data_0233018C	; 02325AA0
 
 ; ===== function loc_02325AA4 =====
 loc_02325AA4:
@@ -12254,7 +12737,7 @@ loc_02325B40:
 	bgt loc_02325B60	; 02325B42
 	lsl r0,r0,#0x4	; 02325B44
 	mov r1,#0xf	; 02325B46
-	blx loc_0232CD38	; 02325B48
+	blx P1_SignedDivMod	; 02325B48
 	mov r1,#0x10	; 02325B4C
 	sub r1,r1,r0	; 02325B4E
 	lsl r0,r0,#0x8	; 02325B50
@@ -12296,13 +12779,13 @@ loc_02325B90:
 	bx r3	; 02325B96
 pool_02325B98:
 loc_02325B98:
-	.word 0x04001050	; 02325B98
+	.word REG_BLDCNT_SUB	; 02325B98
 pool_02325B9C:
 loc_02325B9C:
-	.word 0x04001052	; 02325B9C
+	.word REG_BLDALPHA_SUB	; 02325B9C
 pool_02325BA0:
 loc_02325BA0:
-	.word 0x04001000	; 02325BA0
+	.word REG_DISPCNT_B	; 02325BA0
 pool_02325BA4:
 loc_02325BA4:
 	.word 0xFFFFE0FF	; 02325BA4
@@ -12389,7 +12872,7 @@ loc_02325C52:
 	bx r3	; 02325C5A
 pool_02325C5C:
 loc_02325C5C:
-	.word 0x04001050	; 02325C5C
+	.word REG_BLDCNT_SUB	; 02325C5C
 
 ; ===== function loc_02325C60 =====
 loc_02325C60:
@@ -12415,7 +12898,7 @@ loc_02325C84:
 	bgt loc_02325CA4	; 02325C86
 	lsl r0,r0,#0x4	; 02325C88
 	mov r1,#0xf	; 02325C8A
-	blx loc_0232CD38	; 02325C8C
+	blx P1_SignedDivMod	; 02325C8C
 	mov r1,#0x10	; 02325C90
 	sub r1,r1,r0	; 02325C92
 	lsl r0,r0,#0x8	; 02325C94
@@ -12446,10 +12929,10 @@ loc_02325CC0:
 	bx r3	; 02325CC6
 pool_02325CC8:
 loc_02325CC8:
-	.word 0x04001050	; 02325CC8
+	.word REG_BLDCNT_SUB	; 02325CC8
 pool_02325CCC:
 loc_02325CCC:
-	.word 0x04001052	; 02325CCC
+	.word REG_BLDALPHA_SUB	; 02325CCC
 
 ; ===== function loc_02325CD0 =====
 loc_02325CD0:
@@ -12701,7 +13184,7 @@ loc_02325EDA:
 	bgt loc_02325EFA	; 02325EDC
 	lsl r0,r0,#0x4	; 02325EDE
 	mov r1,#0xf	; 02325EE0
-	blx loc_0232CD38	; 02325EE2
+	blx P1_SignedDivMod	; 02325EE2
 	mov r1,#0x10	; 02325EE6
 	sub r1,r1,r0	; 02325EE8
 	lsl r1,r1,#0x8	; 02325EEA
@@ -12739,10 +13222,10 @@ loc_02325F1E:
 	.byte 0xC0, 0x46	; 02325F28
 pool_02325F28:
 loc_02325F28:
-	.word 0x04001050	; 02325F28
+	.word REG_BLDCNT_SUB	; 02325F28
 pool_02325F2C:
 loc_02325F2C:
-	.word 0x04001052	; 02325F2C
+	.word REG_BLDALPHA_SUB	; 02325F2C
 
 ; ===== function loc_02325F30 =====
 loc_02325F30:
@@ -12778,7 +13261,7 @@ loc_02325F68:
 	bgt loc_02325F88	; 02325F6A
 	lsl r0,r0,#0x4	; 02325F6C
 	mov r1,#0xf	; 02325F6E
-	blx loc_0232CD38	; 02325F70
+	blx P1_SignedDivMod	; 02325F70
 	mov r1,#0x10	; 02325F74
 	sub r1,r1,r0	; 02325F76
 	lsl r1,r1,#0x8	; 02325F78
@@ -12801,16 +13284,16 @@ loc_02325F90:
 	bx r3	; 02325F96
 pool_02325F98:
 loc_02325F98:
-	.word 0x04001000	; 02325F98
+	.word REG_DISPCNT_B	; 02325F98
 pool_02325F9C:
 loc_02325F9C:
 	.word 0xFFFFE0FF	; 02325F9C
 pool_02325FA0:
 loc_02325FA0:
-	.word 0x04001050	; 02325FA0
+	.word REG_BLDCNT_SUB	; 02325FA0
 pool_02325FA4:
 loc_02325FA4:
-	.word 0x04001052	; 02325FA4
+	.word REG_BLDALPHA_SUB	; 02325FA4
 
 ; ===== function loc_02325FA8 =====
 loc_02325FA8:
@@ -12945,7 +13428,7 @@ loc_023260B0:
 	.word 0x027FFCD2	; 023260B0
 pool_023260B4:
 loc_023260B4:
-	.word 0x0232371D	; 023260B4
+	.word loc_0232371C + 1	; 023260B4
 
 ; ===== function loc_023260B8 =====
 loc_023260B8:
@@ -12989,13 +13472,13 @@ loc_023260B8:
 loc_02326106:
 	add r0,r4,#0x0	; 02326106
 	mov r1,#0x3c	; 02326108
-	blx loc_0232CD38	; 0232610A
+	blx P1_SignedDivMod	; 0232610A
 	add r1,r0,#0x0	; 0232610E
 	add r0,sp,#0x0	; 02326110
 	bl loc_02325A64	; 02326112
 	add r0,r4,#0x0	; 02326116
 	mov r1,#0x3c	; 02326118
-	blx loc_0232CD38	; 0232611A
+	blx P1_SignedDivMod	; 0232611A
 	add r0,sp,#0x4	; 0232611E
 	bl loc_02325A64	; 02326120
 	mov r2,#0x0	; 02326124
@@ -13082,7 +13565,7 @@ loc_023261A0:
 loc_023261A4:
 	push {lr}	; 023261A4
 	sub sp,#0x4	; 023261A6
-	bl loc_02325778	; 023261A8
+	bl P1_GetFirmwareUiContext	; 023261A8
 	ldr r0,[r0,#0x0]	; 023261AC
 	lsl r0,r0,#0x15	; 023261AE
 	lsr r0,r0,#0x1f	; 023261B0
@@ -13092,7 +13575,7 @@ loc_023261A4:
 	mov r1,#0x0	; 023261B8
 	bl loc_0232F200	; 023261BA
 loc_023261BE:
-	bl loc_02325778	; 023261BE
+	bl P1_GetFirmwareUiContext	; 023261BE
 	ldr r2,[r0,#0x0]	; 023261C2
 	ldr r1,[pool_023261D0]	; 023261C4
 	and r2,r1	; 023261C6
@@ -13108,13 +13591,13 @@ loc_023261D0:
 loc_023261D4:
 	push {lr}	; 023261D4
 	sub sp,#0x4	; 023261D6
-	bl loc_02325778	; 023261D8
+	bl P1_GetFirmwareUiContext	; 023261D8
 	ldr r0,[r0,#0x0]	; 023261DC
 	lsl r0,r0,#0x16	; 023261DE
 	lsr r0,r0,#0x1f	; 023261E0
 	cmp r0,#0x0	; 023261E2
 	beq loc_023261FC	; 023261E4
-	bl loc_02325778	; 023261E6
+	bl P1_GetFirmwareUiContext	; 023261E6
 	ldr r0,[r0,#0x0]	; 023261EA
 	lsl r0,r0,#0x15	; 023261EC
 	lsr r0,r0,#0x1f	; 023261EE
@@ -13124,7 +13607,7 @@ loc_023261D4:
 	mov r1,#0x1	; 023261F6
 	bl loc_0232F200	; 023261F8
 loc_023261FC:
-	bl loc_02325778	; 023261FC
+	bl P1_GetFirmwareUiContext	; 023261FC
 	ldr r2,[r0,#0x0]	; 02326200
 	ldr r1,[pool_02326210]	; 02326202
 	orr r2,r1	; 02326204
@@ -13209,24 +13692,35 @@ loc_02326278:
 	cmp r1,#0x5	; 02326284
 	bhi loc_023262A2	; 02326286
 	add r1,r1,r1	; 02326288
+P1_SwitchIndexPC_02326288:
 	add r1,pc	; 0232628A
-	ldrh r1,[r1,#0x8]	; 0232628C
+	ldrh r1,[r1,#(P1_SwitchTable_02326288 - (P1_SwitchIndexPC_02326288 + 4))]	; 0232628C
 	lsl r1,r1,#0x10	; 0232628E
 	asr r1,r1,#0x10	; 02326290
+P1_SwitchTargetPC_02326288:
 	add r1,pc	; 02326292
 	bx r1	; 02326294
-	.byte 0x0D, 0x00, 0x0D, 0x00, 0x1D, 0x00, 0x15, 0x00, 0x1D, 0x00, 0x1D, 0x00	; 023262A2
+; 表项是相对 ADD 所读 PC 的有符号偏移，保留 ARM/Thumb 状态位。
+; Signed offsets from the ADD's PC, including the ARM/Thumb state bit.
+P1_SwitchTable_02326288:
+	.halfword (loc_023262A2 + 1) - (P1_SwitchTargetPC_02326288 + 4)
+	.halfword (loc_023262A2 + 1) - (P1_SwitchTargetPC_02326288 + 4)
+	.halfword (loc_023262B2 + 1) - (P1_SwitchTargetPC_02326288 + 4)
+	.halfword (loc_023262AA + 1) - (P1_SwitchTargetPC_02326288 + 4)
+	.halfword (loc_023262B2 + 1) - (P1_SwitchTargetPC_02326288 + 4)
+	.halfword (loc_023262B2 + 1) - (P1_SwitchTargetPC_02326288 + 4)
+P1_SwitchTable_02326288End:
 loc_023262A2:
 	ldr r1,[pool_023262C4]	; 023262A2
-	bl loc_0232CAE0	; 023262A4
+	bl P1_Utf16StrCpy	; 023262A4
 	b loc_023262B8	; 023262A8
 loc_023262AA:
 	ldr r1,[pool_023262C8]	; 023262AA
-	bl loc_0232CAE0	; 023262AC
+	bl P1_Utf16StrCpy	; 023262AC
 	b loc_023262B8	; 023262B0
 loc_023262B2:
 	ldr r1,[pool_023262CC]	; 023262B2
-	bl loc_0232CAE0	; 023262B4
+	bl P1_Utf16StrCpy	; 023262B4
 loc_023262B8:
 	add sp,#0x4	; 023262B8
 	pop {r3}	; 023262BA
@@ -13234,7 +13728,7 @@ loc_023262B8:
 	.byte 0xC0, 0x46	; 023262C0
 pool_023262C0:
 loc_023262C0:
-	.word 0x027FFCE4	; 023262C0
+	.word FirmwareUserSettingsSharedAddress + UserSettingsOptionsOffset	; 023262C0
 pool_023262C4:
 loc_023262C4:
 	.word 0x02330870	; 023262C4
@@ -13246,6 +13740,7 @@ loc_023262CC:
 	.word 0x0233088C	; 023262CC
 
 ; ===== function loc_023262D0 =====
+P1_Entry_023262D0:
 	push {lr}	; 023262D0
 	sub sp,#0x4	; 023262D2
 	ldr r1,[pool_02326320]	; 023262D4
@@ -13255,28 +13750,39 @@ loc_023262CC:
 	cmp r1,#0x5	; 023262DC
 	bhi loc_023262FA	; 023262DE
 	add r1,r1,r1	; 023262E0
+P1_SwitchIndexPC_023262E0:
 	add r1,pc	; 023262E2
-	ldrh r1,[r1,#0x8]	; 023262E4
+	ldrh r1,[r1,#(P1_SwitchTable_023262E0 - (P1_SwitchIndexPC_023262E0 + 4))]	; 023262E4
 	lsl r1,r1,#0x10	; 023262E6
 	asr r1,r1,#0x10	; 023262E8
+P1_SwitchTargetPC_023262E0:
 	add r1,pc	; 023262EA
 	bx r1	; 023262EC
-	.byte 0x0D, 0x00, 0x15, 0x00, 0x25, 0x00, 0x1D, 0x00, 0x25, 0x00, 0x25, 0x00	; 023262FA
+; 表项是相对 ADD 所读 PC 的有符号偏移，保留 ARM/Thumb 状态位。
+; Signed offsets from the ADD's PC, including the ARM/Thumb state bit.
+P1_SwitchTable_023262E0:
+	.halfword (loc_023262FA + 1) - (P1_SwitchTargetPC_023262E0 + 4)
+	.halfword (loc_02326302 + 1) - (P1_SwitchTargetPC_023262E0 + 4)
+	.halfword (loc_02326312 + 1) - (P1_SwitchTargetPC_023262E0 + 4)
+	.halfword (loc_0232630A + 1) - (P1_SwitchTargetPC_023262E0 + 4)
+	.halfword (loc_02326312 + 1) - (P1_SwitchTargetPC_023262E0 + 4)
+	.halfword (loc_02326312 + 1) - (P1_SwitchTargetPC_023262E0 + 4)
+P1_SwitchTable_023262E0End:
 loc_023262FA:
 	ldr r1,[pool_02326324]	; 023262FA
-	bl loc_0232CAE0	; 023262FC
+	bl P1_Utf16StrCpy	; 023262FC
 	b loc_02326318	; 02326300
 loc_02326302:
 	ldr r1,[pool_02326328]	; 02326302
-	bl loc_0232CAE0	; 02326304
+	bl P1_Utf16StrCpy	; 02326304
 	b loc_02326318	; 02326308
 loc_0232630A:
 	ldr r1,[pool_0232632C]	; 0232630A
-	bl loc_0232CAE0	; 0232630C
+	bl P1_Utf16StrCpy	; 0232630C
 	b loc_02326318	; 02326310
 loc_02326312:
 	ldr r1,[pool_02326330]	; 02326312
-	bl loc_0232CAE0	; 02326314
+	bl P1_Utf16StrCpy	; 02326314
 loc_02326318:
 	add sp,#0x4	; 02326318
 	pop {r3}	; 0232631A
@@ -13284,7 +13790,7 @@ loc_02326318:
 	.byte 0xC0, 0x46	; 02326320
 pool_02326320:
 loc_02326320:
-	.word 0x027FFCE4	; 02326320
+	.word FirmwareUserSettingsSharedAddress + UserSettingsOptionsOffset	; 02326320
 pool_02326324:
 loc_02326324:
 	.word 0x02330898	; 02326324
@@ -13315,30 +13821,30 @@ loc_02326334:
 	bl loc_02325A64	; 02326350
 	add r0,r5,#0x0	; 02326354
 	mov r1,#0x59	; 02326356
-	bl loc_0232CA2C	; 02326358
+	bl P1_Utf16StrChr	; 02326358
 	cmp r0,#0x0	; 0232635C
 	beq loc_02326368	; 0232635E
 	add r1,sp,#0x10	; 02326360
 	mov r2,#0x2	; 02326362
-	bl loc_0232CAA8	; 02326364
+	bl P1_Utf16StrNCpy	; 02326364
 loc_02326368:
 	add r0,r5,#0x0	; 02326368
 	mov r1,#0x4d	; 0232636A
-	bl loc_0232CA2C	; 0232636C
+	bl P1_Utf16StrChr	; 0232636C
 	cmp r0,#0x0	; 02326370
 	beq loc_0232637C	; 02326372
 	add r1,sp,#0x8	; 02326374
 	mov r2,#0x2	; 02326376
-	bl loc_0232CAA8	; 02326378
+	bl P1_Utf16StrNCpy	; 02326378
 loc_0232637C:
 	add r0,r5,#0x0	; 0232637C
 	mov r1,#0x44	; 0232637E
-	bl loc_0232CA2C	; 02326380
+	bl P1_Utf16StrChr	; 02326380
 	cmp r0,#0x0	; 02326384
 	beq loc_02326390	; 02326386
 	add r1,sp,#0x0	; 02326388
 	mov r2,#0x2	; 0232638A
-	bl loc_0232CAA8	; 0232638C
+	bl P1_Utf16StrNCpy	; 0232638C
 loc_02326390:
 	add sp,#0x18	; 02326390
 	pop {r4,r5,r6}	; 02326392
@@ -13346,6 +13852,7 @@ loc_02326390:
 	bx r3	; 02326396
 
 ; ===== function loc_02326398 =====
+P1_Entry_02326398:
 	push {r4,lr}	; 02326398
 	add r4,r0,#0x0	; 0232639A
 	bl loc_02326278	; 0232639C
@@ -13360,7 +13867,7 @@ loc_02326390:
 	bx r3	; 023263B2
 pool_023263B4:
 loc_023263B4:
-	.word 0x027FFC83	; 023263B4
+	.word FirmwareUserSettingsSharedAddress + UserSettingsBirthMonthOffset	; 023263B4
 
 ; ===== function loc_023263B8 =====
 loc_023263B8:
@@ -13380,9 +13887,25 @@ loc_023263B8:
 	pop {r4}	; 023263D8
 	pop {r3}	; 023263DA
 	bx r3	; 023263DC
-	.byte 0x00, 0x00, 0x10, 0xB5, 0x84, 0xB0, 0x04, 0x1C, 0x00, 0xA8, 0x00, 0xF0, 0x3C, 0xFB, 0x20, 0x1C	; 023263EE
-	.byte 0xFF, 0xF7, 0x6F, 0xFF, 0x20, 0x1C, 0x00, 0x99, 0x01, 0x9A, 0x02, 0x9B, 0xFF, 0xF7, 0x9B, 0xFF	; 023263FE
-	.byte 0x04, 0xB0, 0x10, 0xBC, 0x08, 0xBC, 0x18, 0x47, 0x00, 0x00	; 02326408
+	.byte 0x00, 0x00	; 023263DE
+P1_Entry_023263E0:
+	push {r4,lr}	; 023263E0
+	sub sp,#0x10	; 023263E2
+	add r4,r0,#0x0	; 023263E4
+	add r0,sp,#0x0	; 023263E6
+	bl loc_02326A64	; 023263E8
+	add r0,r4,#0x0	; 023263EC
+	bl P1_Entry_023262D0	; 023263EE
+	add r0,r4,#0x0	; 023263F2
+	ldr r1,[sp,#0x0]	; 023263F4
+	ldr r2,[sp,#0x4]	; 023263F6
+	ldr r3,[sp,#0x8]	; 023263F8
+	bl loc_02326334	; 023263FA
+	add sp,#0x10	; 023263FE
+	pop {r4}	; 02326400
+	pop {r3}	; 02326402
+	bx r3	; 02326404
+	.byte 0x00, 0x00	; 02326406
 
 ; ===== function loc_02326408 =====
 loc_02326408:
@@ -13403,11 +13926,21 @@ loc_02326408:
 	pop {r4}	; 0232642A
 	pop {r3}	; 0232642C
 	bx r3	; 0232642E
-	.byte 0x03, 0x48, 0x00, 0x78, 0x00, 0x07, 0x00, 0x0F, 0x10, 0x28, 0x00, 0xDB, 0x01, 0x20, 0x70, 0x47	; 02326440
-	.byte 0x82, 0xFC, 0x7F, 0x02, 0x00, 0xB5, 0x81, 0xB0, 0x08, 0x48, 0x09, 0x49, 0x02, 0x1C, 0x34, 0x32	; 02326450
-	.byte 0x12, 0x78, 0x52, 0x00, 0x07, 0xF0, 0xEC, 0xEC, 0x00, 0x22, 0x04, 0x48, 0x34, 0x30, 0x00, 0x78	; 02326460
-	.byte 0x41, 0x00, 0x03, 0x48, 0x42, 0x52, 0x01, 0xB0, 0x08, 0xBC, 0x18, 0x47, 0x9C, 0xFC, 0x7F, 0x02	; 02326470
-	.byte 0xB0, 0x4C, 0x35, 0x02	; 02326474
+P1_Entry_02326430:
+	ldr r0,[pool_02326440]	; 02326430
+	ldrb r0,[r0,#0x0]	; 02326432
+	lsl r0,r0,#0x1c	; 02326434
+	lsr r0,r0,#0x1c	; 02326436
+	cmp r0,#0x10	; 02326438
+	blt P1_Entry_0232643E	; 0232643A
+	mov r0,#0x1	; 0232643C
+P1_Entry_0232643E:
+	bx lr	; 0232643E
+pool_02326440:
+	.word FirmwareUserSettingsSharedAddress + UserSettingsThemeOffset	; 02326440
+	.byte 0x00, 0xB5, 0x81, 0xB0, 0x08, 0x48, 0x09, 0x49, 0x02, 0x1C, 0x34, 0x32, 0x12, 0x78, 0x52, 0x00	; 02326444
+	.byte 0x07, 0xF0, 0xEC, 0xEC, 0x00, 0x22, 0x04, 0x48, 0x34, 0x30, 0x00, 0x78, 0x41, 0x00, 0x03, 0x48	; 02326454
+	.byte 0x42, 0x52, 0x01, 0xB0, 0x08, 0xBC, 0x18, 0x47, 0x9C, 0xFC, 0x7F, 0x02, 0xB0, 0x4C, 0x35, 0x02	; 02326464
 
 ; ===== function loc_02326474 =====
 loc_02326474:
@@ -13430,10 +13963,10 @@ loc_02326474:
 	.byte 0xC0, 0x46	; 02326498
 pool_02326498:
 loc_02326498:
-	.word 0x027FFC86	; 02326498
+	.word FirmwareUserSettingsSharedAddress + UserSettingsNameOffset	; 02326498
 pool_0232649C:
 loc_0232649C:
-	.word 0x02354C98	; 0232649C
+	.word P1_BssStart + 0x24218	; 0232649C
 
 ; ===== function loc_023264A0 =====
 loc_023264A0:
@@ -13529,7 +14062,7 @@ loc_02326534:
 	bl loc_0232864C	; 02326540
 	ldr r0,[pool_023265C0]	; 02326544
 	ldr r1,[pool_023265C8]	; 02326546
-	blx loc_0232BC04	; 02326548
+	blx P1_CleanDataCacheRange	; 02326548
 	mov r5,#0x0	; 0232654C
 	ldr r4,[pool_023265C0]	; 0232654E
 	mov r7,#0x20	; 02326550
@@ -13629,7 +14162,7 @@ loc_023265E8:
 	.byte 0xC0, 0x46	; 023265F0
 pool_023265F0:
 loc_023265F0:
-	.word 0x02355868	; 023265F0
+	.word P1_BssStart + 0x24DE8	; 023265F0
 	.byte 0x01, 0x49, 0x08, 0x60, 0x70, 0x47, 0xC0, 0x46, 0x64, 0x58, 0x35, 0x02, 0x01, 0x49, 0x08, 0x60	; 02326604
 	.byte 0x70, 0x47, 0xC0, 0x46, 0x60, 0x58, 0x35, 0x02	; 0232660C
 
@@ -13643,7 +14176,7 @@ loc_0232660C:
 	and r1,r0	; 02326616
 	cmp r1,#0x1	; 02326618
 	bne loc_02326636	; 0232661A
-	blx loc_0232C4BC	; 0232661C
+	blx P1_Arm9DisableIrqReturnPriorMask	; 0232661C
 	ldr r2,[pool_0232663C]	; 02326620
 	ldr r3,[r2,#0x0]	; 02326622
 	mov r1,#0x1	; 02326624
@@ -13653,14 +14186,14 @@ loc_0232660C:
 	mov r1,#0x2	; 0232662C
 	bic r3,r1	; 0232662E
 	str r3,[r2,#0x0]	; 02326630
-	blx loc_0232C4D0	; 02326632
+	blx P1_Arm9RestoreIrqMask	; 02326632
 loc_02326636:
 	add sp,#0x4	; 02326636
 	pop {r3}	; 02326638
 	bx r3	; 0232663A
 pool_0232663C:
 loc_0232663C:
-	.word 0x02355858	; 0232663C
+	.word P1_BssStart + 0x24DD8	; 0232663C
 
 ; ===== function loc_02326640 =====
 loc_02326640:
@@ -13672,20 +14205,20 @@ loc_02326640:
 	and r1,r0	; 0232664A
 	cmp r1,#0x1	; 0232664C
 	bne loc_02326662	; 0232664E
-	blx loc_0232C4BC	; 02326650
+	blx P1_Arm9DisableIrqReturnPriorMask	; 02326650
 	ldr r2,[pool_02326668]	; 02326654
 	ldr r3,[r2,#0x0]	; 02326656
 	mov r1,#0x2	; 02326658
 	bic r3,r1	; 0232665A
 	str r3,[r2,#0x0]	; 0232665C
-	blx loc_0232C4D0	; 0232665E
+	blx P1_Arm9RestoreIrqMask	; 0232665E
 loc_02326662:
 	add sp,#0x4	; 02326662
 	pop {r3}	; 02326664
 	bx r3	; 02326666
 pool_02326668:
 loc_02326668:
-	.word 0x02355858	; 02326668
+	.word P1_BssStart + 0x24DD8	; 02326668
 
 ; ===== function loc_0232666C =====
 loc_0232666C:
@@ -13730,13 +14263,13 @@ loc_023266B6:
 	bx r3	; 023266BA
 pool_023266BC:
 loc_023266BC:
-	.word 0x02355858	; 023266BC
+	.word P1_BssStart + 0x24DD8	; 023266BC
 pool_023266C0:
 loc_023266C0:
-	.word 0x0235586C	; 023266C0
+	.word P1_BssStart + 0x24DEC	; 023266C0
 pool_023266C4:
 loc_023266C4:
-	.word 0x0235585C	; 023266C4
+	.word P1_BssStart + 0x24DDC	; 023266C4
 pool_023266C8:
 loc_023266C8:
 	.word 0x023266CD	; 023266C8
@@ -13758,7 +14291,7 @@ loc_023266E0:
 	.byte 0xC0, 0x46	; 023266E4
 pool_023266E4:
 loc_023266E4:
-	.word 0x02355858	; 023266E4
+	.word P1_BssStart + 0x24DD8	; 023266E4
 
 ; ===== function loc_023266E8 =====
 loc_023266E8:
@@ -13836,7 +14369,7 @@ loc_02326744:
 	ldr r0,[r0,#0x0]	; 0232676C
 	cmp r0,#0x0	; 0232676E
 	beq loc_02326774	; 02326770
-	.byte 0x80, 0x47	; 02326772
+	blx r0	; 02326772
 loc_02326774:
 	bl loc_02327C14	; 02326774
 	mov r0,#0x1	; 02326778
@@ -13882,13 +14415,13 @@ loc_023267AC:
 	str r1,[r2,#0x0]	; 023267D4
 	b loc_0232680E	; 023267D6
 loc_023267D8:
-	bl loc_02325778	; 023267D8
+	bl P1_GetFirmwareUiContext	; 023267D8
 	ldr r0,[r0,#0x0]	; 023267DC
 	lsl r0,r0,#0x16	; 023267DE
 	lsr r0,r0,#0x1f	; 023267E0
 	cmp r0,#0x0	; 023267E2
 	beq loc_0232680E	; 023267E4
-	bl loc_02325778	; 023267E6
+	bl P1_GetFirmwareUiContext	; 023267E6
 	ldr r0,[r0,#0x0]	; 023267EA
 	lsl r0,r0,#0x15	; 023267EC
 	lsr r0,r0,#0x1f	; 023267EE
@@ -13940,7 +14473,7 @@ loc_02326848:
 	ldr r0,[r0,#0x0]	; 0232684A
 	cmp r0,#0x0	; 0232684C
 	beq loc_02326852	; 0232684E
-	.byte 0x80, 0x47	; 02326850
+	blx r0	; 02326850
 loc_02326852:
 	bl loc_02329D40	; 02326852
 	ldr r1,[pool_023268BC]	; 02326856
@@ -13972,7 +14505,7 @@ loc_02326884:
 	ldr r0,[r0,#0x0]	; 0232688A
 	cmp r0,#0x0	; 0232688C
 	beq loc_02326892	; 0232688E
-	.byte 0x80, 0x47	; 02326890
+	blx r0	; 02326890
 loc_02326892:
 	bl loc_0232C538	; 02326892
 	b loc_023268AE	; 02326896
@@ -13987,20 +14520,20 @@ loc_02326898:
 	ldr r0,[r0,#0x0]	; 023268A6
 	cmp r0,#0x0	; 023268A8
 	beq loc_023268AE	; 023268AA
-	.byte 0x80, 0x47	; 023268AC
+	blx r0	; 023268AC
 loc_023268AE:
 	add sp,#0x4	; 023268AE
 	pop {r3}	; 023268B0
 	bx r3	; 023268B2
 pool_023268B4:
 loc_023268B4:
-	.word 0x027FFFA8	; 023268B4
+	.word FirmwareSystemWorkAddress + SystemWorkKeyXYStateOffset	; 023268B4
 pool_023268B8:
 loc_023268B8:
 	.word 0x00008000	; 023268B8
 pool_023268BC:
 loc_023268BC:
-	.word 0x02355858	; 023268BC
+	.word P1_BssStart + 0x24DD8	; 023268BC
 pool_023268C0:
 loc_023268C0:
 	.word 0x00000200	; 023268C0
@@ -14015,10 +14548,10 @@ loc_023268CC:
 	.word 0xFFFFFDFF	; 023268CC
 pool_023268D0:
 loc_023268D0:
-	.word 0x02355860	; 023268D0
+	.word P1_BssStart + 0x24DE0	; 023268D0
 pool_023268D4:
 loc_023268D4:
-	.word 0x04001000	; 023268D4
+	.word REG_DISPCNT_B	; 023268D4
 pool_023268D8:
 loc_023268D8:
 	.word 0xFFFEFFFF	; 023268D8
@@ -14027,13 +14560,13 @@ loc_023268DC:
 	.word 0x00010000	; 023268DC
 pool_023268E0:
 loc_023268E0:
-	.word 0x027FF890	; 023268E0
+	.word FirmwareBootSharedAddress + BootSharedEventFlagsOffset	; 023268E0
 pool_023268E4:
 loc_023268E4:
-	.word 0x02355864	; 023268E4
+	.word P1_BssStart + 0x24DE4	; 023268E4
 pool_023268E8:
 loc_023268E8:
-	.word 0x02355868	; 023268E8
+	.word P1_BssStart + 0x24DE8	; 023268E8
 
 ; ===== function loc_023268EC =====
 loc_023268EC:
@@ -14057,16 +14590,16 @@ loc_023268EC:
 	bx r3	; 02326912
 pool_02326914:
 loc_02326914:
-	.word 0x02355858	; 02326914
+	.word P1_BssStart + 0x24DD8	; 02326914
 pool_02326918:
 loc_02326918:
-	.word 0x02355860	; 02326918
+	.word P1_BssStart + 0x24DE0	; 02326918
 pool_0232691C:
 loc_0232691C:
-	.word 0x02355864	; 0232691C
+	.word P1_BssStart + 0x24DE4	; 0232691C
 pool_02326920:
 loc_02326920:
-	.word 0x0235585C	; 02326920
+	.word P1_BssStart + 0x24DDC	; 02326920
 
 ; ===== function loc_02326924 =====
 loc_02326924:
@@ -14075,7 +14608,7 @@ loc_02326924:
 	bl loc_023266E8	; 02326928
 	bl loc_023269D4	; 0232692C
 	bl loc_023236A0	; 02326930
-	bl loc_02325778	; 02326934
+	bl P1_GetFirmwareUiContext	; 02326934
 	ldr r1,[r0,#0x4]	; 02326938
 	add r1,r1,#0x1	; 0232693A
 	str r1,[r0,#0x4]	; 0232693C
@@ -14093,7 +14626,7 @@ loc_02326944:
 	bx lr	; 0232694E
 pool_02326950:
 loc_02326950:
-	.word 0x0235587C	; 02326950
+	.word P1_BssStart + 0x24DFC	; 02326950
 
 ; ===== function loc_02326954 =====
 loc_02326954:
@@ -14107,10 +14640,10 @@ loc_02326954:
 	bx r3	; 02326962
 pool_02326964:
 loc_02326964:
-	.word 0x0235587C	; 02326964
+	.word P1_BssStart + 0x24DFC	; 02326964
 pool_02326968:
 loc_02326968:
-	.word 0x023294AD	; 02326968
+	.word loc_023294AC + 1	; 02326968
 
 ; ===== function loc_0232696C =====
 loc_0232696C:
@@ -14124,10 +14657,10 @@ loc_0232696C:
 	bx r3	; 0232697A
 pool_0232697C:
 loc_0232697C:
-	.word 0x0235587C	; 0232697C
+	.word P1_BssStart + 0x24DFC	; 0232697C
 pool_02326980:
 loc_02326980:
-	.word 0x023294AD	; 02326980
+	.word loc_023294AC + 1	; 02326980
 
 ; ===== function loc_02326984 =====
 loc_02326984:
@@ -14176,7 +14709,7 @@ loc_023269C6:
 	bx r3	; 023269CE
 pool_023269D0:
 loc_023269D0:
-	.word 0x0235587C	; 023269D0
+	.word P1_BssStart + 0x24DFC	; 023269D0
 
 ; ===== function loc_023269D4 =====
 loc_023269D4:
@@ -14221,7 +14754,7 @@ loc_02326A22:
 	ldr r0,[pool_02326A40]	; 02326A22
 	ldr r0,[r0,#0x4]	; 02326A24
 	mov r1,#0x20	; 02326A26
-	blx loc_0232CD38	; 02326A28
+	blx P1_SignedDivMod	; 02326A28
 	ldr r0,[pool_02326A40]	; 02326A2C
 	str r1,[r0,#0x4]	; 02326A2E
 	b loc_02326A38	; 02326A30
@@ -14235,10 +14768,10 @@ loc_02326A38:
 	.byte 0xC0, 0x46	; 02326A40
 pool_02326A40:
 loc_02326A40:
-	.word 0x0235587C	; 02326A40
+	.word P1_BssStart + 0x24DFC	; 02326A40
 pool_02326A44:
 loc_02326A44:
-	.word 0x023301A4	; 02326A44
+	.word P1_Data_023301A4	; 02326A44
 
 ; ===== function loc_02326A48 =====
 loc_02326A48:
@@ -14294,10 +14827,10 @@ loc_02326A98:
 loc_02326A9C:
 	push {lr}	; 02326A9C
 	sub sp,#0x4	; 02326A9E
-	bl loc_02325778	; 02326AA0
+	bl P1_GetFirmwareUiContext	; 02326AA0
 	ldr r0,[r0,#0x4]	; 02326AA4
 	mov r1,#0x14	; 02326AA6
-	blx loc_0232CF44	; 02326AA8
+	blx P1_UnsignedDivMod	; 02326AA8
 	cmp r1,#0x0	; 02326AAC
 	bne loc_02326AD2	; 02326AAE
 	ldr r0,[pool_02326AD8]	; 02326AB0
@@ -14322,10 +14855,10 @@ loc_02326AD2:
 	bx r3	; 02326AD6
 pool_02326AD8:
 loc_02326AD8:
-	.word 0x02355894	; 02326AD8
+	.word P1_BssStart + 0x24E14	; 02326AD8
 pool_02326ADC:
 loc_02326ADC:
-	.word 0x02355888	; 02326ADC
+	.word P1_BssStart + 0x24E08	; 02326ADC
 
 ; ===== function loc_02326AE0 =====
 loc_02326AE0:
@@ -14342,22 +14875,22 @@ loc_02326AE0:
 loc_02326AF4:
 	add r0,r5,#0x0	; 02326AF4
 	ldr r1,[pool_02326B40]	; 02326AF6
-	blx loc_0232CD38	; 02326AF8
+	blx P1_SignedDivMod	; 02326AF8
 	add r7,r0,#0x0	; 02326AFC
 	add r0,r5,#0x0	; 02326AFE
 	mov r1,#0x4	; 02326B00
-	blx loc_0232CD38	; 02326B02
+	blx P1_SignedDivMod	; 02326B02
 	str r0,[sp,#0x0]	; 02326B06
 	add r0,r5,#0x0	; 02326B08
 	mov r1,#0x64	; 02326B0A
-	blx loc_0232CD38	; 02326B0C
+	blx P1_SignedDivMod	; 02326B0C
 	str r0,[sp,#0x4]	; 02326B10
 	mov r0,#0xd	; 02326B12
 	mul r4,r0	; 02326B14
 	add r4,#0x8	; 02326B16
 	add r0,r4,#0x0	; 02326B18
 	mov r1,#0x5	; 02326B1A
-	blx loc_0232CD38	; 02326B1C
+	blx P1_SignedDivMod	; 02326B1C
 	ldr r1,[sp,#0x0]	; 02326B20
 	add r2,r5,r1	; 02326B22
 	ldr r1,[sp,#0x4]	; 02326B24
@@ -14366,7 +14899,7 @@ loc_02326AF4:
 	add r0,r1,r0	; 02326B2A
 	add r0,r6,r0	; 02326B2C
 	mov r1,#0x7	; 02326B2E
-	blx loc_0232CD38	; 02326B30
+	blx P1_SignedDivMod	; 02326B30
 	add r0,r1,#0x0	; 02326B34
 	add sp,#0xc	; 02326B36
 	pop {r4,r5,r6,r7}	; 02326B38
@@ -14413,7 +14946,7 @@ loc_02326B70:
 	bx r3	; 02326B7E
 pool_02326B80:
 loc_02326B80:
-	.word 0x023308F8	; 02326B80
+	.word P1_Data_023308F8	; 02326B80
 pool_02326B84:
 loc_02326B84:
 	.word 0xFFFFFFFE	; 02326B84
@@ -14428,13 +14961,13 @@ loc_02326B88:
 	cmp r2,#0x0	; 02326B92
 	bne loc_02326BA0	; 02326B94
 	mov r1,#0x64	; 02326B96
-	blx loc_0232CF44	; 02326B98
+	blx P1_UnsignedDivMod	; 02326B98
 	cmp r1,#0x0	; 02326B9C
 	bne loc_02326BAC	; 02326B9E
 loc_02326BA0:
 	add r0,r4,#0x0	; 02326BA0
 	ldr r1,[pool_02326BB8]	; 02326BA2
-	blx loc_0232CF44	; 02326BA4
+	blx P1_UnsignedDivMod	; 02326BA4
 	cmp r1,#0x0	; 02326BA8
 	bne loc_02326BB0	; 02326BAA
 loc_02326BAC:
@@ -14464,7 +14997,7 @@ loc_02326BBC:
 	.byte 0xC0, 0x46	; 02326BD0
 pool_02326BD0:
 loc_02326BD0:
-	.word 0x0400100E	; 02326BD0
+	.word REG_BG3CNT_SUB	; 02326BD0
 pool_02326BD4:
 loc_02326BD4:
 	.word 0x06200000	; 02326BD4
@@ -14489,10 +15022,10 @@ loc_02326BD8:
 	bx lr	; 02326BF6
 pool_02326BF8:
 loc_02326BF8:
-	.word 0x0400000E	; 02326BF8
+	.word REG_BG3CNT	; 02326BF8
 pool_02326BFC:
 loc_02326BFC:
-	.word 0x04000000	; 02326BFC
+	.word REG_DISPCNT_A	; 02326BFC
 pool_02326C00:
 loc_02326C00:
 	.word 0x07000000	; 02326C00
@@ -14514,7 +15047,7 @@ loc_02326C08:
 	.byte 0xC0, 0x46	; 02326C1C
 pool_02326C1C:
 loc_02326C1C:
-	.word 0x0400100C	; 02326C1C
+	.word REG_BG2CNT_SUB	; 02326C1C
 pool_02326C20:
 loc_02326C20:
 	.word 0x06200000	; 02326C20
@@ -14539,10 +15072,10 @@ loc_02326C24:
 	bx lr	; 02326C42
 pool_02326C44:
 loc_02326C44:
-	.word 0x0400000C	; 02326C44
+	.word REG_BG2CNT	; 02326C44
 pool_02326C48:
 loc_02326C48:
-	.word 0x04000000	; 02326C48
+	.word REG_DISPCNT_A	; 02326C48
 pool_02326C4C:
 loc_02326C4C:
 	.word 0x07000000	; 02326C4C
@@ -14564,7 +15097,7 @@ loc_02326C54:
 	.byte 0xC0, 0x46	; 02326C68
 pool_02326C68:
 loc_02326C68:
-	.word 0x0400100E	; 02326C68
+	.word REG_BG3CNT_SUB	; 02326C68
 pool_02326C6C:
 loc_02326C6C:
 	.word 0x00001F00	; 02326C6C
@@ -14574,6 +15107,8 @@ loc_02326C70:
 .arm
 
 ; ===== function loc_02326C74 =====
+; Computes the main-engine BG3 tile map address. / 计算主引擎 BG3 tile map 地址。
+.func P1_GetMainBg3TilemapAddress
 loc_02326C74:
 	ldr r1,[pool_02326CA4]	; 02326C74
 	mov r0,#0x4000000	; 02326C78
@@ -14587,9 +15122,10 @@ loc_02326C74:
 	mov r0,r0, lsr #0x8	; 02326C98
 	add r0,r1,r0, lsl #0xb	; 02326C9C
 	bx lr	; 02326CA0
+.endfunc
 pool_02326CA4:
 loc_02326CA4:
-	.word 0x0400000E	; 02326CA4
+	.word REG_BG3CNT	; 02326CA4
 .thumb
 
 ; ===== function loc_02326CA8 =====
@@ -14606,7 +15142,7 @@ loc_02326CA8:
 	.byte 0xC0, 0x46	; 02326CBC
 pool_02326CBC:
 loc_02326CBC:
-	.word 0x0400100C	; 02326CBC
+	.word REG_BG2CNT_SUB	; 02326CBC
 pool_02326CC0:
 loc_02326CC0:
 	.word 0x00001F00	; 02326CC0
@@ -14616,6 +15152,8 @@ loc_02326CC4:
 .arm
 
 ; ===== function loc_02326CC8 =====
+; Computes the main-engine BG2 tile map address. / 计算主引擎 BG2 tile map 地址。
+.func P1_GetMainBg2TilemapAddress
 loc_02326CC8:
 	ldr r1,[pool_02326CF8]	; 02326CC8
 	mov r0,#0x4000000	; 02326CCC
@@ -14629,9 +15167,10 @@ loc_02326CC8:
 	mov r0,r0, lsr #0x8	; 02326CEC
 	add r0,r1,r0, lsl #0xb	; 02326CF0
 	bx lr	; 02326CF4
+.endfunc
 pool_02326CF8:
 loc_02326CF8:
-	.word 0x0400000C	; 02326CF8
+	.word REG_BG2CNT	; 02326CF8
 .thumb
 
 ; ===== function loc_02326CFC =====
@@ -14655,10 +15194,10 @@ loc_02326CFC:
 	bx r3	; 02326D1E
 pool_02326D20:
 loc_02326D20:
-	.word 0x02357130	; 02326D20
+	.word P1_BssStart + 0x266B0	; 02326D20
 pool_02326D24:
 loc_02326D24:
-	.word 0x04000243	; 02326D24
+	.word VRAM_D_CR	; 02326D24
 
 ; ===== function loc_02326D28 =====
 loc_02326D28:
@@ -14681,10 +15220,10 @@ loc_02326D28:
 	bx r3	; 02326D4A
 pool_02326D4C:
 loc_02326D4C:
-	.word 0x02357130	; 02326D4C
+	.word P1_BssStart + 0x266B0	; 02326D4C
 pool_02326D50:
 loc_02326D50:
-	.word 0x04000242	; 02326D50
+	.word VRAM_C_CR	; 02326D50
 
 ; ===== function loc_02326D54 =====
 loc_02326D54:
@@ -14707,10 +15246,10 @@ loc_02326D54:
 	bx r3	; 02326D76
 pool_02326D78:
 loc_02326D78:
-	.word 0x02357130	; 02326D78
+	.word P1_BssStart + 0x266B0	; 02326D78
 pool_02326D7C:
 loc_02326D7C:
-	.word 0x04000241	; 02326D7C
+	.word VRAM_B_CR	; 02326D7C
 
 ; ===== function loc_02326D80 =====
 loc_02326D80:
@@ -14733,10 +15272,10 @@ loc_02326D80:
 	bx r3	; 02326DA2
 pool_02326DA4:
 loc_02326DA4:
-	.word 0x02357130	; 02326DA4
+	.word P1_BssStart + 0x266B0	; 02326DA4
 pool_02326DA8:
 loc_02326DA8:
-	.word 0x04000240	; 02326DA8
+	.word VRAM_A_CR	; 02326DA8
 
 ; ===== function loc_02326DAC =====
 loc_02326DAC:
@@ -14760,20 +15299,20 @@ loc_02326DAC:
 	add r2,r4,#0x0	; 02326DD4
 	bl loc_0232C7E2	; 02326DD6
 	add r4,r0,#0x0	; 02326DDA
-	blx loc_0232BBBC	; 02326DDC
+	blx P1_CleanAndInvalidateEntireDataCacheByIndex	; 02326DDC
 	ldr r0,[pool_02326E0C]	; 02326DE0
 	ldrh r0,[r0,#0x16]	; 02326DE2
 	cmp r4,r0	; 02326DE4
 	bne loc_02326DF6	; 02326DE6
 	ldr r0,[pool_02326E14]	; 02326DE8
-	bl loc_023275C8	; 02326DEA
+	bl P1_OrSharedEventFlags	; 02326DEA
 	add sp,#0x4	; 02326DEE
 	pop {r4,r5}	; 02326DF0
 	pop {r3}	; 02326DF2
 	bx r3	; 02326DF4
 loc_02326DF6:
 	ldr r0,[pool_02326E18]	; 02326DF6
-	bl loc_023275C8	; 02326DF8
+	bl P1_OrSharedEventFlags	; 02326DF8
 	add sp,#0x4	; 02326DFC
 	pop {r4,r5}	; 02326DFE
 	pop {r3}	; 02326E00
@@ -14808,13 +15347,13 @@ loc_02326E1C:
 	ldr r1,[pool_02326E4C]	; 02326E2A
 	bl loc_0232C7E2	; 02326E2C
 	add r4,r0,#0x0	; 02326E30
-	blx loc_0232BBBC	; 02326E32
+	blx P1_CleanAndInvalidateEntireDataCacheByIndex	; 02326E32
 	ldr r0,[pool_02326E58]	; 02326E36
 	ldrh r0,[r0,#0x0]	; 02326E38
 	cmp r4,r0	; 02326E3A
 	bne loc_02326E44	; 02326E3C
 	ldr r0,[pool_02326E5C]	; 02326E3E
-	bl loc_023275C8	; 02326E40
+	bl P1_OrSharedEventFlags	; 02326E40
 loc_02326E44:
 	pop {r4}	; 02326E44
 	pop {r3}	; 02326E46
@@ -14831,13 +15370,16 @@ loc_02326E54:
 	.word 0x0000FFFF	; 02326E54
 pool_02326E58:
 loc_02326E58:
-	.word 0x027FF874	; 02326E58
+	.word FirmwareBootSharedAddress + BootSharedP5Crc16Offset	; 02326E58
 pool_02326E5C:
 loc_02326E5C:
 	.word 0x10000000	; 02326E5C
 
 ; ===== function loc_02326E60 =====
 loc_02326E60:
+; 发布前 0x18 字节启动信息，再补 ARM7 BIOS CRC 与 RTC 随机值。
+; Publish 0x18 boot-info bytes, then update the ARM7 BIOS CRC and RTC random byte.
+.func P1_PublishBootInfo
 	push {lr}	; 02326E60
 	sub sp,#0x4	; 02326E62
 	ldr r0,[pool_02326E84]	; 02326E64
@@ -14855,6 +15397,7 @@ loc_02326E60:
 	add sp,#0x4	; 02326E7E
 	pop {r3}	; 02326E80
 	bx r3	; 02326E82
+.endfunc
 pool_02326E84:
 loc_02326E84:
 	.word 0x027FF800	; 02326E84
@@ -14866,13 +15409,13 @@ loc_02326E8C:
 	.word 0x027FF850	; 02326E8C
 pool_02326E90:
 loc_02326E90:
-	.word 0x027FFC10	; 02326E90
+	.word FirmwareBootInfoAddress + BootInfoBios7Crc16Offset	; 02326E90
 pool_02326E94:
 loc_02326E94:
 	.word 0x027FF818	; 02326E94
 pool_02326E98:
 loc_02326E98:
-	.word 0x027FFC17	; 02326E98
+	.word FirmwareBootInfoAddress + BootInfoRtcRandomOffset	; 02326E98
 
 ; ===== function loc_02326E9C =====
 loc_02326E9C:
@@ -14881,7 +15424,7 @@ loc_02326E9C:
 	ldr r5,[pool_02326F50]	; 02326EA0
 	mov r0,#0x6d	; 02326EA2
 	bl loc_0232B3C8	; 02326EA4
-	blx loc_0232C4BC	; 02326EA8
+	blx P1_Arm9DisableIrqReturnPriorMask	; 02326EA8
 	str r0,[sp,#0x0]	; 02326EAC
 	ldr r2,[pool_02326F54]	; 02326EAE
 	ldrh r1,[r2,#0x0]	; 02326EB0
@@ -14932,7 +15475,7 @@ loc_02326E9C:
 	orr r2,r1	; 02326F0C
 	strh r2,[r0,#0x0]	; 02326F0E
 	ldr r0,[sp,#0x0]	; 02326F10
-	blx loc_0232C4D0	; 02326F12
+	blx P1_Arm9RestoreIrqMask	; 02326F12
 	mov r0,#0x6d	; 02326F16
 	bl loc_0232B260	; 02326F18
 	add r0,r5,#0x0	; 02326F1C
@@ -14967,7 +15510,7 @@ loc_02326F50:
 	.word 0x023558C0	; 02326F50
 pool_02326F54:
 loc_02326F54:
-	.word 0x04000204	; 02326F54
+	.word REG_EXMEMCNT_ARM9	; 02326F54
 pool_02326F58:
 loc_02326F58:
 	.word 0x00008000	; 02326F58
@@ -14982,7 +15525,7 @@ loc_02326F64:
 	.word 0x02355940	; 02326F64
 pool_02326F68:
 loc_02326F68:
-	.word 0x027FFC30	; 02326F68
+	.word FirmwareBootInfoAddress + BootInfoGbaIdOffset	; 02326F68
 pool_02326F6C:
 loc_02326F6C:
 	.word 0x027FFC32	; 02326F6C
@@ -15021,7 +15564,7 @@ loc_02326F92:
 	.byte 0xC0, 0x46	; 02326FA8
 pool_02326FA8:
 loc_02326FA8:
-	.word 0xFFFF0020	; 02326FA8
+	.word Bios9NintendoLogoAddress	; 02326FA8
 
 ; ===== function loc_02326FAC =====
 loc_02326FAC:
@@ -15044,13 +15587,13 @@ loc_02326FC6:
 	.byte 0xC0, 0x46	; 02326FCC
 pool_02326FCC:
 loc_02326FCC:
-	.word 0x027FFF5C	; 02326FCC
+	.word NdsCartHeaderRamAddress + 0x15C	; 02326FCC
 pool_02326FD0:
 loc_02326FD0:
 	.word 0x0000CF56	; 02326FD0
 pool_02326FD4:
 loc_02326FD4:
-	.word 0x027FFF5E	; 02326FD4
+	.word NdsCartHeaderRamAddress + 0x15E	; 02326FD4
 pool_02326FD8:
 loc_02326FD8:
 	.word 0x027FF808	; 02326FD8
@@ -15065,7 +15608,7 @@ loc_02326FDC:
 	.byte 0xC0, 0x46	; 02326FE8
 pool_02326FE8:
 loc_02326FE8:
-	.word 0x0232E8C5	; 02326FE8
+	.word loc_0232E8C4 + 1	; 02326FE8
 
 ; ===== function loc_02326FEC =====
 loc_02326FEC:
@@ -15082,7 +15625,7 @@ loc_02326FEC:
 	bx r3	; 02327002
 pool_02327004:
 loc_02327004:
-	.word 0x027FFCE7	; 02327004
+	.word FirmwareUserSettingsSharedAddress + 0x67	; 02327004
 
 ; ===== function loc_02327008 =====
 loc_02327008:
@@ -15118,28 +15661,28 @@ loc_02327008:
 	bx r3	; 02327046
 pool_02327048:
 loc_02327048:
-	.word 0x027FFCDD	; 02327048
+	.word FirmwareUserSettingsSharedAddress + UserSettingsTouchPixelY1Offset	; 02327048
 pool_0232704C:
 loc_0232704C:
-	.word 0x027FFCDE	; 0232704C
+	.word FirmwareUserSettingsSharedAddress + UserSettingsTouchAdcX2Offset	; 0232704C
 pool_02327050:
 loc_02327050:
-	.word 0x027FFCE0	; 02327050
+	.word FirmwareUserSettingsSharedAddress + UserSettingsTouchAdcY2Offset	; 02327050
 pool_02327054:
 loc_02327054:
-	.word 0x027FFCE2	; 02327054
+	.word FirmwareUserSettingsSharedAddress + UserSettingsTouchPixelX2Offset	; 02327054
 pool_02327058:
 loc_02327058:
-	.word 0x027FFCE3	; 02327058
+	.word FirmwareUserSettingsSharedAddress + UserSettingsTouchPixelY2Offset	; 02327058
 pool_0232705C:
 loc_0232705C:
-	.word 0x027FFCD8	; 0232705C
+	.word FirmwareUserSettingsSharedAddress + UserSettingsTouchAdcX1Offset	; 0232705C
 pool_02327060:
 loc_02327060:
-	.word 0x027FFCDA	; 02327060
+	.word FirmwareUserSettingsSharedAddress + UserSettingsTouchAdcY1Offset	; 02327060
 pool_02327064:
 loc_02327064:
-	.word 0x027FFCDC	; 02327064
+	.word FirmwareUserSettingsSharedAddress + UserSettingsTouchPixelX1Offset	; 02327064
 
 ; ===== function loc_02327068 =====
 loc_02327068:
@@ -15171,7 +15714,7 @@ loc_0232708C:
 	bl loc_0232B35C	; 0232709A
 	add r0,r5,#0x0	; 0232709E
 	ldr r1,[pool_023270FC]	; 023270A0
-	blx loc_0232BC20	; 023270A2
+	blx P1_CleanAndInvalidateDataCacheRange	; 023270A2
 	ldr r0,[pool_023270F4]	; 023270A6
 	ldr r0,[r0,#0x0]	; 023270A8
 	add r1,r5,#0x0	; 023270AA
@@ -15212,10 +15755,10 @@ loc_023270F0:
 	.word 0x02355980	; 023270F0
 pool_023270F4:
 loc_023270F4:
-	.word 0x027FFE68	; 023270F4
+	.word NdsCartHeaderRamAddress + 0x68	; 023270F4
 pool_023270F8:
 loc_023270F8:
-	.word 0x023558A4	; 023270F8
+	.word P1_BssStart + 0x24E24	; 023270F8
 pool_023270FC:
 loc_023270FC:
 	.word 0x00000840	; 023270FC
@@ -15250,7 +15793,7 @@ loc_0232711E:
 	.byte 0xC0, 0x46	; 02327130
 pool_02327130:
 loc_02327130:
-	.word 0x023558A4	; 02327130
+	.word P1_BssStart + 0x24E24	; 02327130
 pool_02327134:
 loc_02327134:
 	.word 0x02355980	; 02327134
@@ -15383,7 +15926,7 @@ loc_02327214:
 	bx r3	; 0232721A
 pool_0232721C:
 loc_0232721C:
-	.word 0x027FFC80	; 0232721C
+	.word FirmwareUserSettingsSharedAddress	; 0232721C
 pool_02327220:
 loc_02327220:
 	.word 0x027FF864	; 02327220
@@ -15392,16 +15935,16 @@ loc_02327224:
 	.word 0x0100001C	; 02327224
 pool_02327228:
 loc_02327228:
-	.word 0x027FFCE4	; 02327228
+	.word FirmwareUserSettingsSharedAddress + UserSettingsOptionsOffset	; 02327228
 pool_0232722C:
 loc_0232722C:
 	.word 0x00000200	; 0232722C
 pool_02327230:
 loc_02327230:
-	.word 0x027FFC83	; 02327230
+	.word FirmwareUserSettingsSharedAddress + UserSettingsBirthMonthOffset	; 02327230
 pool_02327234:
 loc_02327234:
-	.word 0x027FFC84	; 02327234
+	.word FirmwareUserSettingsSharedAddress + UserSettingsBirthDayOffset	; 02327234
 pool_02327238:
 loc_02327238:
 	.word 0x027FF818	; 02327238
@@ -15410,11 +15953,15 @@ loc_0232723C:
 	.word 0xFFFFBFFF	; 0232723C
 pool_02327240:
 loc_02327240:
-	.word 0x027FFCE8	; 02327240
+	.word FirmwareUserSettingsSharedAddress + UserSettingsRtcOffset	; 02327240
 pool_02327244:
 loc_02327244:
-	.word 0x027FFCE6	; 02327244
+	.word FirmwareUserSettingsSharedAddress + 0x66	; 02327244
 .arm
+; 此段随后覆盖复制至 ITCM；运行入口不是 CRT 初始内容。
+; This stub later replaces ITCM contents; its entry is not the CRT image.
+P1_TransitionCopySource:
+.func P1_TransitionLoadEntry
 	ldr r0,[pool_0232728C]	; 02327248
 	mov r1,#0x9	; 0232724C
 	str r1,[r0,#0x0]	; 02327250
@@ -15434,6 +15981,9 @@ loc_02327264:
 	mov r0,#0x0	; 02327280
 	mcr p15,0x0,r0,c7,c0,0x4	; 02327284
 	bx lr	; 02327288
+.endfunc
+.definelabel P1_TransitionItcmBase, 0x01FF8000
+.definelabel P1_TransitionRuntimeEntry, P1_TransitionItcmBase + (P1_TransitionLoadEntry - P1_TransitionCopySource)
 pool_0232728C:
 loc_0232728C:
 	.word 0x027FF880	; 0232728C
@@ -15442,7 +15992,7 @@ loc_02327290:
 	.word 0x027FF884	; 02327290
 pool_02327294:
 loc_02327294:
-	.word 0x04000204	; 02327294
+	.word REG_EXMEMCNT_ARM9	; 02327294
 .thumb
 
 ; ===== function loc_02327298 =====
@@ -15540,24 +16090,26 @@ loc_023272EA:
 	and r2,r1	; 0232735C
 	strh r2,[r0,#0x0]	; 0232735E
 loc_02327360:
+; CpuFastSet 的 0x100 个字复制 0x400 字节，再进入新的 ITCM 段。
+; CpuFastSet copies 0x100 words (0x400 bytes), then enters the new ITCM stub.
 	ldr r0,[pool_02327398]	; 02327360
 	ldr r1,[pool_0232739C]	; 02327362
 	ldr r2,[pool_023273A0]	; 02327364
 	bl loc_0232C7DA	; 02327366
 	ldr r0,[pool_0232739C]	; 0232736A
-	.byte 0x80, 0x47	; 0232736C
+	blx r0	; 0232736C
 	add sp,#0x4	; 0232736E
 	pop {r3}	; 02327370
 	bx r3	; 02327372
 pool_02327374:
 loc_02327374:
-	.word 0x027FFCE4	; 02327374
+	.word FirmwareUserSettingsSharedAddress + UserSettingsOptionsOffset	; 02327374
 pool_02327378:
 loc_02327378:
 	.word 0x027FF864	; 02327378
 pool_0232737C:
 loc_0232737C:
-	.word 0x04000208	; 0232737C
+	.word REG_IME	; 0232737C
 pool_02327380:
 loc_02327380:
 	.word 0x000001FF	; 02327380
@@ -15569,7 +16121,7 @@ loc_02327388:
 	.word 0x000A4000	; 02327388
 pool_0232738C:
 loc_0232738C:
-	.word 0x04000304	; 0232738C
+	.word REG_POWERCNT	; 0232738C
 pool_02327390:
 loc_02327390:
 	.word 0xFFFFFDFF	; 02327390
@@ -15578,10 +16130,10 @@ loc_02327394:
 	.word 0xFFFF7FFF	; 02327394
 pool_02327398:
 loc_02327398:
-	.word 0x02327248	; 02327398
+	.word P1_TransitionCopySource	; 02327398
 pool_0232739C:
 loc_0232739C:
-	.word 0x01FF8000	; 0232739C
+	.word P1_TransitionRuntimeEntry	; 0232739C
 pool_023273A0:
 loc_023273A0:
 	.word 0x00000100	; 023273A0
@@ -15692,34 +16244,34 @@ loc_02327474:
 	.word 0x05000400	; 02327474
 pool_02327478:
 loc_02327478:
-	.word 0x04000008	; 02327478
+	.word REG_BG0CNT	; 02327478
 pool_0232747C:
 loc_0232747C:
 	.word 0x0000012C	; 0232747C
 pool_02327480:
 loc_02327480:
-	.word 0x04000280	; 02327480
+	.word REG_DIVCNT	; 02327480
 pool_02327484:
 loc_02327484:
-	.word 0x04001000	; 02327484
+	.word REG_DISPCNT_B	; 02327484
 pool_02327488:
 loc_02327488:
-	.word 0x04000290	; 02327488
+	.word REG_DIV_NUMER	; 02327488
 pool_0232748C:
 loc_0232748C:
-	.word 0x04000298	; 0232748C
+	.word REG_DIV_DENOM	; 0232748C
 pool_02327490:
 loc_02327490:
 	.word 0x00004008	; 02327490
 pool_02327494:
 loc_02327494:
-	.word 0x04000184	; 02327494
+	.word REG_IPC_FIFO_CR	; 02327494
 pool_02327498:
 loc_02327498:
-	.word 0x04000000	; 02327498
+	.word REG_DISPCNT_A	; 02327498
 pool_0232749C:
 loc_0232749C:
-	.word 0x04000004	; 0232749C
+	.word REG_DISPSTAT	; 0232749C
 
 ; ===== function loc_023274A0 =====
 loc_023274A0:
@@ -15736,7 +16288,7 @@ loc_023274AE:
 	.byte 0xC0, 0x46	; 023274B4
 pool_023274B4:
 loc_023274B4:
-	.word 0x027FF890	; 023274B4
+	.word FirmwareBootSharedAddress + BootSharedEventFlagsOffset	; 023274B4
 
 ; ===== function loc_023274B8 =====
 loc_023274B8:
@@ -15769,7 +16321,7 @@ loc_023274E4:
 	.byte 0xC0, 0x46	; 023274E8
 pool_023274E8:
 loc_023274E8:
-	.word 0x027FFE24	; 023274E8
+	.word NdsCartHeaderArm9EntryAddress	; 023274E8
 pool_023274EC:
 loc_023274EC:
 	.word 0x02000000	; 023274EC
@@ -15778,7 +16330,7 @@ loc_023274F0:
 	.word 0x02280000	; 023274F0
 pool_023274F4:
 loc_023274F4:
-	.word 0x027FFE34	; 023274F4
+	.word NdsCartHeaderArm7EntryAddress	; 023274F4
 pool_023274F8:
 loc_023274F8:
 	.word 0x023FE000	; 023274F8
@@ -15800,7 +16352,7 @@ loc_02327504:
 	blx loc_0232DEC4	; 02327512
 	ldr r0,[pool_02327580]	; 02327516
 	ldr r1,[pool_0232758C]	; 02327518
-	blx loc_0232BC04	; 0232751A
+	blx P1_CleanDataCacheRange	; 0232751A
 	mov r4,#0x0	; 0232751E
 loc_02327520:
 	add r0,r4,#0x0	; 02327520
@@ -15859,13 +16411,13 @@ loc_02327590:
 	.word 0x00010000	; 02327590
 pool_02327594:
 loc_02327594:
-	.word 0x023275AD	; 02327594
+	.word P1_IrqHandler_023275AC + 1	; 02327594
 pool_02327598:
 loc_02327598:
 	.word 0x00004F00	; 02327598
 pool_0232759C:
 loc_0232759C:
-	.word 0x04000180	; 0232759C
+	.word REG_IPC_SYNC	; 0232759C
 pool_023275A0:
 loc_023275A0:
 	.word 0x027FF880	; 023275A0
@@ -15874,7 +16426,8 @@ loc_023275A4:
 	.word 0x00000F00	; 023275A4
 pool_023275A8:
 loc_023275A8:
-	.word 0x04000208	; 023275A8
+	.word REG_IME	; 023275A8
+P1_IrqHandler_023275AC:
 	ldr r1,[pool_023275BC]	; 023275AC
 	ldr r0,[pool_023275C0]	; 023275AE
 	add r1,r1,r0	; 023275B0
@@ -15895,6 +16448,9 @@ loc_023275C4:
 
 ; ===== function loc_023275C8 =====
 loc_023275C8:
+; 将参数中的事件位并入双核共享位图。
+; OR the requested event bits into the shared bitmap.
+.func P1_OrSharedEventFlags
 	push {r4,lr}	; 023275C8
 	add r4,r0,#0x0	; 023275CA
 	mov r0,#0x6e	; 023275CC
@@ -15911,9 +16467,10 @@ loc_023275C8:
 	pop {r4}	; 023275E6
 	pop {r3}	; 023275E8
 	bx r3	; 023275EA
+.endfunc
 pool_023275EC:
 loc_023275EC:
-	.word 0x027FF888	; 023275EC
+	.word FirmwareBootSharedAddress + BootSharedEventSyncOffset	; 023275EC
 
 ; ===== function loc_023275F0 =====
 loc_023275F0:
@@ -15926,7 +16483,7 @@ loc_023275F8:
 	.word 0x80000040	; 023275F8
 pool_023275FC:
 loc_023275FC:
-	.word 0x023275C9	; 023275FC
+	.word P1_OrSharedEventFlags + 1	; 023275FC
 
 ; ===== function loc_02327600 =====
 loc_02327600:
@@ -15939,7 +16496,7 @@ loc_02327608:
 	.word 0x80000100	; 02327608
 pool_0232760C:
 loc_0232760C:
-	.word 0x023275C9	; 0232760C
+	.word P1_OrSharedEventFlags + 1	; 0232760C
 
 ; ===== function loc_02327610 =====
 loc_02327610:
@@ -15952,7 +16509,7 @@ loc_02327618:
 	.word 0x80000080	; 02327618
 pool_0232761C:
 loc_0232761C:
-	.word 0x023275C9	; 0232761C
+	.word P1_OrSharedEventFlags + 1	; 0232761C
 
 ; ===== function loc_02327620 =====
 loc_02327620:
@@ -15965,7 +16522,7 @@ loc_02327628:
 	.word 0x80000010	; 02327628
 pool_0232762C:
 loc_0232762C:
-	.word 0x023275C9	; 0232762C
+	.word P1_OrSharedEventFlags + 1	; 0232762C
 
 ; ===== function loc_02327630 =====
 loc_02327630:
@@ -15982,14 +16539,14 @@ loc_02327630:
 	bne loc_02327656	; 02327646
 loc_02327648:
 	mov r0,#0x4	; 02327648
-	bl loc_023275C8	; 0232764A
+	bl P1_OrSharedEventFlags	; 0232764A
 	mov r0,#0x0	; 0232764E
 	add sp,#0x4	; 02327650
 	pop {r3}	; 02327652
 	bx r3	; 02327654
 loc_02327656:
 	ldr r0,[pool_0232766C]	; 02327656
-	bl loc_023275C8	; 02327658
+	bl P1_OrSharedEventFlags	; 02327658
 	mov r0,#0x1	; 0232765C
 	add sp,#0x4	; 0232765E
 	pop {r3}	; 02327660
@@ -16020,7 +16577,7 @@ loc_02327670:
 	cmp r2,#0x0	; 02327686
 	beq loc_02327690	; 02327688
 	ldr r0,[pool_023276A0]	; 0232768A
-	bl loc_023275C8	; 0232768C
+	bl P1_OrSharedEventFlags	; 0232768C
 loc_02327690:
 	add sp,#0x4	; 02327690
 	pop {r3}	; 02327692
@@ -16028,7 +16585,7 @@ loc_02327690:
 	.byte 0xC0, 0x46	; 02327698
 pool_02327698:
 loc_02327698:
-	.word 0x027FF890	; 02327698
+	.word FirmwareBootSharedAddress + BootSharedEventFlagsOffset	; 02327698
 pool_0232769C:
 loc_0232769C:
 	.word 0x00000400	; 0232769C
@@ -16047,14 +16604,27 @@ loc_023276A4:
 	b loc_0232788E	; 023276B0
 loc_023276B2:
 	add r1,r1,r1	; 023276B2
+P1_SwitchIndexPC_023276B2:
 	add r1,pc	; 023276B4
-	ldrh r1,[r1,#0x8]	; 023276B6
+	ldrh r1,[r1,#(P1_SwitchTable_023276B2 - (P1_SwitchIndexPC_023276B2 + 4))]	; 023276B6
 	lsl r1,r1,#0x10	; 023276B8
 	asr r1,r1,#0x10	; 023276BA
+P1_SwitchTargetPC_023276B2:
 	add r1,pc	; 023276BC
 	bx r1	; 023276BE
-	.byte 0xCF, 0x01, 0xCF, 0x01, 0x13, 0x00, 0x6B, 0x00, 0xBB, 0x00, 0xD5, 0x00, 0xE7, 0x00, 0xCF, 0x01	; 023276D0
-	.byte 0x39, 0x01	; 023276D2
+; 表项是相对 ADD 所读 PC 的有符号偏移，保留 ARM/Thumb 状态位。
+; Signed offsets from the ADD's PC, including the ARM/Thumb state bit.
+P1_SwitchTable_023276B2:
+	.halfword (loc_0232788E + 1) - (P1_SwitchTargetPC_023276B2 + 4)
+	.halfword (loc_0232788E + 1) - (P1_SwitchTargetPC_023276B2 + 4)
+	.halfword (loc_023276D2 + 1) - (P1_SwitchTargetPC_023276B2 + 4)
+	.halfword (loc_0232772A + 1) - (P1_SwitchTargetPC_023276B2 + 4)
+	.halfword (loc_0232777A + 1) - (P1_SwitchTargetPC_023276B2 + 4)
+	.halfword (loc_02327794 + 1) - (P1_SwitchTargetPC_023276B2 + 4)
+	.halfword (loc_023277A6 + 1) - (P1_SwitchTargetPC_023276B2 + 4)
+	.halfword (loc_0232788E + 1) - (P1_SwitchTargetPC_023276B2 + 4)
+	.halfword (loc_023277F8 + 1) - (P1_SwitchTargetPC_023276B2 + 4)
+P1_SwitchTable_023276B2End:
 loc_023276D2:
 	bl loc_02327180	; 023276D2
 	bl loc_02327008	; 023276D6
@@ -16084,11 +16654,11 @@ loc_023276FA:
 	strb r1,[r2,#0x0]	; 0232770E
 loc_02327710:
 	bl loc_02326E9C	; 02327710
-	bl 0x01ff8084	; 02327714
+	bl P1_Runtime_01FF8084	; 02327714
 	ldr r0,[pool_023278A4]	; 02327718
 	orr r4,r0	; 0232771A
 	add r0,r4,#0x0	; 0232771C
-	bl loc_023275C8	; 0232771E
+	bl P1_OrSharedEventFlags	; 0232771E
 	mov r1,#0x3	; 02327722
 	ldr r0,[pool_02327898]	; 02327724
 	str r1,[r0,#0x20]	; 02327726
@@ -16166,13 +16736,15 @@ loc_023277A6:
 	beq loc_0232788E	; 023277B0
 	bl loc_02326DAC	; 023277B2
 	ldr r0,[pool_023278BC]	; 023277B6
-	bl loc_023275C8	; 023277B8
+	bl P1_OrSharedEventFlags	; 023277B8
 	mov r0,#0x0	; 023277BC
 	str r0,[sp,#0x4]	; 023277BE
 	ldr r0,[sp,#0x4]	; 023277C0
 	ldr r1,[pool_023278C0]	; 023277C2
 	ldr r2,[pool_023278C4]	; 023277C4
 	blx loc_0232DE78	; 023277C6
+; 按此版本的零区起点和字节数清零，SWI 参数换算为 32 位字数。
+; Clear this version's zero area; convert its byte size to the SWI word count.
 	ldr r2,[pool_023278C8]	; 023277CA
 	cmp r2,#0x0	; 023277CC
 	beq loc_023277E6	; 023277CE
@@ -16187,7 +16759,7 @@ loc_023277A6:
 	orr r2,r3	; 023277E0
 	bl loc_0232C7DA	; 023277E2
 loc_023277E6:
-	blx loc_0232BB90	; 023277E6
+	blx P1_CleanEntireDataCacheByIndex	; 023277E6
 	mov r0,#0x7	; 023277EA
 	bl loc_02326FDC	; 023277EC
 	mov r1,#0x8	; 023277F0
@@ -16214,7 +16786,7 @@ loc_023277F8:
 	ldr r0,[pool_023278E0]	; 02327818
 	ldr r0,[r0,#0x0]	; 0232781A
 	ldr r0,[r0,#0x0]	; 0232781C
-	.byte 0x80, 0x47	; 0232781E
+	blx r0	; 0232781E
 	b loc_02327884	; 02327820
 loc_02327822:
 	ldr r2,[r0,#0x0]	; 02327822
@@ -16252,8 +16824,8 @@ loc_02327860:
 	ldr r0,[pool_023278E0]	; 02327860
 	ldr r0,[r0,#0x0]	; 02327862
 	ldr r0,[r0,#0x4]	; 02327864
-	.byte 0x80, 0x47	; 02327866
-	blx loc_0232BB90	; 02327868
+	blx r0	; 02327866
+	blx P1_CleanEntireDataCacheByIndex	; 02327868
 	bl loc_02327504	; 0232786C
 	b loc_02327884	; 02327870
 loc_02327872:
@@ -16265,7 +16837,7 @@ loc_02327872:
 	ldr r0,[pool_023278E0]	; 0232787C
 	ldr r0,[r0,#0x0]	; 0232787E
 	ldr r0,[r0,#0x8]	; 02327880
-	.byte 0x80, 0x47	; 02327882
+	blx r0	; 02327882
 loc_02327884:
 	mov r0,#0x1	; 02327884
 	add sp,#0x10	; 02327886
@@ -16286,13 +16858,13 @@ loc_0232789C:
 	.word 0x027FFEC0	; 0232789C
 pool_023278A0:
 loc_023278A0:
-	.word 0x027FFC35	; 023278A0
+	.word FirmwareBootInfoAddress + BootInfoGbaFlagsOffset	; 023278A0
 pool_023278A4:
 loc_023278A4:
 	.word 0x20000000	; 023278A4
 pool_023278A8:
 loc_023278A8:
-	.word 0x027FF890	; 023278A8
+	.word FirmwareBootSharedAddress + BootSharedEventFlagsOffset	; 023278A8
 pool_023278AC:
 loc_023278AC:
 	.word 0x80000000	; 023278AC
@@ -16316,10 +16888,10 @@ loc_023278C4:
 	.word 0x00300000	; 023278C4
 pool_023278C8:
 loc_023278C8:
-	.word 0x00030CC0	; 023278C8
+	.word UiBootZeroBytes	; 023278C8
 pool_023278CC:
 loc_023278CC:
-	.word 0x02373D40	; 023278CC
+	.word UiBootZeroStart	; 023278CC
 pool_023278D0:
 loc_023278D0:
 	.word 0x001FFFFF	; 023278D0
@@ -16334,13 +16906,13 @@ loc_023278DC:
 	.word 0x08000000	; 023278DC
 pool_023278E0:
 loc_023278E0:
-	.word 0x023558A8	; 023278E0
+	.word P1_BssStart + 0x24E28	; 023278E0
 pool_023278E4:
 loc_023278E4:
 	.word 0x00000100	; 023278E4
 pool_023278E8:
 loc_023278E8:
-	.word 0x027FFE38	; 023278E8
+	.word NdsCartHeaderArm7RamAddress	; 023278E8
 pool_023278EC:
 loc_023278EC:
 	.word 0x027FFE00	; 023278EC
@@ -16371,7 +16943,7 @@ loc_02327902:
 	beq loc_02327902	; 02327916
 	bl loc_02326E1C	; 02327918
 	add r0,r4,#0x0	; 0232791C
-	bl loc_023275C8	; 0232791E
+	bl P1_OrSharedEventFlags	; 0232791E
 	b loc_02327902	; 02327922
 loc_02327924:
 	mov r1,#0x2	; 02327924
@@ -16395,7 +16967,7 @@ loc_02327948:
 	.word 0x00000800	; 02327948
 pool_0232794C:
 loc_0232794C:
-	.word 0x027FF890	; 0232794C
+	.word FirmwareBootSharedAddress + BootSharedEventFlagsOffset	; 0232794C
 pool_02327950:
 loc_02327950:
 	.word 0x00002000	; 02327950
@@ -16407,9 +16979,12 @@ loc_02327958:
 	.word 0x027FF880	; 02327958
 pool_0232795C:
 loc_0232795C:
-	.word 0x04000300	; 0232795C
+	.word REG_POSTFLG	; 0232795C
 
-; ===== function loc_02327960 =====
+; ===== function P1_ClipMemoryRangeToBounds =====
+; Rejects a (start,length) range outside the supplied bounds; trims a range that crosses the upper bound.
+; 将越出给定边界的（起始地址、长度）范围置零；超过上界时截短长度。
+.func P1_ClipMemoryRangeToBounds
 loc_02327960:
 	push {r4,r5}	; 02327960
 	ldr r5,[r0,#0x0]	; 02327962
@@ -16433,9 +17008,13 @@ loc_02327978:
 loc_02327982:
 	pop {r4,r5}	; 02327982
 	bx lr	; 02327984
+.endfunc
 	.byte 0x00, 0x00	; 02327988
 
-; ===== function loc_02327988 =====
+; ===== function P1_ConstrainNdsHeaderImageLoadRanges =====
+; Constrains ARM7/ARM9 image load ranges recorded in the copied NDS card header before boot.
+; 启动前约束复制到 RAM 的 NDS 卡带头内 ARM7/ARM9 映像装载范围。
+.func P1_ConstrainNdsHeaderImageLoadRanges
 loc_02327988:
 	push {lr}	; 02327988
 	sub sp,#0x4	; 0232798A
@@ -16448,7 +17027,7 @@ loc_02327988:
 	cmp r2,r1	; 0232799A
 	bcc loc_023279B2	; 0232799C
 	ldr r2,[pool_02327A04]	; 0232799E
-	bl loc_02327960	; 023279A0
+	bl P1_ClipMemoryRangeToBounds	; 023279A0
 	ldr r2,[pool_023279FC]	; 023279A4
 	ldr r1,[r2,#0x0]	; 023279A6
 	ldr r0,[pool_02327A08]	; 023279A8
@@ -16459,7 +17038,7 @@ loc_02327988:
 loc_023279B2:
 	ldr r1,[pool_02327A10]	; 023279B2
 	ldr r2,[pool_02327A14]	; 023279B4
-	bl loc_02327960	; 023279B6
+	bl P1_ClipMemoryRangeToBounds	; 023279B6
 	ldr r1,[pool_023279FC]	; 023279BA
 	ldr r3,[r1,#0x0]	; 023279BC
 	ldr r0,[pool_02327A18]	; 023279BE
@@ -16489,15 +17068,16 @@ loc_023279EA:
 	ldr r0,[pool_02327A24]	; 023279EA
 	ldr r1,[pool_02327A10]	; 023279EC
 	ldr r2,[pool_02327A0C]	; 023279EE
-	bl loc_02327960	; 023279F0
+	bl P1_ClipMemoryRangeToBounds	; 023279F0
 loc_023279F4:
 	add sp,#0x4	; 023279F4
 	pop {r3}	; 023279F6
 	bx r3	; 023279F8
+.endfunc
 	.byte 0xC0, 0x46	; 023279FC
 pool_023279FC:
 loc_023279FC:
-	.word 0x027FFE38	; 023279FC
+	.word NdsCartHeaderArm7RamAddress	; 023279FC
 pool_02327A00:
 loc_02327A00:
 	.word 0x037F8000	; 02327A00
@@ -16521,13 +17101,13 @@ loc_02327A18:
 	.word 0x02300000	; 02327A18
 pool_02327A1C:
 loc_02327A1C:
-	.word 0x027FFE3C	; 02327A1C
+	.word NdsCartHeaderArm7SizeAddress	; 02327A1C
 pool_02327A20:
 loc_02327A20:
 	.word 0x00040000	; 02327A20
 pool_02327A24:
 loc_02327A24:
-	.word 0x027FFE28	; 02327A24
+	.word NdsCartHeaderArm9RamAddress	; 02327A24
 
 ; ===== function loc_02327A28 =====
 loc_02327A28:
@@ -16551,7 +17131,7 @@ loc_02327A28:
 	bl loc_0232DD48	; 02327A4A
 	ldr r0,[pool_02327AA8]	; 02327A4E
 	ldr r1,[pool_02327AAC]	; 02327A50
-	blx loc_0232BBE8	; 02327A52
+	blx P1_InvalidateDataCacheRange	; 02327A52
 	mov r0,#0x0	; 02327A56
 	str r0,[sp,#0x0]	; 02327A58
 	add r0,sp,#0x0	; 02327A5A
@@ -16563,7 +17143,7 @@ loc_02327A28:
 	mov r1,#0x1	; 02327A68
 	ldr r0,[pool_02327ABC]	; 02327A6A
 	str r1,[r0,#0x0]	; 02327A6C
-	bl loc_02327988	; 02327A6E
+	bl P1_ConstrainNdsHeaderImageLoadRanges	; 02327A6E
 	bl loc_02326E60	; 02327A72
 	ldr r0,[pool_02327AC0]	; 02327A76
 	add r0,#0x19	; 02327A78
@@ -16588,7 +17168,7 @@ loc_02327A96:
 	.byte 0xC0, 0x46	; 02327AA0
 pool_02327AA0:
 loc_02327AA0:
-	.word 0x04000204	; 02327AA0
+	.word REG_EXMEMCNT_ARM9	; 02327AA0
 pool_02327AA4:
 loc_02327AA4:
 	.word 0x00008000	; 02327AA4
@@ -16606,7 +17186,7 @@ loc_02327AB4:
 	.word 0x0100001B	; 02327AB4
 pool_02327AB8:
 loc_02327AB8:
-	.word 0x023558A8	; 02327AB8
+	.word P1_BssStart + 0x24E28	; 02327AB8
 pool_02327ABC:
 loc_02327ABC:
 	.word 0x027FF880	; 02327ABC
@@ -16618,7 +17198,7 @@ loc_02327AC4:
 	.word 0x027FF814	; 02327AC4
 pool_02327AC8:
 loc_02327AC8:
-	.word 0x027FFE60	; 02327AC8
+	.word NdsCartHeaderRamAddress + 0x60	; 02327AC8
 pool_02327ACC:
 loc_02327ACC:
 	.word 0x00406000	; 02327ACC
@@ -16652,10 +17232,10 @@ loc_02327ADE:
 	.byte 0xC0, 0x46	; 02327B00
 pool_02327B00:
 loc_02327B00:
-	.word 0x040001A1	; 02327B00
+	.word REG_AUXSPICNT + 1	; 02327B00
 pool_02327B04:
 loc_02327B04:
-	.word 0x040001A8	; 02327B04
+	.word REG_GCCMDOUT	; 02327B04
 
 ; ===== function loc_02327B08 =====
 loc_02327B08:
@@ -16706,16 +17286,16 @@ loc_02327B58:
 	.word 0xB7000000	; 02327B58
 pool_02327B5C:
 loc_02327B5C:
-	.word 0x027FFE60	; 02327B5C
+	.word NdsCartHeaderRamAddress + 0x60	; 02327B5C
 pool_02327B60:
 loc_02327B60:
 	.word 0xA1000000	; 02327B60
 pool_02327B64:
 loc_02327B64:
-	.word 0x040001A4	; 02327B64
+	.word REG_ROMCTRL	; 02327B64
 pool_02327B68:
 loc_02327B68:
-	.word 0x04100010	; 02327B68
+	.word REG_GCDATAIN	; 02327B68
 pool_02327B6C:
 loc_02327B6C:
 	.word 0x80000000	; 02327B6C
@@ -16784,13 +17364,13 @@ loc_02327BD4:
 	.word 0xB8000000	; 02327BD4
 pool_02327BD8:
 loc_02327BD8:
-	.word 0x023561C0	; 02327BD8
+	.word P1_BssStart + 0x25740	; 02327BD8
 pool_02327BDC:
 loc_02327BDC:
 	.word 0xA7000000	; 02327BDC
 pool_02327BE0:
 loc_02327BE0:
-	.word 0x040001A4	; 02327BE0
+	.word REG_ROMCTRL	; 02327BE0
 
 ; ===== function loc_02327BE4 =====
 loc_02327BE4:
@@ -16807,7 +17387,7 @@ loc_02327BF4:
 	bx lr	; 02327BF6
 pool_02327BF8:
 loc_02327BF8:
-	.word 0x027FF890	; 02327BF8
+	.word FirmwareBootSharedAddress + BootSharedEventFlagsOffset	; 02327BF8
 pool_02327BFC:
 loc_02327BFC:
 	.word 0x00000200	; 02327BFC
@@ -16825,7 +17405,7 @@ loc_02327C0C:
 	bx lr	; 02327C0E
 pool_02327C10:
 loc_02327C10:
-	.word 0x023561C0	; 02327C10
+	.word P1_BssStart + 0x25740	; 02327C10
 
 ; ===== function loc_02327C14 =====
 loc_02327C14:
@@ -16918,22 +17498,22 @@ loc_02327CAE:
 	bx r3	; 02327CB6
 pool_02327CB8:
 loc_02327CB8:
-	.word 0x023561C0	; 02327CB8
+	.word P1_BssStart + 0x25740	; 02327CB8
 pool_02327CBC:
 loc_02327CBC:
-	.word 0x040001A4	; 02327CBC
+	.word REG_ROMCTRL	; 02327CBC
 pool_02327CC0:
 loc_02327CC0:
 	.word 0x00800000	; 02327CC0
 pool_02327CC4:
 loc_02327CC4:
-	.word 0x04100010	; 02327CC4
+	.word REG_GCDATAIN	; 02327CC4
 pool_02327CC8:
 loc_02327CC8:
 	.word 0x027FF800	; 02327CC8
 pool_02327CCC:
 loc_02327CCC:
-	.word 0x027FF890	; 02327CCC
+	.word FirmwareBootSharedAddress + BootSharedEventFlagsOffset	; 02327CCC
 
 ; ===== function loc_02327CD0 =====
 loc_02327CD0:
@@ -16950,10 +17530,10 @@ loc_02327CD0:
 	bx r3	; 02327CE6
 pool_02327CE8:
 loc_02327CE8:
-	.word 0x023561C0	; 02327CE8
+	.word P1_BssStart + 0x25740	; 02327CE8
 pool_02327CEC:
 loc_02327CEC:
-	.word 0x027FFE60	; 02327CEC
+	.word NdsCartHeaderRamAddress + 0x60	; 02327CEC
 .arm
 	mov r0,#0x0	; 02327CF0
 	mcr p15,0x0,r0,c7,c6,0x0	; 02327CF4
@@ -16992,10 +17572,12 @@ loc_02327D3C:
 	bx r12	; 02327D6C
 pool_02327D70:
 loc_02327D70:
-	.word 0x04000180	; 02327D70
+	.word REG_IPC_SYNC	; 02327D70
 pool_02327D74:
 loc_02327D74:
-	.word 0x02800000	; 02327D74
+; 基准为头部 RAM 视图 +0x200；负偏移实际读取 ARM9/ARM7 入口字段。
+; Addressing anchor: the negative offset above reads the ARM9/ARM7 entry field.
+	.word NdsCartHeaderRamAddress + 0x200	; 02327D74
 pool_02327D78:
 loc_02327D78:
 	.word 0x03000000	; 02327D78
@@ -17095,10 +17677,10 @@ loc_02327E74:
 	.byte 0xC0, 0x46	; 02327E80
 pool_02327E80:
 loc_02327E80:
-	.word 0x023561CC	; 02327E80
+	.word P1_BssStart + 0x2574C	; 02327E80
 pool_02327E84:
 loc_02327E84:
-	.word 0x023561D4	; 02327E84
+	.word P1_BssStart + 0x25754	; 02327E84
 
 ; ===== function loc_02327E88 =====
 loc_02327E88:
@@ -17226,13 +17808,25 @@ loc_02327F72:
 	cmp r6,#0x6	; 02327F76
 	bhi loc_02327F6C	; 02327F78
 	add r0,r6,r6	; 02327F7A
+P1_SwitchIndexPC_02327F7A:
 	add r0,pc	; 02327F7C
-	ldrh r0,[r0,#0x8]	; 02327F7E
+	ldrh r0,[r0,#(P1_SwitchTable_02327F7A - (P1_SwitchIndexPC_02327F7A + 4))]	; 02327F7E
 	lsl r0,r0,#0x10	; 02327F80
 	asr r0,r0,#0x10	; 02327F82
+P1_SwitchTargetPC_02327F7A:
 	add r0,pc	; 02327F84
 	bx r0	; 02327F86
-	.byte 0xE5, 0xFF, 0x0F, 0x00, 0x7F, 0x00, 0x95, 0x00, 0xFB, 0x00, 0xFB, 0x00, 0x35, 0x01	; 02327F96
+; 表项是相对 ADD 所读 PC 的有符号偏移，保留 ARM/Thumb 状态位。
+; Signed offsets from the ADD's PC, including the ARM/Thumb state bit.
+P1_SwitchTable_02327F7A:
+	.halfword (loc_02327F6C + 1) - (P1_SwitchTargetPC_02327F7A + 4)
+	.halfword (loc_02327F96 + 1) - (P1_SwitchTargetPC_02327F7A + 4)
+	.halfword (loc_02328006 + 1) - (P1_SwitchTargetPC_02327F7A + 4)
+	.halfword (loc_0232801C + 1) - (P1_SwitchTargetPC_02327F7A + 4)
+	.halfword (loc_02328082 + 1) - (P1_SwitchTargetPC_02327F7A + 4)
+	.halfword (loc_02328082 + 1) - (P1_SwitchTargetPC_02327F7A + 4)
+	.halfword (loc_023280BC + 1) - (P1_SwitchTargetPC_02327F7A + 4)
+P1_SwitchTable_02327F7AEnd:
 loc_02327F96:
 	add r0,r5,#0x0	; 02327F96
 	ldr r1,[sp,#0x1c]	; 02327F98
@@ -17413,13 +18007,25 @@ loc_023280DC:
 	b loc_02327F6C	; 023280EA
 loc_023280EC:
 	add r0,r6,r6	; 023280EC
+P1_SwitchIndexPC_023280EC:
 	add r0,pc	; 023280EE
-	ldrh r0,[r0,#0x8]	; 023280F0
+	ldrh r0,[r0,#(P1_SwitchTable_023280EC - (P1_SwitchIndexPC_023280EC + 4))]	; 023280F0
 	lsl r0,r0,#0x10	; 023280F2
 	asr r0,r0,#0x10	; 023280F4
+P1_SwitchTargetPC_023280EC:
 	add r0,pc	; 023280F6
 	bx r0	; 023280F8
-	.byte 0x73, 0xFE, 0x0F, 0x00, 0x19, 0x00, 0x1D, 0x00, 0x21, 0x00, 0x21, 0x00, 0x99, 0x00	; 02328108
+; 表项是相对 ADD 所读 PC 的有符号偏移，保留 ARM/Thumb 状态位。
+; Signed offsets from the ADD's PC, including the ARM/Thumb state bit.
+P1_SwitchTable_023280EC:
+	.halfword (loc_02327F6C + 1) - (P1_SwitchTargetPC_023280EC + 4)
+	.halfword (loc_02328108 + 1) - (P1_SwitchTargetPC_023280EC + 4)
+	.halfword (loc_02328112 + 1) - (P1_SwitchTargetPC_023280EC + 4)
+	.halfword (loc_02328116 + 1) - (P1_SwitchTargetPC_023280EC + 4)
+	.halfword (loc_0232811A + 1) - (P1_SwitchTargetPC_023280EC + 4)
+	.halfword (loc_0232811A + 1) - (P1_SwitchTargetPC_023280EC + 4)
+	.halfword (loc_02328192 + 1) - (P1_SwitchTargetPC_023280EC + 4)
+P1_SwitchTable_023280ECEnd:
 loc_02328108:
 	mov r0,#0x1	; 02328108
 	add sp,#0xb4	; 0232810A
@@ -17435,7 +18041,7 @@ loc_02328116:
 loc_0232811A:
 	ldr r0,[pool_023281CC]	; 0232811A
 	mov r1,#0x1	; 0232811C
-	blx loc_0232BBE8	; 0232811E
+	blx P1_InvalidateDataCacheRange	; 0232811E
 	cmp r6,#0x4	; 02328122
 	bne loc_02328140	; 02328124
 	ldr r0,[pool_023281CC]	; 02328126
@@ -17536,7 +18142,7 @@ loc_023281C8:
 	.word 0x01040000	; 023281C8
 pool_023281CC:
 loc_023281CC:
-	.word 0x02356260	; 023281CC
+	.word P1_BssStart + 0x257E0	; 023281CC
 pool_023281D0:
 loc_023281D0:
 	.word 0x02002200	; 023281D0
@@ -17548,7 +18154,7 @@ loc_023281D8:
 	.word 0x01020000	; 023281D8
 pool_023281DC:
 loc_023281DC:
-	.word 0x023561D4	; 023281DC
+	.word P1_BssStart + 0x25754	; 023281DC
 pool_023281E0:
 loc_023281E0:
 	.word 0x03002000	; 023281E0
@@ -17557,7 +18163,7 @@ loc_023281E4:
 	.word 0x03002D00	; 023281E4
 pool_023281E8:
 loc_023281E8:
-	.word 0x023561CC	; 023281E8
+	.word P1_BssStart + 0x2574C	; 023281E8
 pool_023281EC:
 loc_023281EC:
 	.word 0x000082EA	; 023281EC
@@ -17672,7 +18278,7 @@ loc_023282B0:
 	.word 0x0000FFFF	; 023282B0
 pool_023282B4:
 loc_023282B4:
-	.word 0x02330910	; 023282B4
+	.word P1_Data_02330910	; 023282B4
 
 ; ===== function loc_023282B8 =====
 loc_023282B8:
@@ -17722,7 +18328,7 @@ loc_023282DE:
 	strh r0,[r1,#0x0]	; 0232830E
 	ldr r0,[pool_02328358]	; 02328310
 	mov r1,#0x80	; 02328312
-	blx loc_0232BC20	; 02328314
+	blx P1_CleanAndInvalidateDataCacheRange	; 02328314
 	mov r0,#0x8	; 02328318
 	sub r5,r0,#0x1	; 0232831A
 	ldr r4,[pool_02328354]	; 0232831C
@@ -17755,19 +18361,19 @@ loc_0232834C:
 	bx r3	; 02328352
 pool_02328354:
 loc_02328354:
-	.word 0x02330910	; 02328354
+	.word P1_Data_02330910	; 02328354
 pool_02328358:
 loc_02328358:
-	.word 0x023561E0	; 02328358
+	.word P1_BssStart + 0x25760	; 02328358
 pool_0232835C:
 loc_0232835C:
 	.word 0x0000FFFF	; 0232835C
 pool_02328360:
 loc_02328360:
-	.word 0x023561D0	; 02328360
+	.word P1_BssStart + 0x25750	; 02328360
 pool_02328364:
 loc_02328364:
-	.word 0x027FF868	; 02328364
+	.word FirmwareBootSharedAddress + BootSharedSettingsFlashOffset	; 02328364
 pool_02328368:
 loc_02328368:
 	.word 0x00004000	; 02328368
@@ -17879,7 +18485,7 @@ loc_02328414:
 	beq loc_02328414	; 02328426
 	add r0,r5,#0x0	; 02328428
 	ldr r1,[pool_02328484]	; 0232842A
-	blx loc_0232BBE8	; 0232842C
+	blx P1_InvalidateDataCacheRange	; 0232842C
 	add r0,r5,#0x0	; 02328430
 	bl loc_023281F8	; 02328432
 	cmp r0,#0x0	; 02328436
@@ -17924,16 +18530,16 @@ loc_0232847C:
 	.word 0x02327E5D	; 0232847C
 pool_02328480:
 loc_02328480:
-	.word 0x027FF868	; 02328480
+	.word FirmwareBootSharedAddress + BootSharedSettingsFlashOffset	; 02328480
 pool_02328484:
 loc_02328484:
 	.word 0x00000100	; 02328484
 pool_02328488:
 loc_02328488:
-	.word 0x023561D0	; 02328488
+	.word P1_BssStart + 0x25750	; 02328488
 pool_0232848C:
 loc_0232848C:
-	.word 0x02330910	; 0232848C
+	.word P1_Data_02330910	; 0232848C
 
 ; ===== function loc_02328490 =====
 loc_02328490:
@@ -17975,7 +18581,7 @@ loc_023284C8:
 	.word 0x08000004	; 023284C8
 pool_023284CC:
 loc_023284CC:
-	.word 0x0232C7D7	; 023284CC
+	.word P1_SwiCpuSet + 1	; 023284CC
 
 ; ===== function loc_023284D0 =====
 loc_023284D0:
@@ -18167,9 +18773,12 @@ loc_0232861C:
 	.word 0x023309D4	; 0232861C
 
 ; ===== function loc_02328620 =====
+.func P1_SwiDiff16UnFilter
+; BIOS SWI #18: differential 16-bit decompression. / BIOS SWI #18：差分 16 位解压。
 loc_02328620:
 	swi 0x18	; 02328620
 	bx lr	; 02328622
+.endfunc
 
 ; ===== function loc_02328624 =====
 loc_02328624:
@@ -18224,7 +18833,7 @@ loc_0232864C:
 	bx r3	; 0232867E
 pool_02328680:
 loc_02328680:
-	.word 0x023309D4	; 02328680
+	.word P1_Data_023309D4	; 02328680
 pool_02328684:
 loc_02328684:
 	.word 0x80000000	; 02328684
@@ -18597,6 +19206,7 @@ loc_02328BDC:
 	bx r3	; 02328BE2
 
 ; ===== function loc_02328BE4 =====
+P1_Entry_02328BE4:
 	push {r4,lr}	; 02328BE4
 	add r4,r0,#0x0	; 02328BE6
 	bl loc_02328F70	; 02328BE8
@@ -18879,7 +19489,7 @@ loc_02328DD8:
 	bne loc_02328DFA	; 02328DE8
 	add r0,r1,#0x1	; 02328DEA
 	mov r1,#0x2	; 02328DEC
-	blx loc_0232CD38	; 02328DEE
+	blx P1_SignedDivMod	; 02328DEE
 	add sp,#0x4	; 02328DF2
 	pop {r3}	; 02328DF4
 	add sp,#0x10	; 02328DF6
@@ -18984,6 +19594,7 @@ loc_02328EA0:
 	bx r3	; 02328EA6
 
 ; ===== function loc_02328EA8 =====
+P1_Entry_02328EA8:
 	push {r4,r5,r6,r7,lr}	; 02328EA8
 	sub sp,#0xc	; 02328EAA
 	add r5,r0,#0x0	; 02328EAC
@@ -19286,7 +19897,7 @@ loc_023290A8:
 loc_023290C6:
 	add r0,r1,#0x1	; 023290C6
 	mov r1,#0x2	; 023290C8
-	blx loc_0232CD38	; 023290CA
+	blx P1_SignedDivMod	; 023290CA
 	sub r4,r4,r0	; 023290CE
 	b loc_023290D4	; 023290D0
 loc_023290D2:
@@ -19319,7 +19930,7 @@ loc_023290E0:
 loc_023290FE:
 	add r0,r1,#0x1	; 023290FE
 	mov r1,#0x2	; 02329100
-	blx loc_0232CD38	; 02329102
+	blx P1_SignedDivMod	; 02329102
 	sub r4,r4,r0	; 02329106
 	b loc_0232910C	; 02329108
 loc_0232910A:
@@ -19736,10 +20347,10 @@ loc_023293B4:
 	blt loc_023293B4	; 023293C4
 	ldr r0,[sp,#0x0]	; 023293C6
 	ldr r1,[sp,#0x8]	; 023293C8
-	blx loc_0232BC20	; 023293CA
+	blx P1_CleanAndInvalidateDataCacheRange	; 023293CA
 	ldr r0,[sp,#0x4]	; 023293CE
 	ldr r1,[sp,#0x8]	; 023293D0
-	blx loc_0232BC20	; 023293D2
+	blx P1_CleanAndInvalidateDataCacheRange	; 023293D2
 	add sp,#0x14	; 023293D6
 	pop {r4,r5,r6,r7}	; 023293D8
 	pop {r3}	; 023293DA
@@ -19767,7 +20378,7 @@ loc_023293E8:
 	beq loc_02329404	; 023293FC
 	ldr r5,[r4,#0x8]	; 023293FE
 	str r5,[sp,#0x0]	; 02329400
-	.byte 0xB0, 0x47	; 02329402
+	blx r6	; 02329402
 loc_02329404:
 	ldr r0,[r4,#0x0]	; 02329404
 	cmp r0,#0x0	; 02329406
@@ -19803,7 +20414,7 @@ loc_02329436:
 	bx r3	; 0232943E
 pool_02329440:
 loc_02329440:
-	.word 0x023563BC	; 02329440
+	.word P1_BssStart + 0x2593C	; 02329440
 
 ; ===== function loc_02329444 =====
 loc_02329444:
@@ -19846,7 +20457,7 @@ loc_0232948C:
 	.word 0x023563C8	; 0232948C
 pool_02329490:
 loc_02329490:
-	.word 0x023563BC	; 02329490
+	.word P1_BssStart + 0x2593C	; 02329490
 pool_02329494:
 loc_02329494:
 	.word 0x00003000	; 02329494
@@ -19865,7 +20476,7 @@ loc_023294A0:
 	.byte 0xC0, 0x46	; 023294A8
 pool_023294A8:
 loc_023294A8:
-	.word 0x0232C745	; 023294A8
+	.word loc_0232C744 + 1	; 023294A8
 
 ; ===== function loc_023294AC =====
 loc_023294AC:
@@ -19928,7 +20539,7 @@ loc_02329502:
 	bx r3	; 0232951A
 pool_0232951C:
 loc_0232951C:
-	.word 0x0233045C	; 0232951C
+	.word P1_VibBuildIdentifier	; 0232951C
 
 ; ===== function loc_02329520 =====
 loc_02329520:
@@ -20243,7 +20854,7 @@ loc_0232973C:
 	.word 0xFFFFFFF8	; 0232973C
 pool_02329740:
 loc_02329740:
-	.word 0x02356488	; 02329740
+	.word P1_BssStart + 0x25A08	; 02329740
 pool_02329744:
 loc_02329744:
 	.word 0x0235648C	; 02329744
@@ -20308,58 +20919,408 @@ loc_023297AC:
 	pop {r4,r5,r6}	; 023297AC
 	pop {r3}	; 023297AE
 	bx r3	; 023297B0
-	.byte 0x00, 0x00, 0x30, 0xB5, 0x83, 0xB0, 0x05, 0x1C, 0x24, 0x35, 0x0C, 0x1C, 0x10, 0x3C, 0x00, 0xA8	; 023297C2
-	.byte 0x21, 0x1C, 0x00, 0xF0, 0xE8, 0xF9, 0x28, 0x1C, 0x08, 0x30, 0x21, 0x1C, 0x00, 0xF0, 0xD5, 0xF9	; 023297D2
-	.byte 0x28, 0x1C, 0x00, 0xA9, 0x00, 0xF0, 0x31, 0xF8, 0x03, 0xB0, 0x30, 0xBC, 0x08, 0xBC, 0x18, 0x47	; 023297E2
-	.byte 0x00, 0x00, 0x00, 0xB5, 0x81, 0xB0, 0x00, 0x29, 0x00, 0xD1, 0x01, 0x21, 0xC9, 0x1C, 0x03, 0x23	; 023297F2
-	.byte 0x99, 0x43, 0x00, 0x2A, 0x04, 0xDB, 0x00, 0xF0, 0xAE, 0xF8, 0x01, 0xB0, 0x08, 0xBC, 0x18, 0x47	; 02329802
-	.byte 0x52, 0x42, 0x00, 0xF0, 0x64, 0xF8, 0x01, 0xB0, 0x08, 0xBC, 0x18, 0x47, 0x00, 0x00, 0x00, 0xB5	; 02329812
-	.byte 0x81, 0xB0, 0x09, 0x18, 0x03, 0x23, 0x99, 0x43, 0xC0, 0x1C, 0x98, 0x43, 0x88, 0x42, 0x02, 0xD8	; 02329822
-	.byte 0x0B, 0x1A, 0x4C, 0x2B, 0x03, 0xD2, 0x00, 0x20, 0x01, 0xB0, 0x08, 0xBC, 0x18, 0x47, 0x00, 0xF0	; 02329832
-	.byte 0x5C, 0xF9, 0x01, 0xB0, 0x08, 0xBC, 0x18, 0x47, 0x00, 0x00, 0x70, 0xB5, 0x82, 0xB0, 0x06, 0x1C	; 02329842
-	.byte 0x0D, 0x1C, 0x00, 0x24, 0x29, 0x68, 0x68, 0x68, 0x00, 0x91, 0x01, 0x90, 0x31, 0x68, 0x00, 0x29	; 02329852
-	.byte 0x13, 0xD0, 0x28, 0x68, 0x81, 0x42, 0x01, 0xD2, 0x0C, 0x1C, 0x0B, 0xE0, 0x68, 0x68, 0x81, 0x42	; 02329862
-	.byte 0x0B, 0xD1, 0x4A, 0x68, 0x08, 0x1C, 0x10, 0x30, 0x10, 0x18, 0x01, 0x90, 0x30, 0x1C, 0x00, 0xF0	; 02329872
-	.byte 0x84, 0xF9, 0x02, 0xE0, 0xC9, 0x68, 0x00, 0x29, 0xEC, 0xD1, 0x00, 0x2C, 0x0C, 0xD0, 0x61, 0x68	; 02329882
-	.byte 0x20, 0x1C, 0x10, 0x30, 0x09, 0x18, 0x28, 0x68, 0x81, 0x42, 0x05, 0xD1, 0x00, 0x94, 0x30, 0x1C	; 02329892
-	.byte 0x21, 0x1C, 0x00, 0xF0, 0x72, 0xF9, 0x04, 0x1C, 0x01, 0x99, 0x00, 0x98, 0x08, 0x1A, 0x10, 0x28	; 023298A2
-	.byte 0x04, 0xD2, 0x00, 0x20, 0x02, 0xB0, 0x70, 0xBC, 0x08, 0xBC, 0x18, 0x47, 0x00, 0xA8, 0x06, 0x49	; 023298B2
-	.byte 0x00, 0xF0, 0x45, 0xF9, 0x01, 0x1C, 0x30, 0x1C, 0x22, 0x1C, 0x00, 0xF0, 0x4E, 0xF9, 0x01, 0x20	; 023298C2
-	.byte 0x02, 0xB0, 0x70, 0xBC, 0x08, 0xBC, 0x18, 0x47, 0xC0, 0x46, 0x52, 0x46, 0x00, 0x00, 0xF0, 0xB5	; 023298D2
-	.byte 0x85, 0xB0, 0x0B, 0x1C, 0x03, 0x90, 0x24, 0x30, 0x03, 0x90, 0x40, 0x8A, 0x01, 0x27, 0x38, 0x40	; 023298E2
-	.byte 0x00, 0x04, 0x00, 0x0C, 0x00, 0x28, 0x00, 0xD0, 0x00, 0x27, 0x00, 0x20, 0x01, 0x90, 0xC0, 0x43	; 023298F2
-	.byte 0x01, 0x99, 0x02, 0x91, 0x03, 0x99, 0x49, 0x68, 0x00, 0x29, 0x18, 0xD0, 0x52, 0x1E, 0xD2, 0x43	; 02329902
-	.byte 0x04, 0x92, 0x0E, 0x1C, 0x10, 0x36, 0x4D, 0x68, 0xAA, 0x19, 0xD2, 0x1A, 0x04, 0x9C, 0x14, 0x40	; 02329912
-	.byte 0xA2, 0x1B, 0x00, 0x2A, 0x08, 0xDB, 0xA8, 0x42, 0x06, 0xD9, 0x01, 0x91, 0x28, 0x1C, 0x02, 0x94	; 02329922
-	.byte 0x00, 0x2F, 0x04, 0xD1, 0x9D, 0x42, 0x02, 0xD0, 0x89, 0x68, 0x00, 0x29, 0xE9, 0xD1, 0x01, 0x98	; 02329932
-	.byte 0x00, 0x28, 0x0A, 0xD0, 0x01, 0x20, 0x00, 0x90, 0x03, 0x98, 0x01, 0x99, 0x02, 0x9A, 0x00, 0xF0	; 02329942
-	.byte 0x4E, 0xF8, 0x05, 0xB0, 0xF0, 0xBC, 0x08, 0xBC, 0x18, 0x47, 0x00, 0x20, 0x05, 0xB0, 0xF0, 0xBC	; 02329952
-	.byte 0x08, 0xBC, 0x18, 0x47, 0x00, 0x00, 0xF0, 0xB5, 0x85, 0xB0, 0x0B, 0x1C, 0x03, 0x90, 0x24, 0x30	; 02329962
-	.byte 0x03, 0x90, 0x40, 0x8A, 0x01, 0x27, 0x38, 0x40, 0x00, 0x04, 0x00, 0x0C, 0x00, 0x28, 0x00, 0xD0	; 02329972
-	.byte 0x00, 0x27, 0x00, 0x20, 0x01, 0x90, 0xC0, 0x43, 0x01, 0x99, 0x02, 0x91, 0x03, 0x99, 0x09, 0x68	; 02329982
-	.byte 0x00, 0x29, 0x18, 0xD0, 0x56, 0x1E, 0xF2, 0x43, 0x04, 0x92, 0x0D, 0x1C, 0x10, 0x35, 0x72, 0x19	; 02329992
-	.byte 0x04, 0x9C, 0x14, 0x40, 0x4A, 0x68, 0x65, 0x1B, 0x5D, 0x19, 0xAA, 0x42, 0x08, 0xD3, 0x90, 0x42	; 023299A2
-	.byte 0x06, 0xD9, 0x01, 0x91, 0x10, 0x1C, 0x02, 0x94, 0x00, 0x2F, 0x04, 0xD1, 0x9A, 0x42, 0x02, 0xD0	; 023299B2
-	.byte 0xC9, 0x68, 0x00, 0x29, 0xE9, 0xD1, 0x01, 0x98, 0x00, 0x28, 0x0A, 0xD0, 0x00, 0x20, 0x00, 0x90	; 023299C2
-	.byte 0x03, 0x98, 0x01, 0x99, 0x02, 0x9A, 0x00, 0xF0, 0x0A, 0xF8, 0x05, 0xB0, 0xF0, 0xBC, 0x08, 0xBC	; 023299D2
-	.byte 0x18, 0x47, 0x00, 0x20, 0x05, 0xB0, 0xF0, 0xBC, 0x08, 0xBC, 0x18, 0x47, 0x00, 0x00, 0xF0, 0xB5	; 023299E2
-	.byte 0x87, 0xB0, 0x05, 0x1C, 0x0F, 0x1C, 0x14, 0x1C, 0x1E, 0x1C, 0x00, 0xA8, 0x00, 0xF0, 0xD3, 0xF8	; 023299F2
-	.byte 0x01, 0x98, 0x03, 0x90, 0x30, 0x19, 0x02, 0x90, 0x26, 0x1C, 0x10, 0x3E, 0x01, 0x96, 0x28, 0x1C	; 02329A02
-	.byte 0x39, 0x1C, 0x00, 0xF0, 0xBA, 0xF8, 0x07, 0x1C, 0x00, 0x99, 0x01, 0x98, 0x40, 0x1A, 0x10, 0x28	; 02329A12
-	.byte 0x01, 0xD2, 0x01, 0x91, 0x09, 0xE0, 0x00, 0xA8, 0x30, 0x49, 0x00, 0xF0, 0x90, 0xF8, 0x01, 0x1C	; 02329A22
-	.byte 0x28, 0x1C, 0x3A, 0x1C, 0x00, 0xF0, 0x99, 0xF8, 0x07, 0x1C, 0x03, 0x99, 0x02, 0x98, 0x08, 0x1A	; 02329A32
-	.byte 0x10, 0x28, 0x01, 0xD2, 0x02, 0x91, 0x08, 0xE0, 0x02, 0xA8, 0x27, 0x49, 0x00, 0xF0, 0x7F, 0xF8	; 02329A42
-	.byte 0x01, 0x1C, 0x28, 0x1C, 0x3A, 0x1C, 0x00, 0xF0, 0x88, 0xF8, 0x01, 0x99, 0x02, 0x98, 0x42, 0x1A	; 02329A52
-	.byte 0x28, 0x1F, 0x03, 0x68, 0xFF, 0x20, 0x03, 0x40, 0x18, 0x04, 0x03, 0x0C, 0x01, 0x20, 0x03, 0x40	; 02329A62
-	.byte 0x00, 0x2B, 0x04, 0xD0, 0x00, 0x20, 0x06, 0x90, 0x06, 0x98, 0x04, 0xF0, 0xEE, 0xE9, 0x04, 0x96	; 02329A72
-	.byte 0x02, 0x98, 0x05, 0x90, 0x04, 0xA8, 0x19, 0x49, 0x00, 0xF0, 0x61, 0xF8, 0x01, 0x1C, 0x4A, 0x88	; 02329A82
-	.byte 0x18, 0x48, 0x02, 0x40, 0x4A, 0x80, 0x48, 0x88, 0x08, 0xAA, 0x13, 0x8A, 0x01, 0x22, 0x13, 0x40	; 02329A92
-	.byte 0xDA, 0x03, 0x10, 0x43, 0x48, 0x80, 0x01, 0x98, 0x0B, 0x1A, 0x4A, 0x88, 0x12, 0x48, 0x02, 0x40	; 02329AA2
-	.byte 0x4A, 0x80, 0x48, 0x88, 0x1A, 0x04, 0x13, 0x0C, 0x7F, 0x22, 0x13, 0x40, 0x1A, 0x02, 0x10, 0x43	; 02329AB2
-	.byte 0x48, 0x80, 0x2B, 0x8A, 0xFF, 0x20, 0x03, 0x40, 0x4A, 0x88, 0x82, 0x43, 0x4A, 0x80, 0x48, 0x88	; 02329AC2
-	.byte 0x18, 0x43, 0x48, 0x80, 0x28, 0x1C, 0x08, 0x30, 0xEA, 0x68, 0x00, 0xF0, 0x46, 0xF8, 0x20, 0x1C	; 02329AD2
-	.byte 0x07, 0xB0, 0xF0, 0xBC, 0x08, 0xBC, 0x18, 0x47, 0xC0, 0x46, 0x52, 0x46, 0x00, 0x00, 0x44, 0x55	; 02329AE2
-	.byte 0x00, 0x00, 0xFF, 0x7F, 0xFF, 0xFF, 0xFF, 0x80, 0xFF, 0xFF	; 02329AEC
+	.byte 0x00, 0x00	; 023297B2
+P1_Entry_023297B4:
+	push {r4,r5,lr}	; 023297B4
+	sub sp,#0xc	; 023297B6
+	add r5,r0,#0x0	; 023297B8
+	add r5,#0x24	; 023297BA
+	add r4,r1,#0x0	; 023297BC
+	sub r4,#0x10	; 023297BE
+	add r0,sp,#0x0	; 023297C0
+	add r1,r4,#0x0	; 023297C2
+	bl P1_Entry_02329B98	; 023297C4
+	add r0,r5,#0x0	; 023297C8
+	add r0,#0x8	; 023297CA
+	add r1,r4,#0x0	; 023297CC
+	bl P1_Entry_02329B7C	; 023297CE
+	add r0,r5,#0x0	; 023297D2
+	add r1,sp,#0x0	; 023297D4
+	bl P1_Entry_0232983C	; 023297D6
+	add sp,#0xc	; 023297DA
+	pop {r4,r5}	; 023297DC
+	pop {r3}	; 023297DE
+	bx r3	; 023297E0
+	.byte 0x00, 0x00	; 023297E2
+P1_Entry_023297E4:
+	push {lr}	; 023297E4
+	sub sp,#0x4	; 023297E6
+	cmp r1,#0x0	; 023297E8
+	bne P1_Entry_023297EE	; 023297EA
+	mov r1,#0x1	; 023297EC
+P1_Entry_023297EE:
+	add r1,r1,#0x3	; 023297EE
+	mov r3,#0x3	; 023297F0
+	bic r1,r3	; 023297F2
+	cmp r2,#0x0	; 023297F4
+	blt P1_Entry_02329802	; 023297F6
+	bl P1_Entry_02329958	; 023297F8
+	add sp,#0x4	; 023297FC
+	pop {r3}	; 023297FE
+	bx r3	; 02329800
+P1_Entry_02329802:
+	neg r2,r2	; 02329802
+	bl P1_Entry_023298D0	; 02329804
+	add sp,#0x4	; 02329808
+	pop {r3}	; 0232980A
+	bx r3	; 0232980C
+	.byte 0x00, 0x00, 0x00, 0xB5, 0x81, 0xB0, 0x09, 0x18, 0x03, 0x23, 0x99, 0x43, 0xC0, 0x1C, 0x98, 0x43	; 0232980E
+	.byte 0x88, 0x42, 0x02, 0xD8, 0x0B, 0x1A, 0x4C, 0x2B, 0x03, 0xD2, 0x00, 0x20, 0x01, 0xB0, 0x08, 0xBC	; 0232981E
+	.byte 0x18, 0x47, 0x00, 0xF0, 0x5C, 0xF9, 0x01, 0xB0, 0x08, 0xBC, 0x18, 0x47, 0x00, 0x00	; 0232982E
+P1_Entry_0232983C:
+	push {r4,r5,r6,lr}	; 0232983C
+	sub sp,#0x8	; 0232983E
+	add r6,r0,#0x0	; 02329840
+	add r5,r1,#0x0	; 02329842
+	mov r4,#0x0	; 02329844
+	ldr r1,[r5,#0x0]	; 02329846
+	ldr r0,[r5,#0x4]	; 02329848
+	str r1,[sp,#0x0]	; 0232984A
+	str r0,[sp,#0x4]	; 0232984C
+	ldr r1,[r6,#0x0]	; 0232984E
+	cmp r1,#0x0	; 02329850
+	beq P1_Entry_0232987C	; 02329852
+	ldr r0,[r5,#0x0]	; 02329854
+P1_Entry_02329856:
+	cmp r1,r0	; 02329856
+	bcs P1_Entry_0232985E	; 02329858
+	add r4,r1,#0x0	; 0232985A
+	b P1_Entry_02329876	; 0232985C
+P1_Entry_0232985E:
+	ldr r0,[r5,#0x4]	; 0232985E
+	cmp r1,r0	; 02329860
+	bne P1_Entry_0232987C	; 02329862
+	ldr r2,[r1,#0x4]	; 02329864
+	add r0,r1,#0x0	; 02329866
+	add r0,#0x10	; 02329868
+	add r0,r2,r0	; 0232986A
+	str r0,[sp,#0x4]	; 0232986C
+	add r0,r6,#0x0	; 0232986E
+	bl P1_Entry_02329B7C	; 02329870
+	b P1_Entry_0232987C	; 02329874
+P1_Entry_02329876:
+	ldr r1,[r1,#0xc]	; 02329876
+	cmp r1,#0x0	; 02329878
+	bne P1_Entry_02329856	; 0232987A
+P1_Entry_0232987C:
+	cmp r4,#0x0	; 0232987C
+	beq P1_Entry_0232989A	; 0232987E
+	ldr r1,[r4,#0x4]	; 02329880
+	add r0,r4,#0x0	; 02329882
+	add r0,#0x10	; 02329884
+	add r1,r1,r0	; 02329886
+	ldr r0,[r5,#0x0]	; 02329888
+	cmp r1,r0	; 0232988A
+	bne P1_Entry_0232989A	; 0232988C
+	str r4,[sp,#0x0]	; 0232988E
+	add r0,r6,#0x0	; 02329890
+	add r1,r4,#0x0	; 02329892
+	bl P1_Entry_02329B7C	; 02329894
+	add r4,r0,#0x0	; 02329898
+P1_Entry_0232989A:
+	ldr r1,[sp,#0x4]	; 0232989A
+	ldr r0,[sp,#0x0]	; 0232989C
+	sub r0,r1,r0	; 0232989E
+	cmp r0,#0x10	; 023298A0
+	bcs P1_Entry_023298AE	; 023298A2
+	mov r0,#0x0	; 023298A4
+	add sp,#0x8	; 023298A6
+	pop {r4,r5,r6}	; 023298A8
+	pop {r3}	; 023298AA
+	bx r3	; 023298AC
+P1_Entry_023298AE:
+	add r0,sp,#0x0	; 023298AE
+	ldr r1,[pool_023298CC]	; 023298B0
+	bl loc_02329B40	; 023298B2
+	add r1,r0,#0x0	; 023298B6
+	add r0,r6,#0x0	; 023298B8
+	add r2,r4,#0x0	; 023298BA
+	bl P1_Entry_02329B5C	; 023298BC
+	mov r0,#0x1	; 023298C0
+	add sp,#0x8	; 023298C2
+	pop {r4,r5,r6}	; 023298C4
+	pop {r3}	; 023298C6
+	bx r3	; 023298C8
+	.byte 0xC0, 0x46	; 023298CA
+pool_023298CC:
+	.word 0x00004652	; 023298CC
+P1_Entry_023298D0:
+	push {r4,r5,r6,r7,lr}	; 023298D0
+	sub sp,#0x14	; 023298D2
+	add r3,r1,#0x0	; 023298D4
+	str r0,[sp,#0xc]	; 023298D6
+	add r0,#0x24	; 023298D8
+	str r0,[sp,#0xc]	; 023298DA
+	ldrh r0,[r0,#0x12]	; 023298DC
+	mov r7,#0x1	; 023298DE
+	and r0,r7	; 023298E0
+	lsl r0,r0,#0x10	; 023298E2
+	lsr r0,r0,#0x10	; 023298E4
+	cmp r0,#0x0	; 023298E6
+	beq P1_Entry_023298EC	; 023298E8
+	mov r7,#0x0	; 023298EA
+P1_Entry_023298EC:
+	mov r0,#0x0	; 023298EC
+	str r0,[sp,#0x4]	; 023298EE
+	mvn r0,r0	; 023298F0
+	ldr r1,[sp,#0x4]	; 023298F2
+	str r1,[sp,#0x8]	; 023298F4
+	ldr r1,[sp,#0xc]	; 023298F6
+	ldr r1,[r1,#0x4]	; 023298F8
+	cmp r1,#0x0	; 023298FA
+	beq P1_Entry_02329930	; 023298FC
+	sub r2,r2,#0x1	; 023298FE
+	mvn r2,r2	; 02329900
+	str r2,[sp,#0x10]	; 02329902
+P1_Entry_02329904:
+	add r6,r1,#0x0	; 02329904
+	add r6,#0x10	; 02329906
+	ldr r5,[r1,#0x4]	; 02329908
+	add r2,r5,r6	; 0232990A
+	sub r2,r2,r3	; 0232990C
+	ldr r4,[sp,#0x10]	; 0232990E
+	and r4,r2	; 02329910
+	sub r2,r4,r6	; 02329912
+	cmp r2,#0x0	; 02329914
+	blt P1_Entry_0232992A	; 02329916
+	cmp r0,r5	; 02329918
+	bls P1_Entry_0232992A	; 0232991A
+	str r1,[sp,#0x4]	; 0232991C
+	add r0,r5,#0x0	; 0232991E
+	str r4,[sp,#0x8]	; 02329920
+	cmp r7,#0x0	; 02329922
+	bne P1_Entry_02329930	; 02329924
+	cmp r5,r3	; 02329926
+	beq P1_Entry_02329930	; 02329928
+P1_Entry_0232992A:
+	ldr r1,[r1,#0x8]	; 0232992A
+	cmp r1,#0x0	; 0232992C
+	bne P1_Entry_02329904	; 0232992E
+P1_Entry_02329930:
+	ldr r0,[sp,#0x4]	; 02329930
+	cmp r0,#0x0	; 02329932
+	beq P1_Entry_0232994C	; 02329934
+	mov r0,#0x1	; 02329936
+	str r0,[sp,#0x0]	; 02329938
+	ldr r0,[sp,#0xc]	; 0232993A
+	ldr r1,[sp,#0x4]	; 0232993C
+	ldr r2,[sp,#0x8]	; 0232993E
+	bl P1_Entry_023299E0	; 02329940
+	add sp,#0x14	; 02329944
+	pop {r4,r5,r6,r7}	; 02329946
+	pop {r3}	; 02329948
+	bx r3	; 0232994A
+P1_Entry_0232994C:
+	mov r0,#0x0	; 0232994C
+	add sp,#0x14	; 0232994E
+	pop {r4,r5,r6,r7}	; 02329950
+	pop {r3}	; 02329952
+	bx r3	; 02329954
+	.byte 0x00, 0x00	; 02329956
+P1_Entry_02329958:
+	push {r4,r5,r6,r7,lr}	; 02329958
+	sub sp,#0x14	; 0232995A
+	add r3,r1,#0x0	; 0232995C
+	str r0,[sp,#0xc]	; 0232995E
+	add r0,#0x24	; 02329960
+	str r0,[sp,#0xc]	; 02329962
+	ldrh r0,[r0,#0x12]	; 02329964
+	mov r7,#0x1	; 02329966
+	and r0,r7	; 02329968
+	lsl r0,r0,#0x10	; 0232996A
+	lsr r0,r0,#0x10	; 0232996C
+	cmp r0,#0x0	; 0232996E
+	beq P1_Entry_02329974	; 02329970
+	mov r7,#0x0	; 02329972
+P1_Entry_02329974:
+	mov r0,#0x0	; 02329974
+	str r0,[sp,#0x4]	; 02329976
+	mvn r0,r0	; 02329978
+	ldr r1,[sp,#0x4]	; 0232997A
+	str r1,[sp,#0x8]	; 0232997C
+	ldr r1,[sp,#0xc]	; 0232997E
+	ldr r1,[r1,#0x0]	; 02329980
+	cmp r1,#0x0	; 02329982
+	beq P1_Entry_023299B8	; 02329984
+	sub r6,r2,#0x1	; 02329986
+	mvn r2,r6	; 02329988
+	str r2,[sp,#0x10]	; 0232998A
+P1_Entry_0232998C:
+	add r5,r1,#0x0	; 0232998C
+	add r5,#0x10	; 0232998E
+	add r2,r6,r5	; 02329990
+	ldr r4,[sp,#0x10]	; 02329992
+	and r4,r2	; 02329994
+	ldr r2,[r1,#0x4]	; 02329996
+	sub r5,r4,r5	; 02329998
+	add r5,r3,r5	; 0232999A
+	cmp r2,r5	; 0232999C
+	bcc P1_Entry_023299B2	; 0232999E
+	cmp r0,r2	; 023299A0
+	bls P1_Entry_023299B2	; 023299A2
+	str r1,[sp,#0x4]	; 023299A4
+	add r0,r2,#0x0	; 023299A6
+	str r4,[sp,#0x8]	; 023299A8
+	cmp r7,#0x0	; 023299AA
+	bne P1_Entry_023299B8	; 023299AC
+	cmp r2,r3	; 023299AE
+	beq P1_Entry_023299B8	; 023299B0
+P1_Entry_023299B2:
+	ldr r1,[r1,#0xc]	; 023299B2
+	cmp r1,#0x0	; 023299B4
+	bne P1_Entry_0232998C	; 023299B6
+P1_Entry_023299B8:
+	ldr r0,[sp,#0x4]	; 023299B8
+	cmp r0,#0x0	; 023299BA
+	beq P1_Entry_023299D4	; 023299BC
+	mov r0,#0x0	; 023299BE
+	str r0,[sp,#0x0]	; 023299C0
+	ldr r0,[sp,#0xc]	; 023299C2
+	ldr r1,[sp,#0x4]	; 023299C4
+	ldr r2,[sp,#0x8]	; 023299C6
+	bl P1_Entry_023299E0	; 023299C8
+	add sp,#0x14	; 023299CC
+	pop {r4,r5,r6,r7}	; 023299CE
+	pop {r3}	; 023299D0
+	bx r3	; 023299D2
+P1_Entry_023299D4:
+	mov r0,#0x0	; 023299D4
+	add sp,#0x14	; 023299D6
+	pop {r4,r5,r6,r7}	; 023299D8
+	pop {r3}	; 023299DA
+	bx r3	; 023299DC
+	.byte 0x00, 0x00	; 023299DE
+P1_Entry_023299E0:
+	push {r4,r5,r6,r7,lr}	; 023299E0
+	sub sp,#0x1c	; 023299E2
+	add r5,r0,#0x0	; 023299E4
+	add r7,r1,#0x0	; 023299E6
+	add r4,r2,#0x0	; 023299E8
+	add r6,r3,#0x0	; 023299EA
+	add r0,sp,#0x0	; 023299EC
+	bl P1_Entry_02329B98	; 023299EE
+	ldr r0,[sp,#0x4]	; 023299F2
+	str r0,[sp,#0xc]	; 023299F4
+	add r0,r6,r4	; 023299F6
+	str r0,[sp,#0x8]	; 023299F8
+	add r6,r4,#0x0	; 023299FA
+	sub r6,#0x10	; 023299FC
+	str r6,[sp,#0x4]	; 023299FE
+	add r0,r5,#0x0	; 02329A00
+	add r1,r7,#0x0	; 02329A02
+	bl P1_Entry_02329B7C	; 02329A04
+	add r7,r0,#0x0	; 02329A08
+	ldr r1,[sp,#0x0]	; 02329A0A
+	ldr r0,[sp,#0x4]	; 02329A0C
+	sub r0,r0,r1	; 02329A0E
+	cmp r0,#0x10	; 02329A10
+	bcs P1_Entry_02329A18	; 02329A12
+	str r1,[sp,#0x4]	; 02329A14
+	b P1_Entry_02329A2C	; 02329A16
+P1_Entry_02329A18:
+	add r0,sp,#0x0	; 02329A18
+	ldr r1,[pool_02329ADC]	; 02329A1A
+	bl loc_02329B40	; 02329A1C
+	add r1,r0,#0x0	; 02329A20
+	add r0,r5,#0x0	; 02329A22
+	add r2,r7,#0x0	; 02329A24
+	bl P1_Entry_02329B5C	; 02329A26
+	add r7,r0,#0x0	; 02329A2A
+P1_Entry_02329A2C:
+	ldr r1,[sp,#0xc]	; 02329A2C
+	ldr r0,[sp,#0x8]	; 02329A2E
+	sub r0,r1,r0	; 02329A30
+	cmp r0,#0x10	; 02329A32
+	bcs P1_Entry_02329A3A	; 02329A34
+	str r1,[sp,#0x8]	; 02329A36
+	b P1_Entry_02329A4C	; 02329A38
+P1_Entry_02329A3A:
+	add r0,sp,#0x8	; 02329A3A
+	ldr r1,[pool_02329ADC]	; 02329A3C
+	bl loc_02329B40	; 02329A3E
+	add r1,r0,#0x0	; 02329A42
+	add r0,r5,#0x0	; 02329A44
+	add r2,r7,#0x0	; 02329A46
+	bl P1_Entry_02329B5C	; 02329A48
+P1_Entry_02329A4C:
+	ldr r1,[sp,#0x4]	; 02329A4C
+	ldr r0,[sp,#0x8]	; 02329A4E
+	sub r2,r0,r1	; 02329A50
+	sub r0,r5,#0x4	; 02329A52
+	ldr r3,[r0,#0x0]	; 02329A54
+	mov r0,#0xff	; 02329A56
+	and r3,r0	; 02329A58
+	lsl r0,r3,#0x10	; 02329A5A
+	lsr r3,r0,#0x10	; 02329A5C
+	mov r0,#0x1	; 02329A5E
+	and r3,r0	; 02329A60
+	cmp r3,#0x0	; 02329A62
+	beq P1_Entry_02329A70	; 02329A64
+	mov r0,#0x0	; 02329A66
+	str r0,[sp,#0x18]	; 02329A68
+	ldr r0,[sp,#0x18]	; 02329A6A
+	blx P1_MemFill32	; 02329A6C
+P1_Entry_02329A70:
+	str r6,[sp,#0x10]	; 02329A70
+	ldr r0,[sp,#0x8]	; 02329A72
+	str r0,[sp,#0x14]	; 02329A74
+	add r0,sp,#0x10	; 02329A76
+	ldr r1,[pool_02329AE0]	; 02329A78
+	bl loc_02329B40	; 02329A7A
+	add r1,r0,#0x0	; 02329A7E
+	ldrh r2,[r1,#0x2]	; 02329A80
+	ldr r0,[pool_02329AE4]	; 02329A82
+	and r2,r0	; 02329A84
+	strh r2,[r1,#0x2]	; 02329A86
+	ldrh r0,[r1,#0x2]	; 02329A88
+	add r2,sp,#0x20	; 02329A8A
+	ldrh r3,[r2,#0x10]	; 02329A8C
+	mov r2,#0x1	; 02329A8E
+	and r3,r2	; 02329A90
+	lsl r2,r3,#0xf	; 02329A92
+	orr r0,r2	; 02329A94
+	strh r0,[r1,#0x2]	; 02329A96
+	ldr r0,[sp,#0x4]	; 02329A98
+	sub r3,r1,r0	; 02329A9A
+	ldrh r2,[r1,#0x2]	; 02329A9C
+	ldr r0,[pool_02329AE8]	; 02329A9E
+	and r2,r0	; 02329AA0
+	strh r2,[r1,#0x2]	; 02329AA2
+	ldrh r0,[r1,#0x2]	; 02329AA4
+	lsl r2,r3,#0x10	; 02329AA6
+	lsr r3,r2,#0x10	; 02329AA8
+	mov r2,#0x7f	; 02329AAA
+	and r3,r2	; 02329AAC
+	lsl r2,r3,#0x8	; 02329AAE
+	orr r0,r2	; 02329AB0
+	strh r0,[r1,#0x2]	; 02329AB2
+	ldrh r3,[r5,#0x10]	; 02329AB4
+	mov r0,#0xff	; 02329AB6
+	and r3,r0	; 02329AB8
+	ldrh r2,[r1,#0x2]	; 02329ABA
+	bic r2,r0	; 02329ABC
+	strh r2,[r1,#0x2]	; 02329ABE
+	ldrh r0,[r1,#0x2]	; 02329AC0
+	orr r0,r3	; 02329AC2
+	strh r0,[r1,#0x2]	; 02329AC4
+	add r0,r5,#0x0	; 02329AC6
+	add r0,#0x8	; 02329AC8
+	ldr r2,[r5,#0xc]	; 02329ACA
+	bl P1_Entry_02329B5C	; 02329ACC
+	add r0,r4,#0x0	; 02329AD0
+	add sp,#0x1c	; 02329AD2
+	pop {r4,r5,r6,r7}	; 02329AD4
+	pop {r3}	; 02329AD6
+	bx r3	; 02329AD8
+	.byte 0xC0, 0x46	; 02329ADA
+pool_02329ADC:
+	.word 0x00004652	; 02329ADC
+pool_02329AE0:
+	.word 0x00005544	; 02329AE0
+pool_02329AE4:
+	.word 0xFFFF7FFF	; 02329AE4
+pool_02329AE8:
+	.word 0xFFFF80FF	; 02329AE8
 
 ; ===== function loc_02329AEC =====
 	push {r4,r5,lr}	; 02329AEC
@@ -20420,12 +21381,62 @@ loc_02329B40:
 	str r2,[r3,#0xc]	; 02329B54
 	add r0,r3,#0x0	; 02329B56
 	bx lr	; 02329B58
-	.byte 0x00, 0x00, 0x8A, 0x60, 0x00, 0x2A, 0x02, 0xD0, 0xD3, 0x68, 0xD1, 0x60, 0x01, 0xE0, 0x03, 0x68	; 02329B6A
-	.byte 0x01, 0x60, 0xCB, 0x60, 0x00, 0x2B, 0x01, 0xD0, 0x99, 0x60, 0x00, 0xE0, 0x41, 0x60, 0x08, 0x1C	; 02329B7A
-	.byte 0x70, 0x47, 0x8A, 0x68, 0xC9, 0x68, 0x00, 0x2A, 0x01, 0xD0, 0xD1, 0x60, 0x00, 0xE0, 0x01, 0x60	; 02329B8A
-	.byte 0x00, 0x29, 0x01, 0xD0, 0x8A, 0x60, 0x00, 0xE0, 0x42, 0x60, 0x10, 0x1C, 0x70, 0x47, 0x4A, 0x88	; 02329B9A
-	.byte 0x13, 0x12, 0x7F, 0x22, 0x13, 0x40, 0x1A, 0x04, 0x12, 0x0C, 0x8A, 0x1A, 0x02, 0x60, 0x4A, 0x68	; 02329BAA
-	.byte 0x10, 0x31, 0x51, 0x18, 0x41, 0x60, 0x70, 0x47, 0x00, 0x00	; 02329BB4
+	.byte 0x00, 0x00	; 02329B5A
+P1_Entry_02329B5C:
+	str r2,[r1,#0x8]	; 02329B5C
+	cmp r2,#0x0	; 02329B5E
+	beq P1_Entry_02329B68	; 02329B60
+	ldr r3,[r2,#0xc]	; 02329B62
+	str r1,[r2,#0xc]	; 02329B64
+	b P1_Entry_02329B6C	; 02329B66
+P1_Entry_02329B68:
+	ldr r3,[r0,#0x0]	; 02329B68
+	str r1,[r0,#0x0]	; 02329B6A
+P1_Entry_02329B6C:
+	str r3,[r1,#0xc]	; 02329B6C
+	cmp r3,#0x0	; 02329B6E
+	beq P1_Entry_02329B76	; 02329B70
+	str r1,[r3,#0x8]	; 02329B72
+	b P1_Entry_02329B78	; 02329B74
+P1_Entry_02329B76:
+	str r1,[r0,#0x4]	; 02329B76
+P1_Entry_02329B78:
+	add r0,r1,#0x0	; 02329B78
+	bx lr	; 02329B7A
+P1_Entry_02329B7C:
+	ldr r2,[r1,#0x8]	; 02329B7C
+	ldr r1,[r1,#0xc]	; 02329B7E
+	cmp r2,#0x0	; 02329B80
+	beq P1_Entry_02329B88	; 02329B82
+	str r1,[r2,#0xc]	; 02329B84
+	b P1_Entry_02329B8A	; 02329B86
+P1_Entry_02329B88:
+	str r1,[r0,#0x0]	; 02329B88
+P1_Entry_02329B8A:
+	cmp r1,#0x0	; 02329B8A
+	beq P1_Entry_02329B92	; 02329B8C
+	str r2,[r1,#0x8]	; 02329B8E
+	b P1_Entry_02329B94	; 02329B90
+P1_Entry_02329B92:
+	str r2,[r0,#0x4]	; 02329B92
+P1_Entry_02329B94:
+	add r0,r2,#0x0	; 02329B94
+	bx lr	; 02329B96
+P1_Entry_02329B98:
+	ldrh r2,[r1,#0x2]	; 02329B98
+	asr r3,r2,#0x8	; 02329B9A
+	mov r2,#0x7f	; 02329B9C
+	and r3,r2	; 02329B9E
+	lsl r2,r3,#0x10	; 02329BA0
+	lsr r2,r2,#0x10	; 02329BA2
+	sub r2,r1,r2	; 02329BA4
+	str r2,[r0,#0x0]	; 02329BA6
+	ldr r2,[r1,#0x4]	; 02329BA8
+	add r1,#0x10	; 02329BAA
+	add r1,r2,r1	; 02329BAC
+	str r1,[r0,#0x4]	; 02329BAE
+	bx lr	; 02329BB0
+	.byte 0x00, 0x00	; 02329BB2
 
 ; ===== function loc_02329BB4 =====
 loc_02329BB4:
@@ -20483,7 +21494,7 @@ loc_02329C0C:
 	bx r3	; 02329C0E
 pool_02329C10:
 loc_02329C10:
-	.word 0x023296D1	; 02329C10
+	.word loc_023296D0 + 1	; 02329C10
 
 ; ===== function loc_02329C14 =====
 loc_02329C14:
@@ -20664,7 +21675,7 @@ loc_02329D40:
 	bx r3	; 02329D42
 pool_02329D44:
 loc_02329D44:
-	.word 0x0232A4FD	; 02329D44
+	.word loc_0232A4FC + 1	; 02329D44
 
 ; ===== function loc_02329D48 =====
 loc_02329D48:
@@ -20725,7 +21736,7 @@ loc_02329DB8:
 	.byte 0xC0, 0x46	; 02329DC0
 pool_02329DC0:
 loc_02329DC0:
-	.word 0x02356498	; 02329DC0
+	.word P1_BssStart + 0x25A18	; 02329DC0
 
 ; ===== function loc_02329DC4 =====
 loc_02329DC4:
@@ -20739,7 +21750,7 @@ loc_02329DC4:
 	.byte 0xC0, 0x46	; 02329DD4
 pool_02329DD4:
 loc_02329DD4:
-	.word 0x023564A0	; 02329DD4
+	.word P1_BssStart + 0x25A20	; 02329DD4
 
 ; ===== function loc_02329DD8 =====
 loc_02329DD8:
@@ -20767,7 +21778,7 @@ loc_02329DF2:
 	bx lr	; 02329DFE
 pool_02329E00:
 loc_02329E00:
-	.word 0x023564A0	; 02329E00
+	.word P1_BssStart + 0x25A20	; 02329E00
 
 ; ===== function loc_02329E04 =====
 loc_02329E04:
@@ -20779,7 +21790,7 @@ loc_02329E04:
 	.byte 0xC0, 0x46	; 02329E10
 pool_02329E10:
 loc_02329E10:
-	.word 0x0235649C	; 02329E10
+	.word P1_BssStart + 0x25A1C	; 02329E10
 
 ; ===== function loc_02329E14 =====
 loc_02329E14:
@@ -20798,7 +21809,7 @@ loc_02329E24:
 	bx lr	; 02329E2A
 pool_02329E2C:
 loc_02329E2C:
-	.word 0x0235649C	; 02329E2C
+	.word P1_BssStart + 0x25A1C	; 02329E2C
 
 ; ===== function loc_02329E30 =====
 loc_02329E30:
@@ -20818,7 +21829,7 @@ loc_02329E46:
 	bx r3	; 02329E4A
 pool_02329E4C:
 loc_02329E4C:
-	.word 0x023564A4	; 02329E4C
+	.word P1_BssStart + 0x25A24	; 02329E4C
 
 ; ===== function loc_02329E50 =====
 loc_02329E50:
@@ -20855,7 +21866,7 @@ loc_02329E74:
 	.byte 0xC0, 0x46	; 02329E8C
 pool_02329E8C:
 loc_02329E8C:
-	.word 0x023564A4	; 02329E8C
+	.word P1_BssStart + 0x25A24	; 02329E8C
 
 ; ===== function loc_02329E90 =====
 loc_02329E90:
@@ -20869,13 +21880,13 @@ loc_02329E90:
 	bx lr	; 02329E9E
 pool_02329EA0:
 loc_02329EA0:
-	.word 0x023564A4	; 02329EA0
+	.word P1_BssStart + 0x25A24	; 02329EA0
 pool_02329EA4:
 loc_02329EA4:
-	.word 0x0235649C	; 02329EA4
+	.word P1_BssStart + 0x25A1C	; 02329EA4
 pool_02329EA8:
 loc_02329EA8:
-	.word 0x023564A0	; 02329EA8
+	.word P1_BssStart + 0x25A20	; 02329EA8
 
 ; ===== function loc_02329EAC =====
 loc_02329EAC:
@@ -21221,7 +22232,7 @@ loc_0232A12C:
 	bx r3	; 0232A12E
 pool_0232A130:
 loc_0232A130:
-	.word 0x02329F2D	; 0232A130
+	.word loc_02329F2C + 1	; 0232A130
 
 ; ===== function loc_0232A134 =====
 loc_0232A134:
@@ -21388,7 +22399,7 @@ loc_0232A240:
 	.byte 0xC0, 0x46	; 0232A24C
 pool_0232A24C:
 loc_0232A24C:
-	.word 0x023564C8	; 0232A24C
+	.word P1_BssStart + 0x25A48	; 0232A24C
 
 ; ===== function loc_0232A250 =====
 loc_0232A250:
@@ -21415,7 +22426,7 @@ loc_0232A268:
 	.byte 0xC0, 0x46	; 0232A270
 pool_0232A270:
 loc_0232A270:
-	.word 0x0232A0C9	; 0232A270
+	.word loc_0232A0C8 + 1	; 0232A270
 
 ; ===== function loc_0232A274 =====
 loc_0232A274:
@@ -21487,7 +22498,7 @@ loc_0232A2E0:
 	.byte 0xC0, 0x46	; 0232A2F0
 pool_0232A2F0:
 loc_0232A2F0:
-	.word 0x023564D8	; 0232A2F0
+	.word P1_BssStart + 0x25A58	; 0232A2F0
 
 ; ===== function loc_0232A2F4 =====
 loc_0232A2F4:
@@ -21670,7 +22681,7 @@ loc_0232A44C:
 	.word 0x023564A8	; 0232A44C
 pool_0232A450:
 loc_0232A450:
-	.word 0x02356840	; 0232A450
+	.word P1_BssStart + 0x25DC0	; 0232A450
 pool_0232A454:
 loc_0232A454:
 	.word 0x023564C0	; 0232A454
@@ -21681,7 +22692,7 @@ loc_0232A454:
 	add r5,r0,#0x0	; 0232A45C
 	ldr r0,[r5,#0x14]	; 0232A45E
 	ldr r1,[r5,#0x2c]	; 0232A460
-	blx loc_0232CD38	; 0232A462
+	blx P1_SignedDivMod	; 0232A462
 	str r0,[sp,#0x4]	; 0232A466
 	ldr r0,[r5,#0x18]	; 0232A468
 	ldr r4,[sp,#0x4]	; 0232A46A
@@ -21692,10 +22703,10 @@ loc_0232A454:
 	add r7,r0,r4	; 0232A474
 	add r0,r6,#0x0	; 0232A476
 	ldr r1,[sp,#0x4]	; 0232A478
-	blx loc_0232BBE8	; 0232A47A
+	blx P1_InvalidateDataCacheRange	; 0232A47A
 	add r0,r7,#0x0	; 0232A47E
 	ldr r1,[sp,#0x4]	; 0232A480
-	blx loc_0232BBE8	; 0232A482
+	blx P1_InvalidateDataCacheRange	; 0232A482
 	ldr r0,[pool_0232A4EC]	; 0232A486
 	ldr r0,[r0,#0x0]	; 0232A488
 	cmp r0,#0x0	; 0232A48A
@@ -21732,7 +22743,7 @@ loc_0232A4C0:
 	ldr r2,[sp,#0x4]	; 0232A4C8
 	ldr r3,[r5,#0x8]	; 0232A4CA
 	ldr r4,[r5,#0x30]	; 0232A4CC
-	.byte 0xA0, 0x47	; 0232A4CE
+	blx r4	; 0232A4CE
 loc_0232A4D0:
 	ldr r0,[r5,#0x18]	; 0232A4D0
 	add r0,r0,#0x1	; 0232A4D2
@@ -21751,13 +22762,13 @@ loc_0232A4E2:
 	.byte 0xC0, 0x46	; 0232A4EC
 pool_0232A4EC:
 loc_0232A4EC:
-	.word 0x02356C84	; 0232A4EC
+	.word P1_BssStart + 0x26204	; 0232A4EC
 pool_0232A4F0:
 loc_0232A4F0:
-	.word 0x02356CEC	; 0232A4F0
+	.word P1_BssStart + 0x2626C	; 0232A4F0
 pool_0232A4F4:
 loc_0232A4F4:
-	.word 0x02356C80	; 0232A4F4
+	.word P1_BssStart + 0x26200	; 0232A4F4
 pool_0232A4F8:
 loc_0232A4F8:
 	.word 0x02356C88	; 0232A4F8
@@ -21785,10 +22796,10 @@ loc_0232A4FC:
 	blx loc_0232DE4C	; 0232A522
 	ldr r0,[r4,#0xc]	; 0232A526
 	ldr r1,[r4,#0x14]	; 0232A528
-	blx loc_0232BC20	; 0232A52A
+	blx P1_CleanAndInvalidateDataCacheRange	; 0232A52A
 	ldr r0,[r4,#0x10]	; 0232A52E
 	ldr r1,[r4,#0x14]	; 0232A530
-	blx loc_0232BC20	; 0232A532
+	blx P1_CleanAndInvalidateDataCacheRange	; 0232A532
 	ldr r0,[r4,#0x28]	; 0232A536
 	cmp r0,#0x0	; 0232A538
 	blt loc_0232A542	; 0232A53A
@@ -21810,7 +22821,7 @@ loc_0232A54E:
 	.byte 0xC0, 0x46	; 0232A558
 pool_0232A558:
 loc_0232A558:
-	.word 0x02356C9C	; 0232A558
+	.word P1_BssStart + 0x2621C	; 0232A558
 
 ; ===== function loc_0232A55C =====
 loc_0232A55C:
@@ -21845,7 +22856,7 @@ loc_0232A590:
 	.byte 0xC0, 0x46	; 0232A598
 pool_0232A598:
 loc_0232A598:
-	.word 0x02356C9C	; 0232A598
+	.word P1_BssStart + 0x2621C	; 0232A598
 
 ; ===== function loc_0232A59C =====
 loc_0232A59C:
@@ -21924,7 +22935,7 @@ loc_0232A61E:
 	.byte 0xC0, 0x46	; 0232A62C
 pool_0232A62C:
 loc_0232A62C:
-	.word 0x02356C9C	; 0232A62C
+	.word P1_BssStart + 0x2621C	; 0232A62C
 pool_0232A630:
 loc_0232A630:
 	.word 0x02356C88	; 0232A630
@@ -21946,10 +22957,10 @@ loc_0232A634:
 	ldr r4,[pool_0232A850]	; 0232A64C
 	lsl r0,r1,#0	; 0232A64E
 	lsl r1,r3,#0	; 0232A650
-	blx loc_0232BC20	; 0232A652
+	blx P1_CleanAndInvalidateDataCacheRange	; 0232A652
 	ldr r0,[sp,#0x20]	; 0232A656
 	ldr r1,[sp,#0x24]	; 0232A658
-	blx loc_0232BC20	; 0232A65A
+	blx P1_CleanAndInvalidateDataCacheRange	; 0232A65A
 	ldr r0,[sp,#0x58]	; 0232A65E
 	cmp r0,#0x1	; 0232A660
 	bne loc_0232A668	; 0232A662
@@ -21960,7 +22971,7 @@ loc_0232A668:
 loc_0232A66A:
 	ldr r0,[pool_0232A854]	; 0232A66A
 	ldr r1,[sp,#0x68]	; 0232A66C
-	blx loc_0232CD38	; 0232A66E
+	blx P1_SignedDivMod	; 0232A66E
 	str r0,[sp,#0x34]	; 0232A672
 	ldr r0,[sp,#0x7c]	; 0232A674
 	cmp r0,#0x0	; 0232A676
@@ -21979,7 +22990,7 @@ loc_0232A682:
 	asr r1,r1,#0x5	; 0232A68E
 	str r1,[sp,#0x40]	; 0232A690
 	ldr r1,[sp,#0x78]	; 0232A692
-	blx loc_0232CD38	; 0232A694
+	blx P1_SignedDivMod	; 0232A694
 	ldr r1,[sp,#0x40]	; 0232A698
 	str r1,[sp,#0x38]	; 0232A69A
 	mul r1,r0	; 0232A69C
@@ -22233,7 +23244,7 @@ loc_0232A872:
 	bx r3	; 0232A876
 pool_0232A878:
 loc_0232A878:
-	.word 0x02356C9C	; 0232A878
+	.word P1_BssStart + 0x2621C	; 0232A878
 
 ; ===== function loc_0232A87C =====
 loc_0232A87C:
@@ -22262,7 +23273,7 @@ loc_0232A89E:
 	blx loc_0232DE4C	; 0232A8A8
 	add r0,r5,#0x0	; 0232A8AC
 	add r1,r4,#0x0	; 0232A8AE
-	blx loc_0232BC20	; 0232A8B0
+	blx P1_CleanAndInvalidateDataCacheRange	; 0232A8B0
 	lsr r3,r4,#0x1	; 0232A8B4
 	str r6,[sp,#0x0]	; 0232A8B6
 	mov r2,#0x0	; 0232A8B8
@@ -22290,7 +23301,7 @@ loc_0232A89E:
 	bx r3	; 0232A8E6
 pool_0232A8E8:
 loc_0232A8E8:
-	.word 0x02356C9C	; 0232A8E8
+	.word P1_BssStart + 0x2621C	; 0232A8E8
 
 ; ===== function loc_0232A8EC =====
 loc_0232A8EC:
@@ -22339,7 +23350,7 @@ loc_0232A93E:
 	.byte 0xC0, 0x46	; 0232A948
 pool_0232A948:
 loc_0232A948:
-	.word 0x02356C9C	; 0232A948
+	.word P1_BssStart + 0x2621C	; 0232A948
 
 ; ===== function loc_0232A94C =====
 loc_0232A94C:
@@ -22351,10 +23362,10 @@ loc_0232A94C:
 	bx lr	; 0232A956
 pool_0232A958:
 loc_0232A958:
-	.word 0x02356C84	; 0232A958
+	.word P1_BssStart + 0x26204	; 0232A958
 pool_0232A95C:
 loc_0232A95C:
-	.word 0x02356C9C	; 0232A95C
+	.word P1_BssStart + 0x2621C	; 0232A95C
 
 ; ===== function loc_0232A960 =====
 loc_0232A960:
@@ -22373,7 +23384,7 @@ loc_0232A970:
 	bx lr	; 0232A976
 pool_0232A978:
 loc_0232A978:
-	.word 0x02356D8C	; 0232A978
+	.word P1_BssStart + 0x2630C	; 0232A978
 
 ; ===== function loc_0232A97C =====
 loc_0232A97C:
@@ -22421,7 +23432,7 @@ loc_0232A9BE:
 	.byte 0xC0, 0x46	; 0232A9C4
 pool_0232A9C4:
 loc_0232A9C4:
-	.word 0x02356D8C	; 0232A9C4
+	.word P1_BssStart + 0x2630C	; 0232A9C4
 
 ; ===== function loc_0232A9C8 =====
 loc_0232A9C8:
@@ -22469,7 +23480,7 @@ loc_0232AA0A:
 	.byte 0xC0, 0x46	; 0232AA10
 pool_0232AA10:
 loc_0232AA10:
-	.word 0x02356D8C	; 0232AA10
+	.word P1_BssStart + 0x2630C	; 0232AA10
 
 ; ===== function loc_0232AA14 =====
 loc_0232AA14:
@@ -22517,7 +23528,7 @@ loc_0232AA56:
 	.byte 0xC0, 0x46	; 0232AA5C
 pool_0232AA5C:
 loc_0232AA5C:
-	.word 0x02356D8C	; 0232AA5C
+	.word P1_BssStart + 0x2630C	; 0232AA5C
 
 ; ===== function loc_0232AA60 =====
 loc_0232AA60:
@@ -22565,7 +23576,7 @@ loc_0232AAA2:
 	.byte 0xC0, 0x46	; 0232AAA8
 pool_0232AAA8:
 loc_0232AAA8:
-	.word 0x02356D8C	; 0232AAA8
+	.word P1_BssStart + 0x2630C	; 0232AAA8
 
 ; ===== function loc_0232AAAC =====
 loc_0232AAAC:
@@ -22575,7 +23586,7 @@ loc_0232AAAC:
 	.byte 0xC0, 0x46	; 0232AAB4
 pool_0232AAB4:
 loc_0232AAB4:
-	.word 0x02356D8C	; 0232AAB4
+	.word P1_BssStart + 0x2630C	; 0232AAB4
 
 ; ===== function loc_0232AAB8 =====
 loc_0232AAB8:
@@ -22652,7 +23663,7 @@ loc_0232AB28:
 	bx r3	; 0232AB32
 pool_0232AB34:
 loc_0232AB34:
-	.word 0x02356D8C	; 0232AB34
+	.word P1_BssStart + 0x2630C	; 0232AB34
 
 ; ===== function loc_0232AB38 =====
 loc_0232AB38:
@@ -22731,7 +23742,7 @@ loc_0232ABBC:
 	.byte 0xC0, 0x46	; 0232ABC4
 pool_0232ABC4:
 loc_0232ABC4:
-	.word 0x023296C5	; 0232ABC4
+	.word loc_023296C4 + 1	; 0232ABC4
 
 ; ===== function loc_0232ABC8 =====
 loc_0232ABC8:
@@ -22803,7 +23814,7 @@ loc_0232AC3E:
 	ldr r1,[r4,#0x8]	; 0232AC48
 	ldr r2,[r4,#0x10]	; 0232AC4A
 	ldr r3,[r4,#0x14]	; 0232AC4C
-	.byte 0xB0, 0x47	; 0232AC4E
+	blx r6	; 0232AC4E
 loc_0232AC50:
 	add r0,r5,#0x0	; 0232AC50
 	add r1,r4,#0x0	; 0232AC52
@@ -23253,7 +24264,7 @@ loc_0232AF96:
 	sub r0,r0,r4	; 0232AF9A
 	mul r2,r0	; 0232AF9C
 	add r0,r2,#0x0	; 0232AF9E
-	blx loc_0232CD38	; 0232AFA0
+	blx P1_SignedDivMod	; 0232AFA0
 	add r0,r4,r0	; 0232AFA4
 	pop {r4}	; 0232AFA6
 	pop {r3}	; 0232AFA8
@@ -23292,7 +24303,7 @@ loc_0232AFD8:
 	stmdb sp!,{r4,r5,r6,lr}	; 0232AFD8
 	mov r5,r0	; 0232AFDC
 	mov r4,r1	; 0232AFE0
-	bl loc_0232C4BC	; 0232AFE4
+	bl P1_Arm9DisableIrqReturnPriorMask	; 0232AFE4
 	cmp r5,#0x0	; 0232AFE8
 	beq loc_0232B008	; 0232AFEC
 	ldr r1,[pool_0232B04C]	; 0232AFF0
@@ -23302,7 +24313,7 @@ loc_0232AFD8:
 	and r2,r3,r2	; 0232B000
 	str r2,[r1,#0xff8]	; 0232B004
 loc_0232B008:
-	bl loc_0232C4D0	; 0232B008
+	bl P1_Arm9RestoreIrqMask	; 0232B008
 	ldr r1,[pool_0232B04C]	; 0232B00C
 	add r0,r1,#0x3000	; 0232B010
 	ldr r0,[r0,#0xff8]	; 0232B014
@@ -23322,7 +24333,7 @@ loc_0232B030:
 	bx lr	; 0232B048
 pool_0232B04C:
 loc_0232B04C:
-	.word 0x03000000	; 0232B04C
+	.word P1_DtcmRuntimeStart	; 0232B04C
 pool_0232B050:
 loc_0232B050:
 	.word 0x00003FF8	; 0232B050
@@ -23330,62 +24341,70 @@ pool_0232B054:
 loc_0232B054:
 	.word 0x03000000	; 0232B054
 .thumb
+P1_IrqHandler_0232B058:
 	mov r0,#0x7	; 0232B058
 	ldr r3,[pool_0232B060]	; 0232B05A
 	bx r3	; 0232B05C
 	.byte 0xC0, 0x46	; 0232B060
 pool_0232B060:
 loc_0232B060:
-	.word 0x0232B0B9	; 0232B060
+	.word loc_0232B0B8 + 1	; 0232B060
+P1_IrqHandler_0232B064:
 	mov r0,#0x6	; 0232B064
 	ldr r3,[pool_0232B06C]	; 0232B066
 	bx r3	; 0232B068
 	.byte 0xC0, 0x46	; 0232B06C
 pool_0232B06C:
 loc_0232B06C:
-	.word 0x0232B0B9	; 0232B06C
+	.word loc_0232B0B8 + 1	; 0232B06C
+P1_IrqHandler_0232B070:
 	mov r0,#0x5	; 0232B070
 	ldr r3,[pool_0232B078]	; 0232B072
 	bx r3	; 0232B074
 	.byte 0xC0, 0x46	; 0232B078
 pool_0232B078:
 loc_0232B078:
-	.word 0x0232B0B9	; 0232B078
+	.word loc_0232B0B8 + 1	; 0232B078
+P1_IrqHandler_0232B07C:
 	mov r0,#0x4	; 0232B07C
 	ldr r3,[pool_0232B084]	; 0232B07E
 	bx r3	; 0232B080
 	.byte 0xC0, 0x46	; 0232B084
 pool_0232B084:
 loc_0232B084:
-	.word 0x0232B0B9	; 0232B084
+	.word loc_0232B0B8 + 1	; 0232B084
+P1_IrqHandler_0232B088:
 	mov r0,#0x3	; 0232B088
 	ldr r3,[pool_0232B090]	; 0232B08A
 	bx r3	; 0232B08C
 	.byte 0xC0, 0x46	; 0232B090
 pool_0232B090:
 loc_0232B090:
-	.word 0x0232B0B9	; 0232B090
+	.word loc_0232B0B8 + 1	; 0232B090
+P1_IrqHandler_0232B094:
 	mov r0,#0x2	; 0232B094
 	ldr r3,[pool_0232B09C]	; 0232B096
 	bx r3	; 0232B098
 	.byte 0xC0, 0x46	; 0232B09C
 pool_0232B09C:
 loc_0232B09C:
-	.word 0x0232B0B9	; 0232B09C
+	.word loc_0232B0B8 + 1	; 0232B09C
+P1_IrqHandler_0232B0A0:
 	mov r0,#0x1	; 0232B0A0
 	ldr r3,[pool_0232B0A8]	; 0232B0A2
 	bx r3	; 0232B0A4
 	.byte 0xC0, 0x46	; 0232B0A8
 pool_0232B0A8:
 loc_0232B0A8:
-	.word 0x0232B0B9	; 0232B0A8
+	.word loc_0232B0B8 + 1	; 0232B0A8
+P1_IrqHandler_0232B0AC:
 	mov r0,#0x0	; 0232B0AC
 	ldr r3,[pool_0232B0B4]	; 0232B0AE
 	bx r3	; 0232B0B0
 	.byte 0xC0, 0x46	; 0232B0B4
 pool_0232B0B4:
 loc_0232B0B4:
-	.word 0x0232B0B9	; 0232B0B4
+	.word loc_0232B0B8 + 1	; 0232B0B4
 loc_0232B0B8:
 	push {r4,r5,lr}	; 0232B0B8
 	sub sp,#0x4	; 0232B0BA
@@ -23405,7 +24424,7 @@ loc_0232B0B8:
 	beq loc_0232B0DE	; 0232B0D6
 	ldr r0,[pool_0232B108]	; 0232B0D8
 	ldr r0,[r0,r4]	; 0232B0DA
-	.byte 0x88, 0x47	; 0232B0DC
+	blx r1	; 0232B0DC
 loc_0232B0DE:
 	ldr r1,[pool_0232B10C]	; 0232B0DE
 	ldr r0,[pool_0232B110]	; 0232B0E0
@@ -23426,13 +24445,13 @@ loc_0232B0F8:
 	bx r3	; 0232B0FE
 pool_0232B100:
 loc_0232B100:
-	.word 0x023309F0	; 0232B100
+	.word P1_Data_023309F0	; 0232B100
 pool_0232B104:
 loc_0232B104:
-	.word 0x02356D90	; 0232B104
+	.word P1_BssStart + 0x26310	; 0232B104
 pool_0232B108:
 loc_0232B108:
-	.word 0x02356D98	; 0232B108
+	.word P1_BssStart + 0x26318	; 0232B108
 pool_0232B10C:
 loc_0232B10C:
 	.word 0x03000000	; 0232B10C
@@ -23441,7 +24460,8 @@ loc_0232B110:
 	.word 0x00003FF8	; 0232B110
 pool_0232B114:
 loc_0232B114:
-	.word 0x02356D94	; 0232B114
+	.word P1_BssStart + 0x26314	; 0232B114
+P1_IrqHandler_0232B118:
 	bx lr	; 0232B118
 	.byte 0x00, 0x00	; 0232B11C
 
@@ -23465,10 +24485,10 @@ loc_0232B11C:
 	.byte 0xC0, 0x46	; 0232B13C
 pool_0232B13C:
 loc_0232B13C:
-	.word 0x04000208	; 0232B13C
+	.word REG_IME	; 0232B13C
 pool_0232B140:
 loc_0232B140:
-	.word 0x04000214	; 0232B140
+	.word REG_IF	; 0232B140
 
 ; ===== function loc_0232B144 =====
 loc_0232B144:
@@ -23490,10 +24510,10 @@ loc_0232B144:
 	.byte 0xC0, 0x46	; 0232B164
 pool_0232B164:
 loc_0232B164:
-	.word 0x04000208	; 0232B164
+	.word REG_IME	; 0232B164
 pool_0232B168:
 loc_0232B168:
-	.word 0x04000210	; 0232B168
+	.word REG_IE	; 0232B168
 
 ; ===== function loc_0232B16C =====
 loc_0232B16C:
@@ -23515,10 +24535,10 @@ loc_0232B16C:
 	.byte 0xC0, 0x46	; 0232B18C
 pool_0232B18C:
 loc_0232B18C:
-	.word 0x04000208	; 0232B18C
+	.word REG_IME	; 0232B18C
 pool_0232B190:
 loc_0232B190:
-	.word 0x04000210	; 0232B190
+	.word REG_IE	; 0232B190
 
 ; ===== function loc_0232B194 =====
 loc_0232B194:
@@ -23540,10 +24560,10 @@ loc_0232B194:
 	.byte 0xC0, 0x46	; 0232B1B4
 pool_0232B1B4:
 loc_0232B1B4:
-	.word 0x04000208	; 0232B1B4
+	.word REG_IME	; 0232B1B4
 pool_0232B1B8:
 loc_0232B1B8:
-	.word 0x04000210	; 0232B1B8
+	.word REG_IE	; 0232B1B8
 
 ; ===== function loc_0232B1BC =====
 loc_0232B1BC:
@@ -23568,16 +24588,19 @@ loc_0232B1BC:
 	bx r3	; 0232B1E2
 pool_0232B1E4:
 loc_0232B1E4:
-	.word 0x02356DC0	; 0232B1E4
+	.word P1_BssStart + 0x26340	; 0232B1E4
 pool_0232B1E8:
 loc_0232B1E8:
-	.word 0x02356DC8	; 0232B1E8
+	.word P1_BssStart + 0x26348	; 0232B1E8
 pool_0232B1EC:
 loc_0232B1EC:
-	.word 0x02356DC4	; 0232B1EC
+	.word P1_BssStart + 0x26344	; 0232B1EC
 
 ; ===== function loc_0232B1F0 =====
 loc_0232B1F0:
+; 按 r0 的 IRQ 位掩码安装 r1 回调；DMA/定时器等使用专用回调槽。
+; Installs the r1 handler for IRQ bits in r0; DMA/timers use dedicated callback slots.
+.func P1_SetIrqHandlers
 	push {r4,r5,r6,r7}	; 0232B1F0
 	mov r6,#0x0	; 0232B1F2
 	ldr r5,[pool_0232B24C]	; 0232B1F4
@@ -23629,9 +24652,10 @@ loc_0232B23E:
 	blt loc_0232B1FA	; 0232B246
 	pop {r4,r5,r6,r7}	; 0232B248
 	bx lr	; 0232B24A
+.endfunc
 pool_0232B24C:
 loc_0232B24C:
-	.word 0x02330A00	; 0232B24C
+	.word P1_IrqHandlers	; 0232B24C
 pool_0232B250:
 loc_0232B250:
 	.word 0x02356D90	; 0232B250
@@ -23644,7 +24668,7 @@ loc_0232B254:
 	bx lr	; 0232B25A
 pool_0232B25C:
 loc_0232B25C:
-	.word 0x03000000	; 0232B25C
+	.word P1_DtcmRuntimeStart	; 0232B25C
 
 ; ===== function loc_0232B260 =====
 loc_0232B260:
@@ -23652,7 +24676,7 @@ loc_0232B260:
 	bx r1	; 0232B262
 pool_0232B264:
 loc_0232B264:
-	.word 0x0232B3AD	; 0232B264
+	.word loc_0232B3AC + 1	; 0232B264
 
 ; ===== function loc_0232B268 =====
 loc_0232B268:
@@ -23660,7 +24684,7 @@ loc_0232B268:
 	bx r1	; 0232B26A
 pool_0232B26C:
 loc_0232B26C:
-	.word 0x0232B349	; 0232B26C
+	.word loc_0232B348 + 1	; 0232B26C
 .arm
 
 ; ===== function loc_0232B270 =====
@@ -23688,7 +24712,7 @@ loc_0232B2A4:
 	bx lr	; 0232B2BC
 pool_0232B2C0:
 loc_0232B2C0:
-	.word 0x027FFFB0	; 0232B2C0
+	.word FirmwareSystemWorkAddress + SystemWorkArm9LockIdsOffset	; 0232B2C0
 pool_0232B2C4:
 loc_0232B2C4:
 	.word 0xFFFFFFFD	; 0232B2C4
@@ -23722,7 +24746,7 @@ loc_0232B300:
 	.word 0x00001000	; 0232B300
 pool_0232B304:
 loc_0232B304:
-	.word 0x0232C52C	; 0232B304
+	.word P1_Arm9BusyWaitByLoop4	; 0232B304
 
 ; ===== function loc_0232B308 =====
 loc_0232B308:
@@ -23736,7 +24760,7 @@ loc_0232B308:
 	bx lr	; 0232B316
 pool_0232B318:
 loc_0232B318:
-	.word 0x04000204	; 0232B318
+	.word REG_EXMEMCNT_ARM9	; 0232B318
 pool_0232B31C:
 loc_0232B31C:
 	.word 0x00000800	; 0232B31C
@@ -23748,7 +24772,7 @@ loc_0232B31C:
 	bx lr	; 0232B32A
 pool_0232B32C:
 loc_0232B32C:
-	.word 0x04000204	; 0232B32C
+	.word REG_EXMEMCNT_ARM9	; 0232B32C
 pool_0232B330:
 loc_0232B330:
 	.word 0xFFFFF7FF	; 0232B330
@@ -23767,7 +24791,7 @@ loc_0232B340:
 	.word 0x0232B321	; 0232B340
 pool_0232B344:
 loc_0232B344:
-	.word 0x0232B3E5	; 0232B344
+	.word loc_0232B3E4 + 1	; 0232B344
 
 ; ===== function loc_0232B348 =====
 loc_0232B348:
@@ -23783,7 +24807,7 @@ loc_0232B354:
 	.word 0x0232B30D	; 0232B354
 pool_0232B358:
 loc_0232B358:
-	.word 0x0232B455	; 0232B358
+	.word loc_0232B454 + 1	; 0232B358
 
 ; ===== function loc_0232B35C =====
 loc_0232B35C:
@@ -23799,7 +24823,7 @@ loc_0232B368:
 	.word 0x0232B321	; 0232B368
 pool_0232B36C:
 loc_0232B36C:
-	.word 0x0232B4BD	; 0232B36C
+	.word loc_0232B4BC + 1	; 0232B36C
 	ldr r1,[pool_0232B37C]	; 0232B370
 	ldrh r2,[r1,#0x0]	; 0232B372
 	mov r0,#0x80	; 0232B374
@@ -23808,7 +24832,7 @@ loc_0232B36C:
 	bx lr	; 0232B37A
 pool_0232B37C:
 loc_0232B37C:
-	.word 0x04000204	; 0232B37C
+	.word REG_EXMEMCNT_ARM9	; 0232B37C
 	ldr r1,[pool_0232B38C]	; 0232B380
 	ldrh r2,[r1,#0x0]	; 0232B382
 	mov r0,#0x80	; 0232B384
@@ -23817,7 +24841,7 @@ loc_0232B37C:
 	bx lr	; 0232B38A
 pool_0232B38C:
 loc_0232B38C:
-	.word 0x04000204	; 0232B38C
+	.word REG_EXMEMCNT_ARM9	; 0232B38C
 
 ; ===== function loc_0232B390 =====
 loc_0232B390:
@@ -23891,11 +24915,11 @@ loc_0232B3F4:
 	add r7,r3,#0x0	; 0232B3FE
 	cmp r7,#0x0	; 0232B400
 	beq loc_0232B40C	; 0232B402
-	blx loc_0232C4E8	; 0232B404
+	blx P1_Arm9DisableIrqFiqReturnPriorMasks	; 0232B404
 	str r0,[sp,#0x0]	; 0232B408
 	b loc_0232B412	; 0232B40A
 loc_0232B40C:
-	blx loc_0232C4BC	; 0232B40C
+	blx P1_Arm9DisableIrqReturnPriorMask	; 0232B40C
 	str r0,[sp,#0x0]	; 0232B410
 loc_0232B412:
 	add r0,r5,#0x0	; 0232B412
@@ -23906,18 +24930,18 @@ loc_0232B412:
 	bne loc_0232B428	; 0232B41E
 	cmp r4,#0x0	; 0232B420
 	beq loc_0232B426	; 0232B422
-	.byte 0xA0, 0x47	; 0232B424
+	blx r4	; 0232B424
 loc_0232B426:
 	strh r5,[r6,#0x4]	; 0232B426
 loc_0232B428:
 	cmp r7,#0x0	; 0232B428
 	beq loc_0232B434	; 0232B42A
 	ldr r0,[sp,#0x0]	; 0232B42C
-	blx loc_0232C4FC	; 0232B42E
+	blx P1_Arm9RestoreIrqFiqMasks	; 0232B42E
 	b loc_0232B43A	; 0232B432
 loc_0232B434:
 	ldr r0,[sp,#0x0]	; 0232B434
-	blx loc_0232C4D0	; 0232B436
+	blx P1_Arm9RestoreIrqMask	; 0232B436
 loc_0232B43A:
 	ldr r0,[sp,#0x4]	; 0232B43A
 	add sp,#0xc	; 0232B43C
@@ -23964,29 +24988,29 @@ loc_0232B464:
 loc_0232B480:
 	cmp r6,#0x0	; 0232B480
 	beq loc_0232B48C	; 0232B482
-	blx loc_0232C4E8	; 0232B484
+	blx P1_Arm9DisableIrqFiqReturnPriorMasks	; 0232B484
 	add r7,r0,#0x0	; 0232B488
 	b loc_0232B492	; 0232B48A
 loc_0232B48C:
-	blx loc_0232C4BC	; 0232B48C
+	blx P1_Arm9DisableIrqReturnPriorMask	; 0232B48C
 	add r7,r0,#0x0	; 0232B490
 loc_0232B492:
 	mov r0,#0x0	; 0232B492
 	strh r0,[r5,#0x4]	; 0232B494
 	cmp r4,#0x0	; 0232B496
 	beq loc_0232B49C	; 0232B498
-	.byte 0xA0, 0x47	; 0232B49A
+	blx r4	; 0232B49A
 loc_0232B49C:
 	mov r0,#0x0	; 0232B49C
 	str r0,[r5,#0x0]	; 0232B49E
 	cmp r6,#0x0	; 0232B4A0
 	beq loc_0232B4AC	; 0232B4A2
 	add r0,r7,#0x0	; 0232B4A4
-	blx loc_0232C4FC	; 0232B4A6
+	blx P1_Arm9RestoreIrqFiqMasks	; 0232B4A6
 	b loc_0232B4B2	; 0232B4AA
 loc_0232B4AC:
 	add r0,r7,#0x0	; 0232B4AC
-	blx loc_0232C4D0	; 0232B4AE
+	blx P1_Arm9RestoreIrqMask	; 0232B4AE
 loc_0232B4B2:
 	mov r0,#0x0	; 0232B4B2
 	add sp,#0x4	; 0232B4B4
@@ -24092,25 +25116,25 @@ loc_0232B56A:
 	.byte 0xC0, 0x46	; 0232B574
 pool_0232B574:
 loc_0232B574:
-	.word 0x02356DF0	; 0232B574
+	.word P1_BssStart + 0x26370	; 0232B574
 pool_0232B578:
 loc_0232B578:
-	.word 0x027FFFF0	; 0232B578
+	.word FirmwareSystemWorkAddress + SystemWorkInitLockOffset	; 0232B578
 pool_0232B57C:
 loc_0232B57C:
-	.word 0x027FFFB0	; 0232B57C
+	.word FirmwareSystemWorkAddress + SystemWorkArm9LockIdsOffset	; 0232B57C
 pool_0232B580:
 loc_0232B580:
 	.word 0xFFFF0000	; 0232B580
 pool_0232B584:
 loc_0232B584:
-	.word 0x027FFFB4	; 0232B584
+	.word FirmwareSystemWorkAddress + SystemWorkArm9LockIdsOffset + 0x4	; 0232B584
 pool_0232B588:
 loc_0232B588:
 	.word 0x027FFFC0	; 0232B588
 pool_0232B58C:
 loc_0232B58C:
-	.word 0x04000204	; 0232B58C
+	.word REG_EXMEMCNT_ARM9	; 0232B58C
 pool_0232B590:
 loc_0232B590:
 	.word 0x00000800	; 0232B590
@@ -24118,9 +25142,9 @@ loc_0232B590:
 ; ===== function loc_0232B594 =====
 	push {lr}	; 0232B594
 	sub sp,#0x4	; 0232B596
-	blx loc_0232C4A8	; 0232B598
+	blx P1_Arm9EnableIrqReturnPriorMask	; 0232B598
 loc_0232B59C:
-	blx loc_0232C520	; 0232B59C
+	blx P1_Arm9WaitForInterrupt	; 0232B59C
 	b loc_0232B59C	; 0232B5A0
 	.byte 0x00, 0x00	; 0232B5A4
 
@@ -24129,11 +25153,11 @@ loc_0232B5A4:
 	push {r4,r5,lr}	; 0232B5A4
 	sub sp,#0x4	; 0232B5A6
 	add r5,r0,#0x0	; 0232B5A8
-	blx loc_0232C4BC	; 0232B5AA
+	blx P1_Arm9DisableIrqReturnPriorMask	; 0232B5AA
 	ldr r1,[pool_0232B5C4]	; 0232B5AE
 	ldr r4,[r1,#0x10]	; 0232B5B0
 	str r5,[r1,#0x10]	; 0232B5B2
-	blx loc_0232C4D0	; 0232B5B4
+	blx P1_Arm9RestoreIrqMask	; 0232B5B4
 	add r0,r4,#0x0	; 0232B5B8
 	add sp,#0x4	; 0232B5BA
 	pop {r4,r5}	; 0232B5BC
@@ -24142,7 +25166,7 @@ loc_0232B5A4:
 	.byte 0xC0, 0x46	; 0232B5C4
 pool_0232B5C4:
 loc_0232B5C4:
-	.word 0x02356E00	; 0232B5C4
+	.word P1_BssStart + 0x26380	; 0232B5C4
 
 ; ===== function loc_0232B5C8 =====
 loc_0232B5C8:
@@ -24151,7 +25175,7 @@ loc_0232B5C8:
 	ldrh r0,[r6,#0x4]	; 0232B5CC
 	cmp r0,#0x0	; 0232B5CE
 	bne loc_0232B5DA	; 0232B5D0
-	blx loc_0232C514	; 0232B5D2
+	blx P1_Arm9GetProcessorMode	; 0232B5D2
 	cmp r0,#0x12	; 0232B5D6
 	bne loc_0232B5E4	; 0232B5D8
 loc_0232B5DA:
@@ -24180,14 +25204,14 @@ loc_0232B5E4:
 	beq loc_0232B610	; 0232B608
 	add r0,r5,#0x0	; 0232B60A
 	add r1,r4,#0x0	; 0232B60C
-	.byte 0x90, 0x47	; 0232B60E
+	blx r2	; 0232B60E
 loc_0232B610:
 	ldr r2,[r6,#0x10]	; 0232B610
 	cmp r2,#0x0	; 0232B612
 	beq loc_0232B61C	; 0232B614
 	add r0,r5,#0x0	; 0232B616
 	add r1,r4,#0x0	; 0232B618
-	.byte 0x90, 0x47	; 0232B61A
+	blx r2	; 0232B61A
 loc_0232B61C:
 	ldr r0,[pool_0232B62C]	; 0232B61C
 	str r4,[r0,#0x8]	; 0232B61E
@@ -24199,13 +25223,13 @@ loc_0232B626:
 	bx r3	; 0232B62A
 pool_0232B62C:
 loc_0232B62C:
-	.word 0x02356E00	; 0232B62C
+	.word P1_BssStart + 0x26380	; 0232B62C
 pool_0232B630:
 loc_0232B630:
-	.word 0x02356DF8	; 0232B630
+	.word P1_BssStart + 0x26378	; 0232B630
 pool_0232B634:
 loc_0232B634:
-	.word 0x02356DF4	; 0232B634
+	.word P1_BssStart + 0x26374	; 0232B634
 
 ; ===== function loc_0232B638 =====
 loc_0232B638:
@@ -24224,13 +25248,13 @@ loc_0232B64A:
 	bx lr	; 0232B64A
 pool_0232B64C:
 loc_0232B64C:
-	.word 0x02356E00	; 0232B64C
+	.word P1_BssStart + 0x26380	; 0232B64C
 
 ; ===== function loc_0232B650 =====
 loc_0232B650:
 	push {r4,r5,r6,lr}	; 0232B650
 	add r5,r0,#0x0	; 0232B652
-	blx loc_0232C4BC	; 0232B654
+	blx P1_Arm9DisableIrqReturnPriorMask	; 0232B654
 	add r4,r0,#0x0	; 0232B658
 	ldrh r1,[r5,#0x0]	; 0232B65A
 	cmp r1,#0x0	; 0232B65C
@@ -24259,20 +25283,20 @@ loc_0232B680:
 	bl loc_0232B5C8	; 0232B684
 loc_0232B688:
 	add r0,r4,#0x0	; 0232B688
-	blx loc_0232C4D0	; 0232B68A
+	blx P1_Arm9RestoreIrqMask	; 0232B68A
 	pop {r4,r5,r6}	; 0232B68E
 	pop {r3}	; 0232B690
 	bx r3	; 0232B692
 pool_0232B694:
 loc_0232B694:
-	.word 0x02356E00	; 0232B694
+	.word P1_BssStart + 0x26380	; 0232B694
 
 ; ===== function loc_0232B698 =====
 loc_0232B698:
 	push {r4,r5,lr}	; 0232B698
 	sub sp,#0x4	; 0232B69A
 	add r5,r0,#0x0	; 0232B69C
-	blx loc_0232C4BC	; 0232B69E
+	blx P1_Arm9DisableIrqReturnPriorMask	; 0232B69E
 	add r4,r0,#0x0	; 0232B6A2
 	ldr r0,[pool_0232B6D4]	; 0232B6A4
 	ldr r0,[r0,#0x0]	; 0232B6A6
@@ -24292,16 +25316,16 @@ loc_0232B6BE:
 	str r0,[r1,#0x64]	; 0232B6C0
 	bl loc_0232B5C8	; 0232B6C2
 	add r0,r4,#0x0	; 0232B6C6
-	blx loc_0232C4D0	; 0232B6C8
+	blx P1_Arm9RestoreIrqMask	; 0232B6C8
 	add sp,#0x4	; 0232B6CC
 	pop {r4,r5}	; 0232B6CE
 	pop {r3}	; 0232B6D0
 	bx r3	; 0232B6D2
 pool_0232B6D4:
 loc_0232B6D4:
-	.word 0x02356DF8	; 0232B6D4
+	.word P1_BssStart + 0x26378	; 0232B6D4
 	push {r4,lr}	; 0232B6D8
-	blx loc_0232C4BC	; 0232B6DA
+	blx P1_Arm9DisableIrqReturnPriorMask	; 0232B6DA
 	ldr r0,[pool_0232B710]	; 0232B6DE
 	ldr r0,[r0,#0x0]	; 0232B6E0
 	ldr r4,[r0,#0x0]	; 0232B6E2
@@ -24325,10 +25349,10 @@ loc_0232B6D4:
 	bx r3	; 0232B70E
 pool_0232B710:
 loc_0232B710:
-	.word 0x02356DF8	; 0232B710
+	.word P1_BssStart + 0x26378	; 0232B710
 pool_0232B714:
 loc_0232B714:
-	.word 0x02356E14	; 0232B714
+	.word P1_BssStart + 0x26394	; 0232B714
 
 ; ===== function loc_0232B718 =====
 loc_0232B718:
@@ -24338,13 +25362,13 @@ loc_0232B718:
 	str r1,[sp,#0x0]	; 0232B71E
 	add r7,r2,#0x0	; 0232B720
 	add r4,r3,#0x0	; 0232B722
-	blx loc_0232C4BC	; 0232B724
+	blx P1_Arm9DisableIrqReturnPriorMask	; 0232B724
 	str r0,[sp,#0x4]	; 0232B728
 	bl loc_0232B924	; 0232B72A
 	cmp r0,#0x0	; 0232B72E
 	bge loc_0232B740	; 0232B730
 	ldr r0,[sp,#0x4]	; 0232B732
-	blx loc_0232C4D0	; 0232B734
+	blx P1_Arm9RestoreIrqMask	; 0232B734
 	add sp,#0xc	; 0232B738
 	pop {r4,r5,r6,r7}	; 0232B73A
 	pop {r3}	; 0232B73C
@@ -24403,14 +25427,14 @@ loc_0232B740:
 	add r5,#0x80	; 0232B7AA
 	str r0,[r5,#0x0]	; 0232B7AC
 	ldr r0,[sp,#0x4]	; 0232B7AE
-	blx loc_0232C4D0	; 0232B7B0
+	blx P1_Arm9RestoreIrqMask	; 0232B7B0
 	add sp,#0xc	; 0232B7B4
 	pop {r4,r5,r6,r7}	; 0232B7B6
 	pop {r3}	; 0232B7B8
 	bx r3	; 0232B7BA
 pool_0232B7BC:
 loc_0232B7BC:
-	.word 0x02356E14	; 0232B7BC
+	.word P1_BssStart + 0x26394	; 0232B7BC
 pool_0232B7C0:
 loc_0232B7C0:
 	.word 0xFDDB597D	; 0232B7C0
@@ -24515,19 +25539,19 @@ loc_0232B874:
 	.byte 0xC0, 0x46	; 0232B87C
 pool_0232B87C:
 loc_0232B87C:
-	.word 0x02356DFC	; 0232B87C
+	.word P1_BssStart + 0x2637C	; 0232B87C
 pool_0232B880:
 loc_0232B880:
-	.word 0x02356E00	; 0232B880
+	.word P1_BssStart + 0x26380	; 0232B880
 pool_0232B884:
 loc_0232B884:
 	.word 0x02356E08	; 0232B884
 pool_0232B888:
 loc_0232B888:
-	.word 0x02356DF8	; 0232B888
+	.word P1_BssStart + 0x26378	; 0232B888
 pool_0232B88C:
 loc_0232B88C:
-	.word 0x02356EE8	; 0232B88C
+	.word P1_BssStart + 0x26468	; 0232B88C
 pool_0232B890:
 loc_0232B890:
 	.word 0x00000000	; 0232B890
@@ -24545,7 +25569,7 @@ loc_0232B8A0:
 	.word 0x00001000	; 0232B8A0
 pool_0232B8A4:
 loc_0232B8A4:
-	.word 0x02356F68	; 0232B8A4
+	.word P1_BssStart + 0x264E8	; 0232B8A4
 pool_0232B8A8:
 loc_0232B8A8:
 	.word 0xFDDB597D	; 0232B8A8
@@ -24554,10 +25578,10 @@ loc_0232B8AC:
 	.word 0x7BF9DD5B	; 0232B8AC
 pool_0232B8B0:
 loc_0232B8B0:
-	.word 0x027FFFA0	; 0232B8B0
+	.word FirmwareSystemWorkAddress + SystemWorkArm9ThreadInfoOffset	; 0232B8B0
 pool_0232B8B4:
 loc_0232B8B4:
-	.word 0x02356E54	; 0232B8B4
+	.word P1_BssStart + 0x263D4	; 0232B8B4
 pool_0232B8B8:
 loc_0232B8B8:
 	.word 0x0232B595	; 0232B8B8
@@ -24593,7 +25617,7 @@ loc_0232B8E0:
 	.byte 0xC0, 0x46	; 0232B8E8
 pool_0232B8E8:
 loc_0232B8E8:
-	.word 0x02356E00	; 0232B8E8
+	.word P1_BssStart + 0x26380	; 0232B8E8
 
 ; ===== function loc_0232B8EC =====
 loc_0232B8EC:
@@ -24629,7 +25653,7 @@ loc_0232B916:
 	bx lr	; 0232B91E
 pool_0232B920:
 loc_0232B920:
-	.word 0x02356E00	; 0232B920
+	.word P1_BssStart + 0x26380	; 0232B920
 
 ; ===== function loc_0232B924 =====
 loc_0232B924:
@@ -24649,7 +25673,7 @@ loc_0232B93A:
 	bx lr	; 0232B93A
 pool_0232B93C:
 loc_0232B93C:
-	.word 0x02356E00	; 0232B93C
+	.word P1_BssStart + 0x26380	; 0232B93C
 .arm
 
 ; ===== function loc_0232B940 =====
@@ -24702,7 +25726,7 @@ loc_0232B9A4:
 	bx lr	; 0232B9E8
 pool_0232B9EC:
 loc_0232B9EC:
-	.word 0x0232EAC5	; 0232B9EC
+	.word loc_0232EAC4 + 1	; 0232B9EC
 
 ; ===== function loc_0232B9F0 =====
 loc_0232B9F0:
@@ -24724,7 +25748,7 @@ loc_0232B9F0:
 	subs pc,lr,#0x4	; 0232BA2C
 pool_0232BA30:
 loc_0232BA30:
-	.word 0x0232EA85	; 0232BA30
+	.word loc_0232EA84 + 1	; 0232BA30
 .thumb
 
 ; ===== function loc_0232BA34 =====
@@ -24738,7 +25762,7 @@ loc_0232BA3C:
 	.word 0x82000001	; 0232BA3C
 pool_0232BA40:
 loc_0232BA40:
-	.word 0x02330A58	; 0232BA40
+	.word P1_Data_02330A58	; 0232BA40
 
 ; ===== function loc_0232BA44 =====
 loc_0232BA44:
@@ -24752,7 +25776,7 @@ loc_0232BA48:
 	add r5,r0,#0x0	; 0232BA4C
 	add r7,r1,#0x0	; 0232BA4E
 	add r4,r2,#0x0	; 0232BA50
-	blx loc_0232C4BC	; 0232BA52
+	blx P1_Arm9DisableIrqReturnPriorMask	; 0232BA52
 	str r0,[sp,#0x0]	; 0232BA56
 	ldr r0,[r5,#0x10]	; 0232BA58
 	cmp r0,#0x0	; 0232BA5A
@@ -24764,7 +25788,7 @@ loc_0232BA64:
 	cmp r4,#0x0	; 0232BA64
 	bne loc_0232BA78	; 0232BA66
 	ldr r0,[sp,#0x0]	; 0232BA68
-	blx loc_0232C4D0	; 0232BA6A
+	blx P1_Arm9RestoreIrqMask	; 0232BA6A
 	mov r0,#0x0	; 0232BA6E
 	add sp,#0x4	; 0232BA70
 	pop {r4,r5,r6,r7}	; 0232BA72
@@ -24788,7 +25812,7 @@ loc_0232BA92:
 	ldr r0,[r5,#0xc]	; 0232BA92
 	add r0,r0,#0x1	; 0232BA94
 	ldr r1,[r5,#0x8]	; 0232BA96
-	blx loc_0232CD38	; 0232BA98
+	blx P1_SignedDivMod	; 0232BA98
 	str r1,[r5,#0xc]	; 0232BA9C
 	ldr r0,[r5,#0x10]	; 0232BA9E
 	sub r0,r0,#0x1	; 0232BAA0
@@ -24796,7 +25820,7 @@ loc_0232BA92:
 	add r0,r5,#0x0	; 0232BAA4
 	bl loc_0232B650	; 0232BAA6
 	ldr r0,[sp,#0x0]	; 0232BAAA
-	blx loc_0232C4D0	; 0232BAAC
+	blx P1_Arm9RestoreIrqMask	; 0232BAAC
 	mov r0,#0x1	; 0232BAB0
 	add sp,#0x4	; 0232BAB2
 	pop {r4,r5,r6,r7}	; 0232BAB4
@@ -24811,7 +25835,7 @@ loc_0232BABC:
 	add r5,r0,#0x0	; 0232BAC0
 	add r6,r1,#0x0	; 0232BAC2
 	add r4,r2,#0x0	; 0232BAC4
-	blx loc_0232C4BC	; 0232BAC6
+	blx P1_Arm9DisableIrqReturnPriorMask	; 0232BAC6
 	add r7,r0,#0x0	; 0232BACA
 	ldr r2,[r5,#0x10]	; 0232BACC
 	ldr r1,[r5,#0x8]	; 0232BACE
@@ -24823,7 +25847,7 @@ loc_0232BAD8:
 	cmp r4,#0x0	; 0232BAD8
 	bne loc_0232BAEC	; 0232BADA
 	add r0,r7,#0x0	; 0232BADC
-	blx loc_0232C4D0	; 0232BADE
+	blx P1_Arm9RestoreIrqMask	; 0232BADE
 	mov r0,#0x0	; 0232BAE2
 	add sp,#0x4	; 0232BAE4
 	pop {r4,r5,r6,r7}	; 0232BAE6
@@ -24839,7 +25863,7 @@ loc_0232BAEC:
 loc_0232BAFA:
 	ldr r0,[r5,#0xc]	; 0232BAFA
 	add r0,r0,r2	; 0232BAFC
-	blx loc_0232CD38	; 0232BAFE
+	blx P1_SignedDivMod	; 0232BAFE
 	ldr r2,[r5,#0x4]	; 0232BB02
 	lsl r0,r1,#0x2	; 0232BB04
 	str r6,[r2,r0]	; 0232BB06
@@ -24849,13 +25873,21 @@ loc_0232BAFA:
 	add r0,r5,#0x2	; 0232BB0E
 	bl loc_0232B650	; 0232BB10
 	add r0,r7,#0x0	; 0232BB14
-	blx loc_0232C4D0	; 0232BB16
+	blx P1_Arm9RestoreIrqMask	; 0232BB16
 	mov r0,#0x1	; 0232BB1A
 	add sp,#0x4	; 0232BB1C
 	pop {r4,r5,r6,r7}	; 0232BB1E
 	pop {r3}	; 0232BB20
 	bx r3	; 0232BB22
-	.byte 0x00, 0x23, 0x03, 0x80, 0x43, 0x80, 0x41, 0x60, 0x82, 0x60, 0xC3, 0x60, 0x03, 0x61, 0x70, 0x47	; 0232BB34
+P1_Entry_0232BB24:
+	mov r3,#0x0	; 0232BB24
+	strh r3,[r0,#0x0]	; 0232BB26
+	strh r3,[r0,#0x2]	; 0232BB28
+	str r1,[r0,#0x4]	; 0232BB2A
+	str r2,[r0,#0x8]	; 0232BB2C
+	str r3,[r0,#0xc]	; 0232BB2E
+	str r3,[r0,#0x10]	; 0232BB30
+	bx lr	; 0232BB32
 
 ; ===== function loc_0232BB34 =====
 loc_0232BB34:
@@ -24916,6 +25948,9 @@ loc_0232BB84:
 .arm
 
 ; ===== function loc_0232BB90 =====
+; 以 ARM946 cache index 遍历并清理整个 D-cache。
+; Cleans the entire ARM946 D-cache by cache index.
+.func P1_CleanEntireDataCacheByIndex
 loc_0232BB90:
 	mov r1,#0x0	; 0232BB90
 loc_0232BB94:
@@ -24931,7 +25966,12 @@ loc_0232BB98:
 	bne loc_0232BB94	; 0232BBB4
 	bx lr	; 0232BBB8
 
+.endfunc
+
 ; ===== function loc_0232BBBC =====
+; 以 ARM946 cache index 遍历，清理并失效整个 D-cache。
+; Cleans and invalidates the entire ARM946 D-cache by cache index.
+.func P1_CleanAndInvalidateEntireDataCacheByIndex
 loc_0232BBBC:
 	mov r1,#0x0	; 0232BBBC
 loc_0232BBC0:
@@ -24947,7 +25987,12 @@ loc_0232BBC4:
 	bne loc_0232BBC0	; 0232BBE0
 	bx lr	; 0232BBE4
 
+.endfunc
+
 ; ===== function loc_0232BBE8 =====
+; 按 ARM946 32 字节 cache line 失效指定的 D-cache 地址范围。
+; Invalidates a D-cache range in ARM946 32-byte cache-line units.
+.func P1_InvalidateDataCacheRange
 loc_0232BBE8:
 	add r1,r1,r0	; 0232BBE8
 	bic r0,r0,#0x1f	; 0232BBEC
@@ -24958,7 +26003,12 @@ loc_0232BBF0:
 	blt loc_0232BBF0	; 0232BBFC
 	bx lr	; 0232BC00
 
+.endfunc
+
 ; ===== function loc_0232BC04 =====
+; 按 ARM946 32 字节 cache line 清理指定的 D-cache 地址范围。
+; Cleans a D-cache range in ARM946 32-byte cache-line units.
+.func P1_CleanDataCacheRange
 loc_0232BC04:
 	add r1,r1,r0	; 0232BC04
 	bic r0,r0,#0x1f	; 0232BC08
@@ -24969,7 +26019,12 @@ loc_0232BC0C:
 	blt loc_0232BC0C	; 0232BC18
 	bx lr	; 0232BC1C
 
+.endfunc
+
 ; ===== function loc_0232BC20 =====
+; 按 ARM946 32 字节 cache line 清理并失效指定的 D-cache 地址范围。
+; Cleans and invalidates a D-cache range in ARM946 32-byte cache-line units.
+.func P1_CleanAndInvalidateDataCacheRange
 loc_0232BC20:
 	add r1,r1,r0	; 0232BC20
 	bic r0,r0,#0x1f	; 0232BC24
@@ -24979,7 +26034,16 @@ loc_0232BC28:
 	cmp r0,r1	; 0232BC30
 	blt loc_0232BC28	; 0232BC34
 	bx lr	; 0232BC38
-	.byte 0x00, 0x00, 0xA0, 0xE3, 0x9A, 0x0F, 0x07, 0xEE, 0x1E, 0xFF, 0x2F, 0xE1	; 0232BC48
+.endfunc
+.arm
+; 排空 ARM946 写缓冲区，确保先前存储操作完成。
+; Drains the ARM946 write buffer so prior stores complete.
+.func P1_DrainWriteBuffer
+loc_0232BC3C:
+	mov r0,#0x0	; 0232BC3C
+	mcr p15,0x0,r0,c7,c10,0x4	; 0232BC40
+	bx lr	; 0232BC44
+.endfunc
 .thumb
 
 ; ===== function loc_0232BC48 =====
@@ -24991,7 +26055,7 @@ loc_0232BC48:
 	bl loc_0232B4FC	; 0232BC54
 	bl loc_0232BD6C	; 0232BC58
 	bl loc_0232B254	; 0232BC5C
-	bl loc_0232BF80	; 0232BC60
+	bl P1_InitExceptionHandler	; 0232BC60
 	mov r0,#0x3	; 0232BC64
 	bl loc_0232DD48	; 0232BC66
 	bl loc_0232C468	; 0232BC6A
@@ -25027,13 +26091,25 @@ loc_0232BC98:
 	cmp r0,#0x6	; 0232BC98
 	bhi loc_0232BCD0	; 0232BC9A
 	add r0,r0,r0	; 0232BC9C
+P1_SwitchIndexPC_0232BC9C:
 	add r0,pc	; 0232BC9E
-	ldrh r0,[r0,#0x8]	; 0232BCA0
+	ldrh r0,[r0,#(P1_SwitchTable_0232BC9C - (P1_SwitchIndexPC_0232BC9C + 4))]	; 0232BCA0
 	lsl r0,r0,#0x10	; 0232BCA2
 	asr r0,r0,#0x10	; 0232BCA4
+P1_SwitchTargetPC_0232BC9C:
 	add r0,pc	; 0232BCA6
 	bx r0	; 0232BCA8
-	.byte 0x0F, 0x00, 0x27, 0x00, 0x13, 0x00, 0x17, 0x00, 0x1B, 0x00, 0x1F, 0x00, 0x23, 0x00	; 0232BCB8
+; 表项是相对 ADD 所读 PC 的有符号偏移，保留 ARM/Thumb 状态位。
+; Signed offsets from the ADD's PC, including the ARM/Thumb state bit.
+P1_SwitchTable_0232BC9C:
+	.halfword (loc_0232BCB8 + 1) - (P1_SwitchTargetPC_0232BC9C + 4)
+	.halfword (loc_0232BCD0 + 1) - (P1_SwitchTargetPC_0232BC9C + 4)
+	.halfword (loc_0232BCBC + 1) - (P1_SwitchTargetPC_0232BC9C + 4)
+	.halfword (loc_0232BCC0 + 1) - (P1_SwitchTargetPC_0232BC9C + 4)
+	.halfword (loc_0232BCC4 + 1) - (P1_SwitchTargetPC_0232BC9C + 4)
+	.halfword (loc_0232BCC8 + 1) - (P1_SwitchTargetPC_0232BC9C + 4)
+	.halfword (loc_0232BCCC + 1) - (P1_SwitchTargetPC_0232BC9C + 4)
+P1_SwitchTable_0232BC9CEnd:
 loc_0232BCB8:
 	ldr r0,[pool_0232BCD4]	; 0232BCB8
 	bx lr	; 0232BCBA
@@ -25076,13 +26152,25 @@ loc_0232BCE8:
 	cmp r0,#0x6	; 0232BCE8
 	bhi loc_0232BD42	; 0232BCEA
 	add r0,r0,r0	; 0232BCEC
+P1_SwitchIndexPC_0232BCEC:
 	add r0,pc	; 0232BCEE
-	ldrh r0,[r0,#0x8]	; 0232BCF0
+	ldrh r0,[r0,#(P1_SwitchTable_0232BCEC - (P1_SwitchIndexPC_0232BCEC + 4))]	; 0232BCF0
 	lsl r0,r0,#0x10	; 0232BCF2
 	asr r0,r0,#0x10	; 0232BCF4
+P1_SwitchTargetPC_0232BCEC:
 	add r0,pc	; 0232BCF6
 	bx r0	; 0232BCF8
-	.byte 0x0F, 0x00, 0x49, 0x00, 0x13, 0x00, 0x17, 0x00, 0x1B, 0x00, 0x41, 0x00, 0x45, 0x00	; 0232BD08
+; 表项是相对 ADD 所读 PC 的有符号偏移，保留 ARM/Thumb 状态位。
+; Signed offsets from the ADD's PC, including the ARM/Thumb state bit.
+P1_SwitchTable_0232BCEC:
+	.halfword (loc_0232BD08 + 1) - (P1_SwitchTargetPC_0232BCEC + 4)
+	.halfword (loc_0232BD42 + 1) - (P1_SwitchTargetPC_0232BCEC + 4)
+	.halfword (loc_0232BD0C + 1) - (P1_SwitchTargetPC_0232BCEC + 4)
+	.halfword (loc_0232BD10 + 1) - (P1_SwitchTargetPC_0232BCEC + 4)
+	.halfword (loc_0232BD14 + 1) - (P1_SwitchTargetPC_0232BCEC + 4)
+	.halfword (loc_0232BD3A + 1) - (P1_SwitchTargetPC_0232BCEC + 4)
+	.halfword (loc_0232BD3E + 1) - (P1_SwitchTargetPC_0232BCEC + 4)
+P1_SwitchTable_0232BCECEnd:
 loc_0232BD08:
 	ldr r0,[pool_0232BD48]	; 0232BD08
 	bx lr	; 0232BD0A
@@ -25190,7 +26278,7 @@ loc_0232BDAE:
 	bx r3	; 0232BDB2
 pool_0232BDB4:
 loc_0232BDB4:
-	.word 0x02357044	; 0232BDB4
+	.word P1_BssStart + 0x265C4	; 0232BDB4
 
 ; ===== function loc_0232BDB8 =====
 loc_0232BDB8:
@@ -25211,18 +26299,27 @@ loc_0232BDB8:
 .arm
 
 ; ===== function loc_0232BDDC =====
+; Sets CP15 control-register c1 bit 0. / 置位 CP15 控制寄存器 c1 的 bit 0。
+.func P1_Arm9SetCp15ControlBit0
 loc_0232BDDC:
 	mrc p15,0x0,r0,c1,c0,0x0	; 0232BDDC
 	orr r0,r0,#0x1	; 0232BDE0
 	mcr p15,0x0,r0,c1,c0,0x0	; 0232BDE4
 	bx lr	; 0232BDE8
+.endfunc
 
 ; ===== function loc_0232BDEC =====
+; Clears CP15 control-register c1 bit 0. / 清除 CP15 控制寄存器 c1 的 bit 0。
+.func P1_Arm9ClearCp15ControlBit0
 loc_0232BDEC:
 	mrc p15,0x0,r0,c1,c0,0x0	; 0232BDEC
 	bic r0,r0,#0x1	; 0232BDF0
 	mcr p15,0x0,r0,c1,c0,0x0	; 0232BDF4
 	bx lr	; 0232BDF8
+.endfunc
+; 链接既有调试入口；保存现场后处理 abort/undef，最后停在等待循环。
+; Chain the saved debug handler; process abort/undef context, then stop in a wait loop.
+.func P1_ExceptionEntry
 	ldr r12,[pool_0232BE68]	; 0232BDFC
 	ldr r12,[r12,#0x0]	; 0232BE00
 	cmp r12,#0x0	; 0232BE04
@@ -25236,12 +26333,12 @@ loc_0232BDEC:
 	and r1,r1,#0x1f	; 0232BE24
 	teq r1,#0x17	; 0232BE28
 	bne loc_0232BE38	; 0232BE2C
-	bl loc_0232BE70	; 0232BE30
+	bl P1_ProcessException	; 0232BE30
 	b loc_0232BE44	; 0232BE34
 loc_0232BE38:
 	teq r1,#0x1b	; 0232BE38
 	bne loc_0232BE44	; 0232BE3C
-	bl loc_0232BE70	; 0232BE40
+	bl P1_ProcessException	; 0232BE40
 loc_0232BE44:
 	ldr r12,[pool_0232BE68]	; 0232BE44
 	ldr r12,[r12,#0x0]	; 0232BE48
@@ -25251,24 +26348,32 @@ loc_0232BE50:
 loc_0232BE54:
 	mov r0,r0	; 0232BE54
 	b loc_0232BE54	; 0232BE58
+.endfunc
 	.byte 0x0F, 0x50, 0xBD, 0xE8, 0x0C, 0xD0, 0xA0, 0xE1, 0x1E, 0xFF, 0x2F, 0xE1	; 0232BE68
 pool_0232BE68:
 loc_0232BE68:
-	.word 0x02357050	; 0232BE68
+	.word P1_PreviousExceptionHandler	; 0232BE68
 pool_0232BE6C:
 loc_0232BE6C:
-	.word 0x02000000	; 0232BE6C
+	.word P1_ExceptionStackTop	; 0232BE6C
 
 ; ===== function loc_0232BE70 =====
 loc_0232BE70:
+; 先保存异常现场，再调用已注册的用户处理器。
+; Save exception context, then invoke the registered user handler.
+.func P1_ProcessException
 	stmdb sp!,{lr}	; 0232BE70
-	bl loc_0232BE84	; 0232BE74
-	bl loc_0232BF14	; 0232BE78
+	bl P1_SaveExceptionContext	; 0232BE74
+	bl P1_CallUserExceptionHandler	; 0232BE78
 	ldmia sp!,{lr}	; 0232BE7C
 	bx lr	; 0232BE80
+.endfunc
 
 ; ===== function loc_0232BE84 =====
 loc_0232BE84:
+; 收集通用寄存器、异常栈与各模式的状态，写入 BSS 上下文。
+; Collect registers, exception-stack data and mode state into the BSS context.
+.func P1_SaveExceptionContext
 	ldr r1,[pool_0232BF10]	; 0232BE84
 	mrs r2,cpsr	; 0232BE88
 	str r2,[r1,#0x74]	; 0232BE8C
@@ -25304,12 +26409,16 @@ loc_0232BE84:
 	str r2,[r1,#0x7c]	; 0232BF04
 	msr cpsr_cxsf,r0	; 0232BF08
 	bx lr	; 0232BF0C
+.endfunc
 pool_0232BF10:
 loc_0232BF10:
-	.word 0x02357054	; 0232BF10
+	.word P1_ExceptionContext	; 0232BF10
 
 ; ===== function loc_0232BF14 =====
 loc_0232BF14:
+; 若已注册，临时启用保护单元并以现场/参数调用用户回调。
+; If registered, enable the MPU for the user callback with context and argument.
+.func P1_CallUserExceptionHandler
 	stmdb sp!,{lr}	; 0232BF14
 	sub sp,sp,#0x4	; 0232BF18
 	ldr r0,[pool_0232BF70]	; 0232BF1C
@@ -25322,33 +26431,37 @@ loc_0232BF14:
 	ldr r1,[pool_0232BF74]	; 0232BF38
 	msr cpsr_cxsf,r1	; 0232BF3C
 	mov sp,r0	; 0232BF40
-	bl loc_0232BDDC	; 0232BF44
+	bl P1_Arm9SetCp15ControlBit0	; 0232BF44
 	ldr r1,[pool_0232BF78]	; 0232BF48
 	ldr r0,[pool_0232BF70]	; 0232BF4C
 	ldr r1,[r1,#0x0]	; 0232BF50
 	ldr r2,[r0,#0x0]	; 0232BF54
 	ldr r0,[pool_0232BF7C]	; 0232BF58
 	blx r2	; 0232BF5C
-	bl loc_0232BDEC	; 0232BF60
+	bl P1_Arm9ClearCp15ControlBit0	; 0232BF60
 	add sp,sp,#0x4	; 0232BF64
 	ldmia sp!,{lr}	; 0232BF68
 	bx lr	; 0232BF6C
+.endfunc
 pool_0232BF70:
 loc_0232BF70:
-	.word 0x02357048	; 0232BF70
+	.word P1_UserExceptionHandler	; 0232BF70
 pool_0232BF74:
 loc_0232BF74:
 	.word 0x0000009F	; 0232BF74
 pool_0232BF78:
 loc_0232BF78:
-	.word 0x0235704C	; 0232BF78
+	.word P1_UserExceptionArgument	; 0232BF78
 pool_0232BF7C:
 loc_0232BF7C:
-	.word 0x02357054	; 0232BF7C
+	.word P1_ExceptionContext	; 0232BF7C
 .thumb
 
 ; ===== function loc_0232BF80 =====
 loc_0232BF80:
+; 检查既有调试入口；需要时同时安装 BIOS 向量和 DTCM 中的入口副本。
+; Check the saved debug entry; install the BIOS vector and DTCM copy when required.
+.func P1_InitExceptionHandler
 	push {lr}	; 0232BF80
 	sub sp,#0x4	; 0232BF82
 	ldr r0,[pool_0232BFCC]	; 0232BF84
@@ -25389,10 +26502,11 @@ loc_0232BFBE:
 	add sp,#0x4	; 0232BFC4
 	pop {r3}	; 0232BFC6
 	bx r3	; 0232BFC8
+.endfunc
 	.byte 0xC0, 0x46	; 0232BFCC
 pool_0232BFCC:
 loc_0232BFCC:
-	.word 0x027FFD9C	; 0232BFCC
+	.word Bios9DebugVectorAddress	; 0232BFCC
 pool_0232BFD0:
 loc_0232BFD0:
 	.word 0x02600000	; 0232BFD0
@@ -25401,19 +26515,19 @@ loc_0232BFD4:
 	.word 0x02800000	; 0232BFD4
 pool_0232BFD8:
 loc_0232BFD8:
-	.word 0x02357050	; 0232BFD8
+	.word P1_PreviousExceptionHandler	; 0232BFD8
 pool_0232BFDC:
 loc_0232BFDC:
 	.word 0x40000000	; 0232BFDC
 pool_0232BFE0:
 loc_0232BFE0:
-	.word 0x0232BDFC	; 0232BFE0
+	.word P1_ExceptionEntry	; 0232BFE0
 pool_0232BFE4:
 loc_0232BFE4:
-	.word 0x03003F80	; 0232BFE4
+	.word P1_DtcmExceptionVector - 0x5C	; 0232BFE4
 pool_0232BFE8:
 loc_0232BFE8:
-	.word 0x02357048	; 0232BFE8
+	.word P1_UserExceptionHandler	; 0232BFE8
 
 ; ===== function loc_0232BFEC =====
 loc_0232BFEC:
@@ -25427,13 +26541,13 @@ loc_0232BFEC:
 	.byte 0xC0, 0x46	; 0232BFFC
 pool_0232BFFC:
 loc_0232BFFC:
-	.word 0x023570D4	; 0232BFFC
+	.word P1_BssStart + 0x26654	; 0232BFFC
 
 ; ===== function loc_0232C000 =====
 loc_0232C000:
 	push {r4,r5,lr}	; 0232C000
 	sub sp,#0xc	; 0232C002
-	blx loc_0232C4BC	; 0232C004
+	blx P1_Arm9DisableIrqReturnPriorMask	; 0232C004
 	ldr r1,[pool_0232C068]	; 0232C008
 	ldrh r1,[r1,#0x0]	; 0232C00A
 	add r3,sp,#0x0	; 0232C00C
@@ -25466,7 +26580,7 @@ loc_0232C000:
 	str r1,[sp,#0x4]	; 0232C042
 	str r4,[sp,#0x8]	; 0232C044
 loc_0232C046:
-	blx loc_0232C4D0	; 0232C046
+	blx P1_Arm9RestoreIrqMask	; 0232C046
 	ldr r2,[sp,#0x4]	; 0232C04A
 	ldr r1,[sp,#0x8]	; 0232C04C
 	lsr r0,r2,#0x10	; 0232C04E
@@ -25484,21 +26598,22 @@ loc_0232C046:
 	bx r3	; 0232C066
 pool_0232C068:
 loc_0232C068:
-	.word 0x04000100	; 0232C068
+	.word TIMER0_DATA	; 0232C068
 pool_0232C06C:
 loc_0232C06C:
-	.word 0x023570E0	; 0232C06C
+	.word P1_BssStart + 0x26660	; 0232C06C
 pool_0232C070:
 loc_0232C070:
 	.word 0x0000FFFF	; 0232C070
 pool_0232C074:
 loc_0232C074:
-	.word 0x04000214	; 0232C074
+	.word REG_IF	; 0232C074
 pool_0232C078:
 loc_0232C078:
 	.word 0x00008000	; 0232C078
 
 ; ===== function loc_0232C07C =====
+P1_IrqHandler_0232C07C:
 	push {r4,lr}	; 0232C07C
 	ldr r1,[pool_0232C0B8]	; 0232C07E
 	ldr r2,[r1,#0x0]	; 0232C080
@@ -25531,16 +26646,16 @@ loc_0232C0A6:
 	.byte 0xC0, 0x46	; 0232C0B8
 pool_0232C0B8:
 loc_0232C0B8:
-	.word 0x023570E0	; 0232C0B8
+	.word P1_BssStart + 0x26660	; 0232C0B8
 pool_0232C0BC:
 loc_0232C0BC:
-	.word 0x023570DC	; 0232C0BC
+	.word P1_BssStart + 0x2665C	; 0232C0BC
 pool_0232C0C0:
 loc_0232C0C0:
-	.word 0x04000102	; 0232C0C0
+	.word TIMER0_CR	; 0232C0C0
 pool_0232C0C4:
 loc_0232C0C4:
-	.word 0x04000100	; 0232C0C4
+	.word TIMER0_DATA	; 0232C0C4
 pool_0232C0C8:
 loc_0232C0C8:
 	.word 0x0232C07D	; 0232C0C8
@@ -25581,22 +26696,22 @@ loc_0232C10A:
 	bx r3	; 0232C10E
 pool_0232C110:
 loc_0232C110:
-	.word 0x023570D8	; 0232C110
+	.word P1_BssStart + 0x26658	; 0232C110
 pool_0232C114:
 loc_0232C114:
-	.word 0x023570E0	; 0232C114
+	.word P1_BssStart + 0x26660	; 0232C114
 pool_0232C118:
 loc_0232C118:
-	.word 0x04000102	; 0232C118
+	.word TIMER0_CR	; 0232C118
 pool_0232C11C:
 loc_0232C11C:
-	.word 0x04000100	; 0232C11C
+	.word TIMER0_DATA	; 0232C11C
 pool_0232C120:
 loc_0232C120:
-	.word 0x0232C07D	; 0232C120
+	.word P1_IrqHandler_0232C07C + 1	; 0232C120
 pool_0232C124:
 loc_0232C124:
-	.word 0x023570DC	; 0232C124
+	.word P1_BssStart + 0x2665C	; 0232C124
 .arm
 	stmdb sp!,{lr}	; 0232C128
 	blx loc_0232C18C	; 0232C12C
@@ -25605,12 +26720,13 @@ loc_0232C124:
 .thumb
 
 ; ===== function loc_0232C138 =====
+P1_Entry_0232C138:
 	push {r4,r5,r6,r7,lr}	; 0232C138
 	sub sp,#0x4	; 0232C13A
 	add r5,r0,#0x0	; 0232C13C
 	cmp r5,#0x0	; 0232C13E
 	beq loc_0232C17C	; 0232C140
-	blx loc_0232C4BC	; 0232C142
+	blx P1_Arm9DisableIrqReturnPriorMask	; 0232C142
 	add r7,r0,#0x0	; 0232C146
 	ldr r0,[pool_0232C184]	; 0232C148
 	ldr r0,[r0,#0x0]	; 0232C14A
@@ -25642,7 +26758,7 @@ loc_0232C172:
 	bne loc_0232C15C	; 0232C174
 loc_0232C176:
 	add r0,r7,#0x0	; 0232C176
-	blx loc_0232C4D0	; 0232C178
+	blx P1_Arm9RestoreIrqMask	; 0232C178
 loc_0232C17C:
 	add sp,#0x4	; 0232C17C
 	pop {r4,r5,r6,r7}	; 0232C17E
@@ -25650,8 +26766,10 @@ loc_0232C17C:
 	bx r3	; 0232C182
 pool_0232C184:
 loc_0232C184:
-	.word 0x023570EC	; 0232C184
-	.byte 0x81, 0x60, 0x70, 0x47	; 0232C18C
+	.word P1_BssStart + 0x2666C	; 0232C184
+P1_Entry_0232C188:
+	str r1,[r0,#0x8]	; 0232C188
+	bx lr	; 0232C18A
 
 ; ===== function loc_0232C18C =====
 loc_0232C18C:
@@ -25711,7 +26829,7 @@ loc_0232C1F4:
 	cmp r5,#0x0	; 0232C1F4
 	beq loc_0232C1FC	; 0232C1F6
 	ldr r0,[r4,#0x4]	; 0232C1F8
-	.byte 0xA8, 0x47	; 0232C1FA
+	blx r5	; 0232C1FA
 loc_0232C1FC:
 	ldr r2,[r4,#0x1c]	; 0232C1FC
 	ldr r1,[r4,#0x20]	; 0232C1FE
@@ -25739,7 +26857,7 @@ loc_0232C222:
 	.byte 0xC0, 0x46	; 0232C22C
 pool_0232C22C:
 loc_0232C22C:
-	.word 0x04000106	; 0232C22C
+	.word TIMER1_CR	; 0232C22C
 pool_0232C230:
 loc_0232C230:
 	.word 0x03000000	; 0232C230
@@ -25748,19 +26866,19 @@ loc_0232C234:
 	.word 0x00003FF8	; 0232C234
 pool_0232C238:
 loc_0232C238:
-	.word 0x023570EC	; 0232C238
+	.word P1_BssStart + 0x2666C	; 0232C238
 
 ; ===== function loc_0232C23C =====
 loc_0232C23C:
 	push {r4,r5,lr}	; 0232C23C
 	sub sp,#0x4	; 0232C23E
 	add r5,r0,#0x0	; 0232C240
-	blx loc_0232C4BC	; 0232C242
+	blx P1_Arm9DisableIrqReturnPriorMask	; 0232C242
 	add r4,r0,#0x0	; 0232C246
 	ldr r1,[r5,#0x0]	; 0232C248
 	cmp r1,#0x0	; 0232C24A
 	bne loc_0232C25A	; 0232C24C
-	blx loc_0232C4D0	; 0232C24E
+	blx P1_Arm9RestoreIrqMask	; 0232C24E
 	add sp,#0x4	; 0232C252
 	pop {r4,r5}	; 0232C254
 	pop {r3}	; 0232C256
@@ -25794,19 +26912,52 @@ loc_0232C282:
 	str r0,[r5,#0x1c]	; 0232C286
 	str r0,[r5,#0x20]	; 0232C288
 	add r0,r4,#0x0	; 0232C28A
-	blx loc_0232C4D0	; 0232C28C
+	blx P1_Arm9RestoreIrqMask	; 0232C28C
 	add sp,#0x4	; 0232C290
 	pop {r4,r5}	; 0232C292
 	pop {r3}	; 0232C294
 	bx r3	; 0232C296
 pool_0232C298:
 loc_0232C298:
-	.word 0x023570EC	; 0232C298
-	.byte 0xF0, 0xB5, 0x81, 0xB0, 0x05, 0x1C, 0x0E, 0x1C, 0x14, 0x1C, 0x1F, 0x1C, 0x00, 0x2D, 0x02, 0xD0	; 0232C2AC
-	.byte 0x28, 0x68, 0x00, 0x28, 0x01, 0xD0, 0x00, 0xF0, 0x41, 0xF9, 0x00, 0xF0, 0x02, 0xE9, 0x00, 0x90	; 0232C2BC
-	.byte 0x00, 0x20, 0xE8, 0x61, 0x28, 0x62, 0x2F, 0x60, 0x06, 0x98, 0x68, 0x60, 0xFF, 0xF7, 0x9A, 0xFE	; 0232C2CC
-	.byte 0x02, 0x1C, 0x28, 0x1C, 0xB2, 0x18, 0x4C, 0x41, 0x11, 0x1C, 0x22, 0x1C, 0x00, 0xF0, 0x08, 0xF8	; 0232C2DC
-	.byte 0x00, 0x98, 0x00, 0xF0, 0xF8, 0xE8, 0x01, 0xB0, 0xF0, 0xBC, 0x08, 0xBC, 0x18, 0x47, 0x00, 0x00	; 0232C2EC
+	.word P1_BssStart + 0x2666C	; 0232C298
+P1_Entry_0232C29C:
+	push {r4,r5,r6,r7,lr}	; 0232C29C
+	sub sp,#0x4	; 0232C29E
+	add r5,r0,#0x0	; 0232C2A0
+	add r6,r1,#0x0	; 0232C2A2
+	add r4,r2,#0x0	; 0232C2A4
+	add r7,r3,#0x0	; 0232C2A6
+	cmp r5,#0x0	; 0232C2A8
+	beq P1_Entry_0232C2B2	; 0232C2AA
+	ldr r0,[r5,#0x0]	; 0232C2AC
+	cmp r0,#0x0	; 0232C2AE
+	beq P1_Entry_0232C2B6	; 0232C2B0
+P1_Entry_0232C2B2:
+	bl loc_0232C538	; 0232C2B2
+P1_Entry_0232C2B6:
+	blx P1_Arm9DisableIrqReturnPriorMask	; 0232C2B6
+	str r0,[sp,#0x0]	; 0232C2BA
+	mov r0,#0x0	; 0232C2BC
+	str r0,[r5,#0x1c]	; 0232C2BE
+	str r0,[r5,#0x20]	; 0232C2C0
+	str r7,[r5,#0x0]	; 0232C2C2
+	ldr r0,[sp,#0x18]	; 0232C2C4
+	str r0,[r5,#0x4]	; 0232C2C6
+	bl loc_0232C000	; 0232C2C8
+	add r2,r0,#0x0	; 0232C2CC
+	add r0,r5,#0x0	; 0232C2CE
+	add r2,r6,r2	; 0232C2D0
+	adc r4,r1	; 0232C2D2
+	add r1,r2,#0x0	; 0232C2D4
+	add r2,r4,#0x0	; 0232C2D6
+	bl loc_0232C2EC	; 0232C2D8
+	ldr r0,[sp,#0x0]	; 0232C2DC
+	blx P1_Arm9RestoreIrqMask	; 0232C2DE
+	add sp,#0x4	; 0232C2E2
+	pop {r4,r5,r6,r7}	; 0232C2E4
+	pop {r3}	; 0232C2E6
+	bx r3	; 0232C2E8
+	.byte 0x00, 0x00	; 0232C2EA
 
 ; ===== function loc_0232C2EC =====
 loc_0232C2EC:
@@ -25849,7 +27000,7 @@ loc_0232C2EC:
 	adc r7,r2	; 0232C338
 	add r2,r3,#0x0	; 0232C33A
 	add r3,r7,#0x0	; 0232C33C
-	blx loc_0232CD18	; 0232C33E
+	blx P1_AeabiLmul	; 0232C33E
 	add r4,r4,r0	; 0232C342
 	adc r6,r1	; 0232C344
 loc_0232C346:
@@ -25919,10 +27070,15 @@ loc_0232C3AE:
 	bx r3	; 0232C3BE
 pool_0232C3C0:
 loc_0232C3C0:
-	.word 0x023570EC	; 0232C3C0
-	.byte 0x00, 0x21, 0x01, 0x60, 0x81, 0x60, 0x70, 0x47	; 0232C3CC
+	.word P1_BssStart + 0x2666C	; 0232C3C0
+P1_Entry_0232C3C4:
+	mov r1,#0x0	; 0232C3C4
+	str r1,[r0,#0x0]	; 0232C3C6
+	str r1,[r0,#0x8]	; 0232C3C8
+	bx lr	; 0232C3CA
 
 ; ===== function loc_0232C3CC =====
+P1_Entry_0232C3CC:
 	push {lr}	; 0232C3CC
 	sub sp,#0x4	; 0232C3CE
 	ldr r1,[pool_0232C3F4]	; 0232C3D0
@@ -25944,10 +27100,10 @@ loc_0232C3EE:
 	bx r3	; 0232C3F2
 pool_0232C3F4:
 loc_0232C3F4:
-	.word 0x023570E8	; 0232C3F4
+	.word P1_BssStart + 0x26668	; 0232C3F4
 pool_0232C3F8:
 loc_0232C3F8:
-	.word 0x023570EC	; 0232C3F8
+	.word P1_BssStart + 0x2666C	; 0232C3F8
 
 ; ===== function loc_0232C3FC =====
 loc_0232C3FC:
@@ -25997,7 +27153,7 @@ loc_0232C43C:
 	bx r3	; 0232C452
 pool_0232C454:
 loc_0232C454:
-	.word 0x04000106	; 0232C454
+	.word TIMER1_CR	; 0232C454
 pool_0232C458:
 loc_0232C458:
 	.word 0x0232C128	; 0232C458
@@ -26009,7 +27165,7 @@ loc_0232C460:
 	.word 0x00010000	; 0232C460
 pool_0232C464:
 loc_0232C464:
-	.word 0x04000104	; 0232C464
+	.word TIMER1_DATA	; 0232C464
 
 ; ===== function loc_0232C468 =====
 loc_0232C468:
@@ -26039,35 +27195,43 @@ loc_0232C490:
 	.byte 0xC0, 0x46	; 0232C498
 pool_0232C498:
 loc_0232C498:
-	.word 0x023570F4	; 0232C498
+	.word P1_BssStart + 0x26674	; 0232C498
 pool_0232C49C:
 loc_0232C49C:
-	.word 0x02357100	; 0232C49C
+	.word P1_BssStart + 0x26680	; 0232C49C
 pool_0232C4A0:
 loc_0232C4A0:
-	.word 0x023570FC	; 0232C4A0
+	.word P1_BssStart + 0x2667C	; 0232C4A0
 pool_0232C4A4:
 loc_0232C4A4:
-	.word 0x023570F8	; 0232C4A4
+	.word P1_BssStart + 0x26678	; 0232C4A4
 .arm
 
 ; ===== function loc_0232C4A8 =====
+; Clears CPSR I and returns the former I mask. / 清除 CPSR I 位并返回先前 I 掩码。
+.func P1_Arm9EnableIrqReturnPriorMask
 loc_0232C4A8:
 	mrs r0,cpsr	; 0232C4A8
 	bic r1,r0,#0x80	; 0232C4AC
 	msr cpsr_c,r1	; 0232C4B0
 	and r0,r0,#0x80	; 0232C4B4
 	bx lr	; 0232C4B8
+.endfunc
 
 ; ===== function loc_0232C4BC =====
+; Sets CPSR I and returns the former I mask. / 设置 CPSR I 位并返回先前 I 掩码。
+.func P1_Arm9DisableIrqReturnPriorMask
 loc_0232C4BC:
 	mrs r0,cpsr	; 0232C4BC
 	orr r1,r0,#0x80	; 0232C4C0
 	msr cpsr_c,r1	; 0232C4C4
 	and r0,r0,#0x80	; 0232C4C8
 	bx lr	; 0232C4CC
+.endfunc
 
 ; ===== function loc_0232C4D0 =====
+; Restores CPSR I from r0 and returns the prior mask. / 按 r0 恢复 CPSR I 位并返回先前掩码。
+.func P1_Arm9RestoreIrqMask
 loc_0232C4D0:
 	mrs r1,cpsr	; 0232C4D0
 	bic r2,r1,#0x80	; 0232C4D4
@@ -26075,16 +27239,22 @@ loc_0232C4D0:
 	msr cpsr_c,r2	; 0232C4DC
 	and r0,r1,#0x80	; 0232C4E0
 	bx lr	; 0232C4E4
+.endfunc
 
 ; ===== function loc_0232C4E8 =====
+; Sets CPSR I/F and returns the former masks. / 设置 CPSR I/F 位并返回先前掩码。
+.func P1_Arm9DisableIrqFiqReturnPriorMasks
 loc_0232C4E8:
 	mrs r0,cpsr	; 0232C4E8
 	orr r1,r0,#0xc0	; 0232C4EC
 	msr cpsr_c,r1	; 0232C4F0
 	and r0,r0,#0xc0	; 0232C4F4
 	bx lr	; 0232C4F8
+.endfunc
 
 ; ===== function loc_0232C4FC =====
+; Restores CPSR I/F from r0 and returns prior masks. / 按 r0 恢复 CPSR I/F 位并返回先前掩码。
+.func P1_Arm9RestoreIrqFiqMasks
 loc_0232C4FC:
 	mrs r1,cpsr	; 0232C4FC
 	bic r2,r1,#0xc0	; 0232C500
@@ -26092,24 +27262,34 @@ loc_0232C4FC:
 	msr cpsr_c,r2	; 0232C508
 	and r0,r1,#0xc0	; 0232C50C
 	bx lr	; 0232C510
+.endfunc
 
 ; ===== function loc_0232C514 =====
+; Returns the CPSR processor-mode bits. / 返回 CPSR 的处理器模式位。
+.func P1_Arm9GetProcessorMode
 loc_0232C514:
 	mrs r0,cpsr	; 0232C514
 	and r0,r0,#0x1f	; 0232C518
 	bx lr	; 0232C51C
+.endfunc
 
 ; ===== function loc_0232C520 =====
+; ARM946 CP15 wait-for-interrupt helper. / ARM946 CP15 等待中断帮助例程。
+.func P1_Arm9WaitForInterrupt
 loc_0232C520:
 	mov r0,#0x0	; 0232C520
 	mcr p15,0x0,r0,c7,c0,0x4	; 0232C524
 	bx lr	; 0232C528
+.endfunc
 
 ; ===== function loc_0232C52C =====
+; Decrements r0 by four until borrow. / 每次将 r0 减四，直至产生借位。
+.func P1_Arm9BusyWaitByLoop4
 loc_0232C52C:
 	subs r0,r0,#0x4	; 0232C52C
 	bcs loc_0232C52C	; 0232C530
 	bx lr	; 0232C534
+.endfunc
 .thumb
 
 ; ===== function loc_0232C538 =====
@@ -26117,8 +27297,8 @@ loc_0232C538:
 	push {lr}	; 0232C538
 	sub sp,#0x4	; 0232C53A
 loc_0232C53C:
-	blx loc_0232C4BC	; 0232C53C
-	blx loc_0232C520	; 0232C540
+	blx P1_Arm9DisableIrqReturnPriorMask	; 0232C53C
+	blx P1_Arm9WaitForInterrupt	; 0232C540
 	b loc_0232C53C	; 0232C544
 	.byte 0x00, 0x00, 0x01, 0x1C, 0x02, 0x48, 0x06, 0x22, 0x02, 0x4B, 0x18, 0x47, 0xC0, 0x46, 0xF4, 0xFC	; 0232C556
 	.byte 0x7F, 0x02, 0x14, 0xDF, 0x32, 0x02	; 0232C55C
@@ -26133,7 +27313,7 @@ loc_0232C55C:
 	bl loc_0232B260	; 0232C566
 loc_0232C56A:
 	ldr r0,[r4,#0x4]	; 0232C56A
-	blx loc_0232C4D0	; 0232C56C
+	blx P1_Arm9RestoreIrqMask	; 0232C56C
 	pop {r4}	; 0232C570
 	pop {r3}	; 0232C572
 	bx r3	; 0232C574
@@ -26148,7 +27328,7 @@ loc_0232C578:
 	ldr r7,[pool_0232C5BC]	; 0232C580
 	mov r6,#0x40	; 0232C582
 loc_0232C584:
-	blx loc_0232C4BC	; 0232C584
+	blx P1_Arm9DisableIrqReturnPriorMask	; 0232C584
 	str r0,[r4,#0x4]	; 0232C588
 	add r0,r7,#0x0	; 0232C58A
 	bl loc_0232B308	; 0232C58C
@@ -26162,7 +27342,7 @@ loc_0232C584:
 	cmp r0,#0x0	; 0232C5A0
 	beq loc_0232C5B2	; 0232C5A2
 	ldr r0,[r4,#0x4]	; 0232C5A4
-	blx loc_0232C4D0	; 0232C5A6
+	blx P1_Arm9RestoreIrqMask	; 0232C5A6
 	mov r0,#0x1	; 0232C5AA
 	bl loc_0232C7B8	; 0232C5AC
 	b loc_0232C584	; 0232C5B0
@@ -26200,7 +27380,7 @@ loc_0232C5C0:
 	bx lr	; 0232C5E6
 pool_0232C5E8:
 loc_0232C5E8:
-	.word 0x04000204	; 0232C5E8
+	.word REG_EXMEMCNT_ARM9	; 0232C5E8
 
 ; ===== function loc_0232C5EC =====
 loc_0232C5EC:
@@ -26230,7 +27410,7 @@ loc_0232C5EC:
 	.byte 0xC0, 0x46	; 0232C61C
 pool_0232C61C:
 loc_0232C61C:
-	.word 0x04000204	; 0232C61C
+	.word REG_EXMEMCNT_ARM9	; 0232C61C
 
 ; ===== function loc_0232C620 =====
 loc_0232C620:
@@ -26320,13 +27500,13 @@ loc_0232C6AA:
 	bx r3	; 0232C6C2
 pool_0232C6C4:
 loc_0232C6C4:
-	.word 0x027FFC30	; 0232C6C4
+	.word FirmwareBootInfoAddress + BootInfoGbaIdOffset	; 0232C6C4
 pool_0232C6C8:
 loc_0232C6C8:
 	.word 0x0000FFFF	; 0232C6C8
 pool_0232C6CC:
 loc_0232C6CC:
-	.word 0x02357108	; 0232C6CC
+	.word P1_BssStart + 0x26688	; 0232C6CC
 pool_0232C6D0:
 loc_0232C6D0:
 	.word 0x08000000	; 0232C6D0
@@ -26365,7 +27545,7 @@ loc_0232C6FC:
 	.byte 0xC0, 0x46	; 0232C70C
 pool_0232C70C:
 loc_0232C70C:
-	.word 0x027FFC30	; 0232C70C
+	.word FirmwareBootInfoAddress + BootInfoGbaIdOffset	; 0232C70C
 pool_0232C710:
 loc_0232C710:
 	.word 0x0000FFFF	; 0232C710
@@ -26395,7 +27575,7 @@ loc_0232C734:
 	bx lr	; 0232C73A
 pool_0232C73C:
 loc_0232C73C:
-	.word 0x027FFC30	; 0232C73C
+	.word FirmwareBootInfoAddress + BootInfoGbaIdOffset	; 0232C73C
 pool_0232C740:
 loc_0232C740:
 	.word 0x0000FFFF	; 0232C740
@@ -26440,7 +27620,7 @@ loc_0232C76C:
 	bx r3	; 0232C78A
 pool_0232C78C:
 loc_0232C78C:
-	.word 0x02357108	; 0232C78C
+	.word P1_BssStart + 0x26688	; 0232C78C
 pool_0232C790:
 loc_0232C790:
 	.word 0x05000001	; 0232C790
@@ -26463,74 +27643,220 @@ loc_0232C7A8:
 	.byte 0xC0, 0x46	; 0232C7B0
 pool_0232C7B0:
 loc_0232C7B0:
-	.word 0x0235710C	; 0232C7B0
+	.word P1_BssStart + 0x2668C	; 0232C7B0
 	.byte 0x00, 0xDF, 0x70, 0x47	; 0232C7B8
 
 ; ===== function loc_0232C7B8 =====
+.func P1_SwiWaitByLoop
+; BIOS SWI #03: busy-loop delay. / BIOS SWI #03：忙等待延时。
 loc_0232C7B8:
 	swi 0x3	; 0232C7B8
 	bx lr	; 0232C7BA
+.endfunc
 	.byte 0x00, 0x22, 0x04, 0xDF, 0x70, 0x47	; 0232C7C2
 
 ; ===== function loc_0232C7C2 =====
+.func P1_SwiVBlankIntrWait
+; BIOS SWI #05: wait for VBlank IRQ. / BIOS SWI #05：等待 VBlank 中断。
 loc_0232C7C2:
 	mov r2,#0x0	; 0232C7C2
 	swi 0x5	; 0232C7C4
 	bx lr	; 0232C7C6
-	.byte 0x06, 0xDF, 0x70, 0x47, 0x09, 0xDF, 0x70, 0x47, 0x09, 0xDF, 0x08, 0x1C, 0x70, 0x47	; 0232C7D6
+.endfunc
+.func P1_SwiHalt
+; BIOS SWI #06: halt ARM9 until an interrupt. / BIOS SWI #06：使 ARM9 停止至中断发生。
+	swi 0x6
+	bx lr
+.endfunc
+.func P1_SwiDiv
+; BIOS SWI #09: signed division, returning quotient. / BIOS SWI #09：有符号除法，返回商。
+	swi 0x9
+	bx lr
+.endfunc
+.func P1_SwiMod
+; BIOS SWI #09: signed division wrapper returning remainder. / BIOS SWI #09：有符号除法包装，返回余数。
+	swi 0x9
+	mov r0,r1
+	bx lr
+.endfunc
 
 ; ===== function loc_0232C7D6 =====
+.func P1_SwiCpuSet
+; BIOS SWI #0B: CpuSet copy/fill. / BIOS SWI #0B：CpuSet 复制/填充。
 loc_0232C7D6:
 	swi 0xb	; 0232C7D6
 	bx lr	; 0232C7D8
+.endfunc
 
 ; ===== function loc_0232C7DA =====
+.func P1_SwiCpuFastSet
+; BIOS SWI #0C: CpuFastSet copy/fill. / BIOS SWI #0C：CpuFastSet 复制/填充。
 loc_0232C7DA:
 	swi 0xc	; 0232C7DA
 	bx lr	; 0232C7DC
-	.byte 0x0D, 0xDF, 0x70, 0x47	; 0232C7E2
+.endfunc
+.func P1_SwiSqrt
+; BIOS SWI #0D: integer square root. / BIOS SWI #0D：整数平方根。
+	swi 0xd
+	bx lr
+.endfunc
 
 ; ===== function loc_0232C7E2 =====
+.func P1_SwiGetCrc16
+; BIOS SWI #0E: CRC-16 service. / BIOS SWI #0E：CRC-16 服务。
 loc_0232C7E2:
 	swi 0xe	; 0232C7E2
 	bx lr	; 0232C7E4
-	.byte 0x0F, 0xDF, 0x70, 0x47	; 0232C7EA
+.endfunc
+.func P1_SwiIsDebugger
+; BIOS SWI #0F: detect debugger state. / BIOS SWI #0F：检测调试器状态。
+	swi 0x0f
+	bx lr
+.endfunc
 
 ; ===== function loc_0232C7EA =====
+.func P1_SwiBitUnPack
+; BIOS SWI #10: BitUnPack decoder. / BIOS SWI #10：BitUnPack 解码器。
 loc_0232C7EA:
 	swi 0x10	; 0232C7EA
 	bx lr	; 0232C7EC
-	.byte 0x11, 0xDF, 0x70, 0x47, 0x12, 0xDF, 0x70, 0x47	; 0232C7F6
+.endfunc
+.func P1_SwiLZ77UnCompWRAM
+; BIOS SWI #11: decompress LZ77 into WRAM. / BIOS SWI #11：向 WRAM 解压 LZ77。
+	swi 0x11
+	bx lr
+.endfunc
+.func P1_SwiLZ77UnCompVRAM
+; BIOS SWI #12: decompress LZ77 into VRAM. / BIOS SWI #12：向 VRAM 解压 LZ77。
+	swi 0x12
+	bx lr
+.endfunc
 
 ; ===== function loc_0232C7F6 =====
+.func P1_SwiHuffUnComp
+; BIOS SWI #13: Huffman decoder. / BIOS SWI #13：Huffman 解码器。
 loc_0232C7F6:
 	swi 0x13	; 0232C7F6
 	bx lr	; 0232C7F8
-	.byte 0x14, 0xDF, 0x70, 0x47, 0x15, 0xDF, 0x70, 0x47, 0x00, 0x00	; 0232C804
+.endfunc
+.func P1_SwiRLUnCompWRAM
+; BIOS SWI #14: decompress run-length data into WRAM. / BIOS SWI #14：向 WRAM 解压游程编码数据。
+	swi 0x14
+	bx lr
+.endfunc
+.func P1_SwiRLUnCompVRAM
+; BIOS SWI #15: decompress run-length data into VRAM. / BIOS SWI #15：向 VRAM 解压游程编码数据。
+	swi 0x15
+	bx lr
+.endfunc
+	.byte 0x00, 0x00	; alignment
 loc_0232C804:
-	.byte 0x64, 0x00, 0x9F, 0xE5, 0x00, 0x10, 0x90, 0xE5, 0x04, 0x20, 0x90, 0xE5, 0x08, 0x30, 0x90, 0xE5	; 0232C814
-	.byte 0x02, 0x00, 0x51, 0xE1, 0x0D, 0x00, 0x00, 0x0A, 0x04, 0x40, 0x91, 0xE4, 0x04, 0x50, 0x91, 0xE4	; 0232C824
-	.byte 0x05, 0x60, 0x84, 0xE0, 0x06, 0x00, 0x54, 0xE1, 0x04, 0x70, 0x93, 0x44, 0x04, 0x70, 0x84, 0x44	; 0232C834
-	.byte 0xFB, 0xFF, 0xFF, 0x4A, 0x04, 0x50, 0x91, 0xE4, 0x05, 0x60, 0x84, 0xE0, 0x00, 0x70, 0xA0, 0xE3	; 0232C844
-	.byte 0x06, 0x00, 0x54, 0xE1, 0x04, 0x70, 0x84, 0x34, 0xFC, 0xFF, 0xFF, 0x3A, 0xEF, 0xFF, 0xFF, 0x0A	; 0232C854
-	.byte 0x0C, 0x40, 0x90, 0xE5, 0x10, 0x60, 0x90, 0xE5, 0x00, 0x70, 0xA0, 0xE3, 0x06, 0x00, 0x54, 0xE1	; 0232C864
-	.byte 0x04, 0x70, 0x84, 0x34, 0xFC, 0xFF, 0xFF, 0x3A, 0x00, 0x00, 0x00, 0xEA, 0x70, 0x04, 0x33, 0x02	; 0232C874
-	.byte 0x1E, 0xFF, 0x2F, 0xE1	; 0232C878
+.arm
+; 先复制初始化代码/数据，再清零各段尾部和主 BSS；源区随后可复用。
+; Copy initialized code/data, then clear per-segment tails and main BSS.
+.func P1_InitializeDataAndBss
+    ldr r0,[P1_CrtInitTablePointer]
+    ldr r1,[r0,#0x0]
+    ldr r2,[r0,#0x4]
+    ldr r3,[r0,#0x8]
+P1_CrtNextCopy:
+    cmp r1,r2
+    beq P1_CrtMainBss
+    ldr r4,[r1],#0x4
+    ldr r5,[r1],#0x4
+    add r6,r4,r5
+P1_CrtCopyWords:
+    cmp r4,r6
+    ldrmi r7,[r3],#0x4
+    strmi r7,[r4],#0x4
+    bmi P1_CrtCopyWords
+    ldr r5,[r1],#0x4
+    add r6,r4,r5
+    mov r7,#0x0
+P1_CrtClearCopyTail:
+    cmp r4,r6
+    strcc r7,[r4],#0x4
+    bcc P1_CrtClearCopyTail
+    beq P1_CrtNextCopy
+P1_CrtMainBss:
+    ldr r4,[r0,#0xc]
+    ldr r6,[r0,#0x10]
+    mov r7,#0x0
+P1_CrtClearMainBss:
+    cmp r4,r6
+    strcc r7,[r4],#0x4
+    bcc P1_CrtClearMainBss
+    b P1_CrtInitReturn
+P1_CrtInitTablePointer:
+    .word P1_CrtDataInitTable
+P1_CrtInitReturn:
+    bx lr
+.endfunc
+; Configures ARM9 CP15 control/cache state before C/C++ runtime setup.
+; 在 C/C++ 运行时建立前配置 ARM9 的 CP15 控制与缓存状态。
+.arm
+; Programs the fixed ARM946 CP15 control, MPU-region and cache-access state.
+; 写入固定的 ARM946 CP15 控制、MPU 区域与缓存访问状态。
+.func P1_Arm9ConfigureCp15
 loc_0232C878:
-	.byte 0x10, 0x0F, 0x11, 0xEE, 0xA4, 0x10, 0x9F, 0xE5, 0x01, 0x00, 0xC0, 0xE1, 0x10, 0x0F, 0x01, 0xEE	; 0232C888
-	.byte 0x00, 0x00, 0xA0, 0xE3, 0x15, 0x0F, 0x07, 0xEE, 0x16, 0x0F, 0x07, 0xEE, 0x9A, 0x0F, 0x07, 0xEE	; 0232C898
-	.byte 0x8C, 0x00, 0x9F, 0xE5, 0x10, 0x0F, 0x06, 0xEE, 0x88, 0x00, 0x9F, 0xE5, 0x11, 0x0F, 0x06, 0xEE	; 0232C8A8
-	.byte 0x84, 0x00, 0x9F, 0xE5, 0x13, 0x0F, 0x06, 0xEE, 0x80, 0x00, 0x9F, 0xE5, 0x1A, 0x00, 0x80, 0xE3	; 0232C8B8
-	.byte 0x01, 0x00, 0x80, 0xE3, 0x14, 0x0F, 0x06, 0xEE, 0x74, 0x00, 0x9F, 0xE5, 0x15, 0x0F, 0x06, 0xEE	; 0232C8C8
-	.byte 0x70, 0x00, 0x9F, 0xE5, 0x16, 0x0F, 0x06, 0xEE, 0x6C, 0x00, 0x9F, 0xE5, 0x17, 0x0F, 0x06, 0xEE	; 0232C8D8
-	.byte 0x20, 0x00, 0xA0, 0xE3, 0x31, 0x0F, 0x09, 0xEE, 0x50, 0x00, 0x9F, 0xE5, 0x0A, 0x00, 0x80, 0xE3	; 0232C8E8
-	.byte 0x11, 0x0F, 0x09, 0xEE, 0x42, 0x00, 0xA0, 0xE3, 0x30, 0x0F, 0x02, 0xEE, 0x42, 0x00, 0xA0, 0xE3	; 0232C8F8
-	.byte 0x10, 0x0F, 0x02, 0xEE, 0x02, 0x00, 0xA0, 0xE3, 0x10, 0x0F, 0x03, 0xEE, 0x3C, 0x00, 0x9F, 0xE5	; 0232C908
-	.byte 0x70, 0x0F, 0x05, 0xEE, 0x38, 0x00, 0x9F, 0xE5, 0x50, 0x0F, 0x05, 0xEE, 0x10, 0x0F, 0x11, 0xEE	; 0232C918
-	.byte 0x30, 0x10, 0x9F, 0xE5, 0x01, 0x00, 0x80, 0xE1, 0x10, 0x0F, 0x01, 0xEE, 0x1E, 0xFF, 0x2F, 0xE1	; 0232C928
-	.byte 0x05, 0x90, 0x0F, 0x00, 0x33, 0x00, 0x00, 0x04, 0x2B, 0x00, 0x00, 0x02, 0x35, 0x00, 0x00, 0x08	; 0232C938
-	.byte 0x00, 0x00, 0x00, 0x03, 0x2F, 0x00, 0x00, 0x01, 0x1D, 0x00, 0xFF, 0xFF, 0x17, 0xF0, 0x7F, 0x02	; 0232C948
-	.byte 0x11, 0x00, 0x10, 0x05, 0x11, 0x10, 0x11, 0x15, 0x7D, 0x70, 0x05, 0x00	; 0232C954
+	mrc p15, 0x0, r0, c1, c0, 0x0
+	ldr r1, [P1_Cp15ControlDisableMask]
+	bic r0, r0, r1
+	mcr p15, 0x0, r0, c1, c0, 0x0
+	mov r0, 0x0
+	mcr p15, 0x0, r0, c7, c5, 0x0
+	mcr p15, 0x0, r0, c7, c6, 0x0
+	mcr p15, 0x0, r0, c7, c10, 0x4
+	ldr r0, [P1_Cp15MpuRegion0Config]
+	mcr p15, 0x0, r0, c6, c0, 0x0
+	ldr r0, [P1_Cp15MpuRegion1Config]
+	mcr p15, 0x0, r0, c6, c1, 0x0
+	ldr r0, [P1_Cp15MpuRegion3Config]
+	mcr p15, 0x0, r0, c6, c3, 0x0
+	ldr r0, [P1_Cp15MpuRegion4Base]
+	orr r0, r0, 0x1A
+	orr r0, r0, 0x1
+	mcr p15, 0x0, r0, c6, c4, 0x0
+	ldr r0, [P1_Cp15MpuRegion5Config]
+	mcr p15, 0x0, r0, c6, c5, 0x0
+	ldr r0, [P1_Cp15MpuRegion6Config]
+	mcr p15, 0x0, r0, c6, c6, 0x0
+	ldr r0, [P1_Cp15MpuRegion7Config]
+	mcr p15, 0x0, r0, c6, c7, 0x0
+	mov r0, 0x20
+	mcr p15, 0x0, r0, c9, c1, 0x1
+	ldr r0, [P1_Cp15MpuRegion4Base]
+	orr r0, r0, 0xA
+	mcr p15, 0x0, r0, c9, c1, 0x0
+	mov r0, 0x42
+	mcr p15, 0x0, r0, c2, c0, 0x1
+	mov r0, 0x42
+	mcr p15, 0x0, r0, c2, c0, 0x0
+	mov r0, 0x2
+	mcr p15, 0x0, r0, c3, c0, 0x0
+	ldr r0, [P1_Cp15InstructionAccessConfig]
+	mcr p15, 0x0, r0, c5, c0, 0x3
+	ldr r0, [P1_Cp15DataAccessConfig]
+	mcr p15, 0x0, r0, c5, c0, 0x2
+	mrc p15, 0x0, r0, c1, c0, 0x0
+	ldr r1, [P1_Cp15ControlEnableMask]
+	orr r0, r0, r1
+	mcr p15, 0x0, r0, c1, c0, 0x0
+	bx lr
+.endfunc
+
+P1_Cp15ControlDisableMask:       .word 0x000F9005
+P1_Cp15MpuRegion0Config:         .word 0x04000033
+P1_Cp15MpuRegion1Config:         .word 0x0200002B
+P1_Cp15MpuRegion3Config:         .word 0x08000035
+P1_Cp15MpuRegion4Base:           .word 0x03000000
+P1_Cp15MpuRegion5Config:         .word 0x0100002F
+P1_Cp15MpuRegion6Config:         .word 0xFFFF001D
+P1_Cp15MpuRegion7Config:         .word 0x027FF017
+P1_Cp15InstructionAccessConfig:  .word 0x05100011
+P1_Cp15DataAccessConfig:         .word 0x15111011
+P1_Cp15ControlEnableMask:        .word 0x0005707D
+.thumb
 loc_0232C954:
 	.byte 0x1E, 0xFF, 0x2F, 0xE1, 0x10, 0xB4, 0x81, 0xB0, 0x00, 0x2A, 0x17, 0xD0, 0x04, 0x78, 0x40, 0x1C	; 0232C964
 	.byte 0x0B, 0x78, 0x49, 0x1C, 0x9C, 0x42, 0x0E, 0xD0, 0x40, 0x1E, 0x02, 0x78, 0x48, 0x1E, 0x00, 0x78	; 0232C974
@@ -26538,16 +27864,21 @@ loc_0232C954:
 	.byte 0x01, 0xB0, 0x10, 0xBC, 0x70, 0x47, 0x52, 0x1E, 0x00, 0x2A, 0xE7, 0xD1, 0x00, 0x20, 0x01, 0xB0	; 0232C994
 	.byte 0x10, 0xBC, 0x70, 0x47	; 0232C998
 
+; Standard memset: fill r2 bytes at r0 with low byte of r1 and return original r0.
+; 标准 memset：以 r1 低字节填充 r0 起始的 r2 字节，并返回原 r0。
+P1_MemSet:
 ; ===== function loc_0232C998 =====
 	push {r4,lr}	; 0232C998
 	add r4,r0,#0x0	; 0232C99A
-	bl loc_0232C9A8	; 0232C99C
+	bl P1_MemSetCore	; 0232C99C
 	add r0,r4,#0x0	; 0232C9A0
 	pop {r4}	; 0232C9A2
 	pop {r3}	; 0232C9A4
 	bx r3	; 0232C9A6
 
 ; ===== function loc_0232C9A8 =====
+; Core byte/word fill loop; r0 advances to the end. / 核心字节/字填充循环；r0 前进至末尾。
+P1_MemSetCore:
 loc_0232C9A8:
 	push {r4,r5}	; 0232C9A8
 	lsl r1,r1,#0x18	; 0232C9AA
@@ -26626,6 +27957,8 @@ loc_0232CA28:
 	pop {r4,r5}	; 0232CA28
 	bx lr	; 0232CA2A
 
+; UTF-16 strchr: find a code unit, including the terminating NUL. / UTF-16 strchr：查找码元，包括结尾 NUL。
+P1_Utf16StrChr:
 ; ===== function loc_0232CA2C =====
 loc_0232CA2C:
 	add r2,r0,#0x2	; 0232CA2C
@@ -26651,6 +27984,8 @@ loc_0232CA4C:
 	sub r0,r2,#0x2	; 0232CA4C
 	bx lr	; 0232CA4E
 
+; UTF-16 bounded comparison. / UTF-16 定长字符串比较。
+P1_Utf16StrNCmp:
 ; ===== function loc_0232CA50 =====
 	push {r4}	; 0232CA50
 	sub sp,#0x4	; 0232CA52
@@ -26682,6 +28017,8 @@ loc_0232CA76:
 	.byte 0xA4, 0x1E, 0x23, 0x1C, 0x0A, 0x88, 0x89, 0x1C, 0x22, 0x80, 0xA4, 0x1C, 0x1A, 0x88, 0x00, 0x2A	; 0232CA9E
 	.byte 0xF7, 0xD1, 0x01, 0xB0, 0x10, 0xBC, 0x70, 0x47, 0x00, 0x00	; 0232CAA8
 
+; UTF-16 bounded copy with NUL padding. / UTF-16 定长复制，结尾不足时补 NUL。
+P1_Utf16StrNCpy:
 ; ===== function loc_0232CAA8 =====
 loc_0232CAA8:
 	push {r4,r5}	; 0232CAA8
@@ -26717,6 +28054,8 @@ loc_0232CADC:
 	pop {r4,r5}	; 0232CADC
 	bx lr	; 0232CADE
 
+; UTF-16 unbounded copy through the terminating NUL. / UTF-16 复制，直至结尾 NUL。
+P1_Utf16StrCpy:
 ; ===== function loc_0232CAE0 =====
 loc_0232CAE0:
 	push {r4}	; 0232CAE0
@@ -26734,8 +28073,21 @@ loc_0232CAE6:
 	add sp,#0x4	; 0232CAF6
 	pop {r4}	; 0232CAF8
 	bx lr	; 0232CAFA
-	.byte 0x00, 0x21, 0xCA, 0x43, 0x52, 0x1C, 0x01, 0x88, 0x80, 0x1C, 0x00, 0x29, 0xFA, 0xD1, 0x10, 0x1C	; 0232CB0C
-	.byte 0x70, 0x47, 0x00, 0x00	; 0232CB10
+; UTF-16 strlen: count code units before the terminating NUL. / UTF-16 strlen：统计结尾 NUL 前的码元数。
+P1_Utf16StrLen:
+; ===== function loc_0232CAFC =====
+loc_0232CAFC:
+	mov r1,#0x0	; 0232CAFC
+	mvn r2,r1	; 0232CAFE
+loc_0232CB00:
+	add r2,r2,#0x1	; 0232CB00
+	ldrh r1,[r0,#0x0]	; 0232CB02
+	add r0,r0,#0x2	; 0232CB04
+	cmp r1,#0x0	; 0232CB06
+	bne loc_0232CB00	; 0232CB08
+	add r0,r2,#0x0	; 0232CB0A
+	bx lr	; 0232CB0C
+	.hword 0x0000	; padding / 对齐填充。
 .arm
 
 ; ===== function loc_0232CB10 =====
@@ -26861,6 +28213,8 @@ loc_0232CD04:
 	ldmia sp!,{r4,r5,r6,r7,r11,r12,lr}	; 0232CD10
 	bx lr	; 0232CD14
 
+; ARM EABI 64-bit multiply (__aeabi_lmul); the bit pattern is identical for signed and unsigned operands. / ARM EABI 64 位乘法（__aeabi_lmul）；有符号与无符号操作数的位级结果相同。
+P1_AeabiLmul:
 ; ===== function loc_0232CD18 =====
 loc_0232CD18:
 	stmdb sp!,{r4,r5,lr}	; 0232CD18
@@ -26872,6 +28226,8 @@ loc_0232CD18:
 	ldmia sp!,{r4,r5,lr}	; 0232CD30
 	bx lr	; 0232CD34
 
+; 32-bit signed division with remainder: r0 = quotient, r1 = remainder. / 32 位有符号除法及取余：r0 为商，r1 为余数。
+P1_SignedDivMod:
 ; ===== function loc_0232CD38 =====
 loc_0232CD38:
 	eor r12,r0,r1	; 0232CD38
@@ -26901,9 +28257,13 @@ loc_0232CD38:
 	rsb r1,r1,#0x0	; 0232CD98
 	adds r0,r0,r0	; 0232CD9C
 	add r2,r2,r2, lsl #0x1	; 0232CDA0
+; 按已跳过的位数进入除法展开步骤；每步 3 条 ARM 指令。
+; Enter the unrolled division at the skipped-bit index; 3 ARM instructions per step.
+P1_DivisionDispatch_0232CDA4PC:
 	add pc,pc,r2, lsl #0x2	; 0232CDA4
 	.byte 0x00, 0x00, 0xA0, 0xE1	; 0232CDAC
 loc_0232CDAC:
+P1_DivisionDispatch_0232CDA4Steps:
 	adcs r3,r1,r3, lsl #0x1	; 0232CDAC
 	subcc r3,r3,r1	; 0232CDB0
 	adcs r0,r0,r0	; 0232CDB4
@@ -27003,6 +28363,10 @@ loc_0232CE6C:
 	adcs r3,r1,r3, lsl #0x1	; 0232CF20
 	subcc r3,r3,r1	; 0232CF24
 	adcs r0,r0,r0	; 0232CF28
+P1_DivisionDispatch_0232CDA4End:
+.if (P1_DivisionDispatch_0232CDA4Steps != P1_DivisionDispatch_0232CDA4PC + 8) || (P1_DivisionDispatch_0232CDA4End - P1_DivisionDispatch_0232CDA4Steps != 32 * 12)
+    .error "ARM division dispatch layout changed"
+.endif
 	mov r1,r3	; 0232CF2C
 loc_0232CF30:
 	ands r3,r12,#0x80000000	; 0232CF30
@@ -27011,6 +28375,8 @@ loc_0232CF30:
 	rsbne r1,r1,#0x0	; 0232CF3C
 	bx lr	; 0232CF40
 
+; 32-bit unsigned division with remainder; the first entry returns immediately for a zero divisor. / 32 位无符号除法及取余；除数为零时第一个入口直接返回。
+P1_UnsignedDivMod:
 ; ===== function loc_0232CF44 =====
 loc_0232CF44:
 	cmp r1,#0x0	; 0232CF44
@@ -27037,9 +28403,13 @@ loc_0232CF4C:
 	rsb r1,r1,#0x0	; 0232CF8C
 	adds r0,r0,r0	; 0232CF90
 	add r2,r2,r2, lsl #0x1	; 0232CF94
+; 按已跳过的位数进入除法展开步骤；每步 3 条 ARM 指令。
+; Enter the unrolled division at the skipped-bit index; 3 ARM instructions per step.
+P1_DivisionDispatch_0232CF98PC:
 	add pc,pc,r2, lsl #0x2	; 0232CF98
 	.byte 0x00, 0x00, 0xA0, 0xE1	; 0232CFA0
 loc_0232CFA0:
+P1_DivisionDispatch_0232CF98Steps:
 	adcs r3,r1,r3, lsl #0x1	; 0232CFA0
 	subcc r3,r3,r1	; 0232CFA4
 	adcs r0,r0,r0	; 0232CFA8
@@ -27139,6 +28509,10 @@ loc_0232D060:
 	adcs r3,r1,r3, lsl #0x1	; 0232D114
 	subcc r3,r3,r1	; 0232D118
 	adcs r0,r0,r0	; 0232D11C
+P1_DivisionDispatch_0232CF98End:
+.if (P1_DivisionDispatch_0232CF98Steps != P1_DivisionDispatch_0232CF98PC + 8) || (P1_DivisionDispatch_0232CF98End - P1_DivisionDispatch_0232CF98Steps != 32 * 12)
+    .error "ARM division dispatch layout changed"
+.endif
 	mov r1,r3	; 0232D120
 	bx lr	; 0232D124
 
@@ -27190,7 +28564,7 @@ loc_0232D1E8:
 	ldr r4,[pool_0232D204]	; 0232D1EA
 	b loc_0232D1F2	; 0232D1EC
 loc_0232D1EE:
-	.byte 0x80, 0x47	; 0232D1EE
+	blx r0	; 0232D1EE
 	add r4,r4,#0x4	; 0232D1F0
 loc_0232D1F2:
 	cmp r4,#0x0	; 0232D1F2
@@ -27268,14 +28642,14 @@ loc_0232D244:
 	ldr r1,[sp,#0x1c]	; 0232D258
 	ldr r2,[r5,#0x0]	; 0232D25A
 	asr r3,r2,#0x1f	; 0232D25C
-	blx loc_0232CD18	; 0232D25E
+	blx P1_AeabiLmul	; 0232D25E
 	str r0,[sp,#0x20]	; 0232D262
 	str r1,[sp,#0xc]	; 0232D264
 	ldr r0,[sp,#0x14]	; 0232D266
 	ldr r1,[sp,#0x18]	; 0232D268
 	ldr r2,[r5,#0x8]	; 0232D26A
 	asr r3,r2,#0x1f	; 0232D26C
-	blx loc_0232CD18	; 0232D26E
+	blx P1_AeabiLmul	; 0232D26E
 	ldr r2,[sp,#0x20]	; 0232D272
 	add r0,r2,r0	; 0232D274
 	ldr r2,[sp,#0xc]	; 0232D276
@@ -27289,14 +28663,14 @@ loc_0232D244:
 	ldr r1,[sp,#0x1c]	; 0232D286
 	ldr r2,[r5,#0x4]	; 0232D288
 	asr r3,r2,#0x1f	; 0232D28A
-	blx loc_0232CD18	; 0232D28C
+	blx P1_AeabiLmul	; 0232D28C
 	str r0,[sp,#0x24]	; 0232D290
 	str r1,[sp,#0x4]	; 0232D292
 	ldr r0,[sp,#0x14]	; 0232D294
 	ldr r1,[sp,#0x18]	; 0232D296
 	ldr r2,[r5,#0xc]	; 0232D298
 	asr r3,r2,#0x1f	; 0232D29A
-	blx loc_0232CD18	; 0232D29C
+	blx P1_AeabiLmul	; 0232D29C
 	ldr r2,[sp,#0x24]	; 0232D2A0
 	add r0,r2,r0	; 0232D2A2
 	ldr r2,[sp,#0x4]	; 0232D2A4
@@ -27318,14 +28692,14 @@ loc_0232D244:
 	ldr r1,[sp,#0x34]	; 0232D2C4
 	ldr r2,[r5,#0x0]	; 0232D2C6
 	asr r3,r2,#0x1f	; 0232D2C8
-	blx loc_0232CD18	; 0232D2CA
+	blx P1_AeabiLmul	; 0232D2CA
 	str r0,[sp,#0x38]	; 0232D2CE
 	add r6,r1,#0x0	; 0232D2D0
 	ldr r0,[sp,#0x28]	; 0232D2D2
 	ldr r1,[sp,#0x2c]	; 0232D2D4
 	ldr r2,[r5,#0x8]	; 0232D2D6
 	asr r3,r2,#0x1f	; 0232D2D8
-	blx loc_0232CD18	; 0232D2DA
+	blx P1_AeabiLmul	; 0232D2DA
 	ldr r2,[sp,#0x38]	; 0232D2DE
 	add r2,r2,r0	; 0232D2E0
 	adc r6,r1	; 0232D2E2
@@ -27337,14 +28711,14 @@ loc_0232D244:
 	ldr r1,[sp,#0x34]	; 0232D2EE
 	ldr r2,[r5,#0x4]	; 0232D2F0
 	asr r3,r2,#0x1f	; 0232D2F2
-	blx loc_0232CD18	; 0232D2F4
+	blx P1_AeabiLmul	; 0232D2F4
 	str r0,[sp,#0x3c]	; 0232D2F8
 	add r6,r1,#0x0	; 0232D2FA
 	ldr r0,[sp,#0x28]	; 0232D2FC
 	ldr r1,[sp,#0x2c]	; 0232D2FE
 	ldr r2,[r5,#0xc]	; 0232D300
 	asr r3,r2,#0x1f	; 0232D302
-	blx loc_0232CD18	; 0232D304
+	blx P1_AeabiLmul	; 0232D304
 	ldr r2,[sp,#0x3c]	; 0232D308
 	add r2,r2,r0	; 0232D30A
 	adc r6,r1	; 0232D30C
@@ -27390,19 +28764,19 @@ loc_0232D342:
 	bx lr	; 0232D352
 pool_0232D354:
 loc_0232D354:
-	.word 0x04000280	; 0232D354
+	.word REG_DIVCNT	; 0232D354
 pool_0232D358:
 loc_0232D358:
-	.word 0x04000290	; 0232D358
+	.word REG_DIV_NUMER	; 0232D358
 pool_0232D35C:
 loc_0232D35C:
-	.word 0x04000298	; 0232D35C
+	.word REG_DIV_DENOM	; 0232D35C
 pool_0232D360:
 loc_0232D360:
 	.word 0x00008000	; 0232D360
 pool_0232D364:
 loc_0232D364:
-	.word 0x040002A0	; 0232D364
+	.word REG_DIV_RESULT	; 0232D364
 
 ; ===== function loc_0232D368 =====
 loc_0232D368:
@@ -27420,16 +28794,16 @@ loc_0232D368:
 	bx lr	; 0232D37E
 pool_0232D380:
 loc_0232D380:
-	.word 0x04000280	; 0232D380
+	.word REG_DIVCNT	; 0232D380
 pool_0232D384:
 loc_0232D384:
 	.word 0x00001000	; 0232D384
 pool_0232D388:
 loc_0232D388:
-	.word 0x04000290	; 0232D388
+	.word REG_DIV_NUMER	; 0232D388
 pool_0232D38C:
 loc_0232D38C:
-	.word 0x04000298	; 0232D38C
+	.word REG_DIV_DENOM	; 0232D38C
 
 ; ===== function loc_0232D390 =====
 loc_0232D390:
@@ -27454,13 +28828,13 @@ loc_0232D394:
 	.byte 0xC0, 0x46	; 0232D3B4
 pool_0232D3B4:
 loc_0232D3B4:
-	.word 0x04000280	; 0232D3B4
+	.word REG_DIVCNT	; 0232D3B4
 pool_0232D3B8:
 loc_0232D3B8:
 	.word 0x00008000	; 0232D3B8
 pool_0232D3BC:
 loc_0232D3BC:
-	.word 0x040002A0	; 0232D3BC
+	.word REG_DIV_RESULT	; 0232D3BC
 pool_0232D3C0:
 loc_0232D3C0:
 	.word 0x00080000	; 0232D3C0
@@ -27527,7 +28901,7 @@ loc_0232D41C:
 	.byte 0xC0, 0x46	; 0232D42C
 pool_0232D42C:
 loc_0232D42C:
-	.word 0x04001000	; 0232D42C
+	.word REG_DISPCNT_B	; 0232D42C
 
 ; ===== function loc_0232D430 =====
 loc_0232D430:
@@ -27565,13 +28939,13 @@ loc_0232D466:
 	bx lr	; 0232D46A
 pool_0232D46C:
 loc_0232D46C:
-	.word 0x04000000	; 0232D46C
+	.word REG_DISPCNT_A	; 0232D46C
 pool_0232D470:
 loc_0232D470:
-	.word 0x0235712C	; 0232D470
+	.word P1_BssStart + 0x266AC	; 0232D470
 pool_0232D474:
 loc_0232D474:
-	.word 0x02330A5C	; 0232D474
+	.word P1_Data_02330A5C	; 0232D474
 pool_0232D478:
 loc_0232D478:
 	.word 0xFFF0FFF0	; 0232D478
@@ -27603,13 +28977,13 @@ loc_0232D49A:
 	.byte 0xC0, 0x46	; 0232D4A8
 pool_0232D4A8:
 loc_0232D4A8:
-	.word 0x02330A5C	; 0232D4A8
+	.word P1_Data_02330A5C	; 0232D4A8
 pool_0232D4AC:
 loc_0232D4AC:
-	.word 0x0235712C	; 0232D4AC
+	.word P1_BssStart + 0x266AC	; 0232D4AC
 pool_0232D4B0:
 loc_0232D4B0:
-	.word 0x04000000	; 0232D4B0
+	.word REG_DISPCNT_A	; 0232D4B0
 pool_0232D4B4:
 loc_0232D4B4:
 	.word 0xFFFCFFFF	; 0232D4B4
@@ -27637,16 +29011,16 @@ loc_0232D4BC:
 	.byte 0xC0, 0x46	; 0232D4DC
 pool_0232D4DC:
 loc_0232D4DC:
-	.word 0x04000000	; 0232D4DC
+	.word REG_DISPCNT_A	; 0232D4DC
 pool_0232D4E0:
 loc_0232D4E0:
-	.word 0x02330A5C	; 0232D4E0
+	.word P1_Data_02330A5C	; 0232D4E0
 pool_0232D4E4:
 loc_0232D4E4:
 	.word 0x00030000	; 0232D4E4
 pool_0232D4E8:
 loc_0232D4E8:
-	.word 0x0235712C	; 0232D4E8
+	.word P1_BssStart + 0x266AC	; 0232D4E8
 pool_0232D4EC:
 loc_0232D4EC:
 	.word 0xFFFCFFFF	; 0232D4EC
@@ -27673,7 +29047,7 @@ loc_0232D50A:
 	.byte 0xC0, 0x46	; 0232D510
 pool_0232D510:
 loc_0232D510:
-	.word 0x04000004	; 0232D510
+	.word REG_DISPSTAT	; 0232D510
 
 ; ===== function loc_0232D514 =====
 loc_0232D514:
@@ -27736,7 +29110,7 @@ loc_0232D514:
 	.byte 0xC0, 0x46	; 0232D58C
 pool_0232D58C:
 loc_0232D58C:
-	.word 0x04000304	; 0232D58C
+	.word REG_POWERCNT	; 0232D58C
 pool_0232D590:
 loc_0232D590:
 	.word 0x00008000	; 0232D590
@@ -27748,46 +29122,46 @@ loc_0232D598:
 	.word 0x0000020E	; 0232D598
 pool_0232D59C:
 loc_0232D59C:
-	.word 0x04000004	; 0232D59C
+	.word REG_DISPSTAT	; 0232D59C
 pool_0232D5A0:
 loc_0232D5A0:
-	.word 0x04000000	; 0232D5A0
+	.word REG_DISPCNT_A	; 0232D5A0
 pool_0232D5A4:
 loc_0232D5A4:
-	.word 0x04000008	; 0232D5A4
+	.word REG_BG0CNT	; 0232D5A4
 pool_0232D5A8:
 loc_0232D5A8:
-	.word 0x0400006C	; 0232D5A8
+	.word REG_MASTER_BRIGHT	; 0232D5A8
 pool_0232D5AC:
 loc_0232D5AC:
-	.word 0x04001000	; 0232D5AC
+	.word REG_DISPCNT_B	; 0232D5AC
 pool_0232D5B0:
 loc_0232D5B0:
 	.word 0x00000100	; 0232D5B0
 pool_0232D5B4:
 loc_0232D5B4:
-	.word 0x04000020	; 0232D5B4
+	.word REG_BG2PA	; 0232D5B4
 pool_0232D5B8:
 loc_0232D5B8:
-	.word 0x04000026	; 0232D5B8
+	.word REG_BG2PD	; 0232D5B8
 pool_0232D5BC:
 loc_0232D5BC:
-	.word 0x04000030	; 0232D5BC
+	.word REG_BG3PA	; 0232D5BC
 pool_0232D5C0:
 loc_0232D5C0:
-	.word 0x04000036	; 0232D5C0
+	.word REG_BG3PD	; 0232D5C0
 pool_0232D5C4:
 loc_0232D5C4:
-	.word 0x04001020	; 0232D5C4
+	.word REG_BG2PA_SUB	; 0232D5C4
 pool_0232D5C8:
 loc_0232D5C8:
-	.word 0x04001026	; 0232D5C8
+	.word REG_BG2PD_SUB	; 0232D5C8
 pool_0232D5CC:
 loc_0232D5CC:
-	.word 0x04001030	; 0232D5CC
+	.word REG_BG3PA_SUB	; 0232D5CC
 pool_0232D5D0:
 loc_0232D5D0:
-	.word 0x04001036	; 0232D5D0
+	.word REG_BG3PD_SUB	; 0232D5D0
 
 ; ===== function loc_0232D5D4 =====
 loc_0232D5D4:
@@ -27819,22 +29193,22 @@ loc_0232D5D4:
 	bx lr	; 0232D606
 pool_0232D608:
 loc_0232D608:
-	.word 0x02357130	; 0232D608
+	.word P1_BssStart + 0x266B0	; 0232D608
 pool_0232D60C:
 loc_0232D60C:
-	.word 0x04000240	; 0232D60C
+	.word VRAM_A_CR	; 0232D60C
 pool_0232D610:
 loc_0232D610:
-	.word 0x04000244	; 0232D610
+	.word VRAM_E_CR	; 0232D610
 pool_0232D614:
 loc_0232D614:
-	.word 0x04000245	; 0232D614
+	.word VRAM_F_CR	; 0232D614
 pool_0232D618:
 loc_0232D618:
-	.word 0x04000246	; 0232D618
+	.word VRAM_G_CR	; 0232D618
 pool_0232D61C:
 loc_0232D61C:
-	.word 0x04000248	; 0232D61C
+	.word VRAM_H_CR	; 0232D61C
 
 ; ===== function loc_0232D620 =====
 loc_0232D620:
@@ -27847,7 +29221,7 @@ loc_0232D628:
 	.word 0x02357144	; 0232D628
 pool_0232D62C:
 loc_0232D62C:
-	.word 0x0232D681	; 0232D62C
+	.word loc_0232D680 + 1	; 0232D62C
 
 ; ===== function loc_0232D630 =====
 loc_0232D630:
@@ -27860,7 +29234,7 @@ loc_0232D638:
 	.word 0x02357142	; 0232D638
 pool_0232D63C:
 loc_0232D63C:
-	.word 0x0232D681	; 0232D63C
+	.word loc_0232D680 + 1	; 0232D63C
 
 ; ===== function loc_0232D640 =====
 loc_0232D640:
@@ -27873,7 +29247,7 @@ loc_0232D648:
 	.word 0x02357130	; 0232D648
 pool_0232D64C:
 loc_0232D64C:
-	.word 0x0232D681	; 0232D64C
+	.word loc_0232D680 + 1	; 0232D64C
 
 ; ===== function loc_0232D650 =====
 loc_0232D650:
@@ -27886,7 +29260,7 @@ loc_0232D658:
 	.word 0x02357136	; 0232D658
 pool_0232D65C:
 loc_0232D65C:
-	.word 0x0232D681	; 0232D65C
+	.word loc_0232D680 + 1	; 0232D65C
 
 ; ===== function loc_0232D660 =====
 loc_0232D660:
@@ -27899,7 +29273,7 @@ loc_0232D668:
 	.word 0x02357134	; 0232D668
 pool_0232D66C:
 loc_0232D66C:
-	.word 0x0232D681	; 0232D66C
+	.word loc_0232D680 + 1	; 0232D66C
 
 ; ===== function loc_0232D670 =====
 loc_0232D670:
@@ -27912,7 +29286,7 @@ loc_0232D678:
 	.word 0x02357132	; 0232D678
 pool_0232D67C:
 loc_0232D67C:
-	.word 0x0232D681	; 0232D67C
+	.word loc_0232D680 + 1	; 0232D67C
 loc_0232D680:
 	ldrh r1,[r0,#0x0]	; 0232D680
 	mov r3,#0x0	; 0232D682
@@ -28001,34 +29375,34 @@ loc_0232D714:
 	bx lr	; 0232D716
 pool_0232D718:
 loc_0232D718:
-	.word 0x04000240	; 0232D718
+	.word VRAM_A_CR	; 0232D718
 pool_0232D71C:
 loc_0232D71C:
-	.word 0x04000241	; 0232D71C
+	.word VRAM_B_CR	; 0232D71C
 pool_0232D720:
 loc_0232D720:
-	.word 0x04000242	; 0232D720
+	.word VRAM_C_CR	; 0232D720
 pool_0232D724:
 loc_0232D724:
-	.word 0x04000243	; 0232D724
+	.word VRAM_D_CR	; 0232D724
 pool_0232D728:
 loc_0232D728:
-	.word 0x04000244	; 0232D728
+	.word VRAM_E_CR	; 0232D728
 pool_0232D72C:
 loc_0232D72C:
-	.word 0x04000245	; 0232D72C
+	.word VRAM_F_CR	; 0232D72C
 pool_0232D730:
 loc_0232D730:
-	.word 0x04000246	; 0232D730
+	.word VRAM_G_CR	; 0232D730
 pool_0232D734:
 loc_0232D734:
-	.word 0x04000248	; 0232D734
+	.word VRAM_H_CR	; 0232D734
 pool_0232D738:
 loc_0232D738:
 	.word 0x00000100	; 0232D738
 pool_0232D73C:
 loc_0232D73C:
-	.word 0x04000249	; 0232D73C
+	.word VRAM_I_CR	; 0232D73C
 
 ; ===== function loc_0232D740 =====
 loc_0232D740:
@@ -28040,10 +29414,10 @@ loc_0232D740:
 	bx r3	; 0232D74A
 pool_0232D74C:
 loc_0232D74C:
-	.word 0x02357130	; 0232D74C
+	.word P1_BssStart + 0x266B0	; 0232D74C
 pool_0232D750:
 loc_0232D750:
-	.word 0x0232D755	; 0232D750
+	.word loc_0232D754 + 1	; 0232D750
 
 ; ===== function loc_0232D754 =====
 loc_0232D754:
@@ -28130,36 +29504,39 @@ loc_0232D7E0:
 	.byte 0xC0, 0x46	; 0232D7E4
 pool_0232D7E4:
 loc_0232D7E4:
-	.word 0x04000240	; 0232D7E4
+	.word VRAM_A_CR	; 0232D7E4
 pool_0232D7E8:
 loc_0232D7E8:
-	.word 0x04000241	; 0232D7E8
+	.word VRAM_B_CR	; 0232D7E8
 pool_0232D7EC:
 loc_0232D7EC:
-	.word 0x04000242	; 0232D7EC
+	.word VRAM_C_CR	; 0232D7EC
 pool_0232D7F0:
 loc_0232D7F0:
-	.word 0x04000243	; 0232D7F0
+	.word VRAM_D_CR	; 0232D7F0
 pool_0232D7F4:
 loc_0232D7F4:
-	.word 0x04000244	; 0232D7F4
+	.word VRAM_E_CR	; 0232D7F4
 pool_0232D7F8:
 loc_0232D7F8:
-	.word 0x04000245	; 0232D7F8
+	.word VRAM_F_CR	; 0232D7F8
 pool_0232D7FC:
 loc_0232D7FC:
-	.word 0x04000246	; 0232D7FC
+	.word VRAM_G_CR	; 0232D7FC
 pool_0232D800:
 loc_0232D800:
-	.word 0x04000248	; 0232D800
+	.word VRAM_H_CR	; 0232D800
 pool_0232D804:
 loc_0232D804:
 	.word 0x00000100	; 0232D804
 pool_0232D808:
 loc_0232D808:
-	.word 0x04000249	; 0232D808
+	.word VRAM_I_CR	; 0232D808
 
 ; ===== function loc_0232D80C =====
+; Returns the sub-engine BG1 character-base address.
+; 返回副引擎 BG1 字符基址。
+.func P1_GetSubBg1CharacterBase
 loc_0232D80C:
 	ldr r0,[pool_0232D820]	; 0232D80C
 	ldrh r1,[r0,#0x0]	; 0232D80E
@@ -28170,15 +29547,19 @@ loc_0232D80C:
 	ldr r0,[pool_0232D824]	; 0232D818
 	add r0,r1,r0	; 0232D81A
 	bx lr	; 0232D81C
+.endfunc
 	.byte 0xC0, 0x46	; 0232D820
 pool_0232D820:
 loc_0232D820:
-	.word 0x0400100A	; 0232D820
+	.word REG_BG1CNT_SUB	; 0232D820
 pool_0232D824:
 loc_0232D824:
 	.word 0x06200000	; 0232D824
 
 ; ===== function loc_0232D828 =====
+; Returns the main-engine BG1 character-base address.
+; 返回主引擎 BG1 字符基址。
+.func P1_GetMainBg1CharacterBase
 loc_0232D828:
 	ldr r0,[pool_0232D848]	; 0232D828
 	ldrh r1,[r0,#0x0]	; 0232D82A
@@ -28196,12 +29577,13 @@ loc_0232D828:
 	add r0,r1,r0	; 0232D842
 	add r0,r2,r0	; 0232D844
 	bx lr	; 0232D846
+.endfunc
 pool_0232D848:
 loc_0232D848:
-	.word 0x0400000A	; 0232D848
+	.word REG_BG1CNT	; 0232D848
 pool_0232D84C:
 loc_0232D84C:
-	.word 0x04000000	; 0232D84C
+	.word REG_DISPCNT_A	; 0232D84C
 pool_0232D850:
 loc_0232D850:
 	.word 0x07000000	; 0232D850
@@ -28210,6 +29592,9 @@ loc_0232D854:
 	.word 0x06000000	; 0232D854
 
 ; ===== function loc_0232D858 =====
+; Returns the sub-engine BG0 character-base address.
+; 返回副引擎 BG0 字符基址。
+.func P1_GetSubBg0CharacterBase
 loc_0232D858:
 	ldr r0,[pool_0232D86C]	; 0232D858
 	ldrh r1,[r0,#0x0]	; 0232D85A
@@ -28220,18 +29605,49 @@ loc_0232D858:
 	ldr r0,[pool_0232D870]	; 0232D864
 	add r0,r1,r0	; 0232D866
 	bx lr	; 0232D868
+.endfunc
 	.byte 0xC0, 0x46	; 0232D86C
 pool_0232D86C:
 loc_0232D86C:
-	.word 0x04001008	; 0232D86C
+	.word REG_BG0CNT_SUB	; 0232D86C
 pool_0232D870:
 loc_0232D870:
 	.word 0x06200000	; 0232D870
-	.byte 0x07, 0x48, 0x01, 0x88, 0x3C, 0x20, 0x01, 0x40, 0x88, 0x10, 0x82, 0x03, 0x05, 0x48, 0x01, 0x68	; 0232D884
-	.byte 0x05, 0x48, 0x01, 0x40, 0x08, 0x0E, 0x01, 0x04, 0x04, 0x48, 0x08, 0x18, 0x10, 0x18, 0x70, 0x47	; 0232D894
-	.byte 0x08, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x07, 0x00, 0x00, 0x00, 0x06	; 0232D8A4
+; ===== function loc_0232D884 =====
+; Returns the main-engine BG0 character-base address.
+; 返回主引擎 BG0 字符基址。
+.func P1_GetMainBg0CharacterBase
+loc_0232D884:
+	ldr r0,[pool_0232D8A4]	; 0232D884
+	ldrh r1,[r0,#0x0]	; 0232D886
+	mov r0,#0x3c	; 0232D888
+	and r1,r0	; 0232D88A
+	asr r0,r1,#0x2	; 0232D88C
+	lsl r2,r0,#0xe	; 0232D88E
+	ldr r0,[pool_0232D8A8]	; 0232D890
+	ldr r1,[r0,#0x0]	; 0232D892
+	ldr r0,[pool_0232D8AC]	; 0232D894
+	and r1,r0	; 0232D896
+	lsr r0,r1,#0x18	; 0232D898
+	lsl r1,r0,#0x10	; 0232D89A
+	ldr r0,[pool_0232D8B0]	; 0232D89C
+	add r0,r1,r0	; 0232D89E
+	add r0,r2,r0	; 0232D8A0
+	bx lr	; 0232D8A2
+.endfunc
+pool_0232D8A4:
+	.word REG_BG0CNT	; 0232D8A4
+pool_0232D8A8:
+	.word REG_DISPCNT_A	; 0232D8A8
+pool_0232D8AC:
+	.word 0x07000000	; 0232D8AC
+pool_0232D8B0:
+	.word 0x06000000	; 0232D8B0
 
 ; ===== function loc_0232D8A4 =====
+; Returns the sub-engine BG1 tilemap base from BG1CNT.
+; 由 BG1CNT 返回副引擎 BG1 tilemap 基址。
+.func P1_GetSubBg1TilemapBase
 loc_0232D8A4:
 	ldr r0,[pool_0232D8B8]	; 0232D8A4
 	ldrh r1,[r0,#0x0]	; 0232D8A6
@@ -28242,10 +29658,11 @@ loc_0232D8A4:
 	ldr r0,[pool_0232D8C0]	; 0232D8B0
 	add r0,r1,r0	; 0232D8B2
 	bx lr	; 0232D8B4
+.endfunc
 	.byte 0xC0, 0x46	; 0232D8B8
 pool_0232D8B8:
 loc_0232D8B8:
-	.word 0x0400100A	; 0232D8B8
+	.word REG_BG1CNT_SUB	; 0232D8B8
 pool_0232D8BC:
 loc_0232D8BC:
 	.word 0x00001F00	; 0232D8BC
@@ -28254,6 +29671,9 @@ loc_0232D8C0:
 	.word 0x06200000	; 0232D8C0
 
 ; ===== function loc_0232D8C4 =====
+; Returns the main-engine BG1 tilemap base from BG1CNT and VRAM bank mode.
+; 由 BG1CNT 与 VRAM bank 模式返回主引擎 BG1 tilemap 基址。
+.func P1_GetMainBg1TilemapBase
 loc_0232D8C4:
 	ldr r0,[pool_0232D8E4]	; 0232D8C4
 	ldrh r1,[r0,#0x0]	; 0232D8C6
@@ -28271,15 +29691,16 @@ loc_0232D8C4:
 	add r0,r1,r0	; 0232D8DE
 	add r0,r2,r0	; 0232D8E0
 	bx lr	; 0232D8E2
+.endfunc
 pool_0232D8E4:
 loc_0232D8E4:
-	.word 0x0400000A	; 0232D8E4
+	.word REG_BG1CNT	; 0232D8E4
 pool_0232D8E8:
 loc_0232D8E8:
 	.word 0x00001F00	; 0232D8E8
 pool_0232D8EC:
 loc_0232D8EC:
-	.word 0x04000000	; 0232D8EC
+	.word REG_DISPCNT_A	; 0232D8EC
 pool_0232D8F0:
 loc_0232D8F0:
 	.word 0x38000000	; 0232D8F0
@@ -28288,6 +29709,9 @@ loc_0232D8F4:
 	.word 0x06000000	; 0232D8F4
 
 ; ===== function loc_0232D8F8 =====
+; Returns the sub-engine BG0 tilemap base from BG0CNT.
+; 由 BG0CNT 返回副引擎 BG0 tilemap 基址。
+.func P1_GetSubBg0TilemapBase
 loc_0232D8F8:
 	ldr r0,[pool_0232D90C]	; 0232D8F8
 	ldrh r1,[r0,#0x0]	; 0232D8FA
@@ -28298,10 +29722,11 @@ loc_0232D8F8:
 	ldr r0,[pool_0232D914]	; 0232D904
 	add r0,r1,r0	; 0232D906
 	bx lr	; 0232D908
+.endfunc
 	.byte 0xC0, 0x46	; 0232D90C
 pool_0232D90C:
 loc_0232D90C:
-	.word 0x04001008	; 0232D90C
+	.word REG_BG0CNT_SUB	; 0232D90C
 pool_0232D910:
 loc_0232D910:
 	.word 0x00001F00	; 0232D910
@@ -28310,6 +29735,9 @@ loc_0232D914:
 	.word 0x06200000	; 0232D914
 
 ; ===== function loc_0232D918 =====
+; Returns the main-engine BG0 tilemap base from BG0CNT and VRAM bank mode.
+; 由 BG0CNT 与 VRAM bank 模式返回主引擎 BG0 tilemap 基址。
+.func P1_GetMainBg0TilemapBase
 loc_0232D918:
 	ldr r0,[pool_0232D938]	; 0232D918
 	ldrh r1,[r0,#0x0]	; 0232D91A
@@ -28327,15 +29755,16 @@ loc_0232D918:
 	add r0,r1,r0	; 0232D932
 	add r0,r2,r0	; 0232D934
 	bx lr	; 0232D936
+.endfunc
 pool_0232D938:
 loc_0232D938:
-	.word 0x04000008	; 0232D938
+	.word REG_BG0CNT	; 0232D938
 pool_0232D93C:
 loc_0232D93C:
 	.word 0x00001F00	; 0232D93C
 pool_0232D940:
 loc_0232D940:
-	.word 0x04000000	; 0232D940
+	.word REG_DISPCNT_A	; 0232D940
 pool_0232D944:
 loc_0232D944:
 	.word 0x38000000	; 0232D944
@@ -28381,6 +29810,7 @@ loc_0232D968:
 	.byte 0x00, 0x00	; 0232D988
 
 ; ===== function loc_0232D988 =====
+P1_Entry_0232D988:
 	push {r4,r5,r6,lr}	; 0232D988
 	add r5,r0,#0x0	; 0232D98A
 	add r4,r1,#0x0	; 0232D98C
@@ -28399,9 +29829,10 @@ loc_0232D968:
 	.byte 0xC0, 0x46	; 0232D9AC
 pool_0232D9AC:
 loc_0232D9AC:
-	.word 0x02330A60	; 0232D9AC
+	.word P1_Data_02330A60	; 0232D9AC
 
 ; ===== function loc_0232D9B0 =====
+P1_Entry_0232D9B0:
 	push {r4,r5,r6,lr}	; 0232D9B0
 	add r5,r0,#0x0	; 0232D9B2
 	add r4,r1,#0x0	; 0232D9B4
@@ -28420,7 +29851,7 @@ loc_0232D9AC:
 	.byte 0xC0, 0x46	; 0232D9D4
 pool_0232D9D4:
 loc_0232D9D4:
-	.word 0x02330A60	; 0232D9D4
+	.word P1_Data_02330A60	; 0232D9D4
 	.byte 0x70, 0xB5, 0x05, 0x1C, 0x0C, 0x1C, 0x16, 0x1C, 0xF9, 0xF7, 0x12, 0xF9, 0x02, 0x1C, 0x05, 0x48	; 0232D9E8
 	.byte 0x00, 0x68, 0x29, 0x1C, 0x12, 0x19, 0x33, 0x1C, 0x00, 0xF0, 0xF0, 0xF9, 0x70, 0xBC, 0x08, 0xBC	; 0232D9F8
 	.byte 0x18, 0x47, 0xC0, 0x46, 0x60, 0x0A, 0x33, 0x02	; 0232DA00
@@ -28445,7 +29876,7 @@ loc_0232DA00:
 	.byte 0xC0, 0x46	; 0232DA24
 pool_0232DA24:
 loc_0232DA24:
-	.word 0x02330A60	; 0232DA24
+	.word P1_Data_02330A60	; 0232DA24
 
 ; ===== function loc_0232DA28 =====
 loc_0232DA28:
@@ -28453,7 +29884,7 @@ loc_0232DA28:
 	add r5,r0,#0x0	; 0232DA2A
 	add r4,r1,#0x0	; 0232DA2C
 	add r6,r2,#0x0	; 0232DA2E
-	bl loc_0232D80C	; 0232DA30
+	bl P1_GetSubBg1CharacterBase	; 0232DA30
 	add r2,r0,#0x0	; 0232DA34
 	ldr r0,[pool_0232DA4C]	; 0232DA36
 	ldr r0,[r0,#0x0]	; 0232DA38
@@ -28467,7 +29898,7 @@ loc_0232DA28:
 	.byte 0xC0, 0x46	; 0232DA4C
 pool_0232DA4C:
 loc_0232DA4C:
-	.word 0x02330A60	; 0232DA4C
+	.word P1_Data_02330A60	; 0232DA4C
 
 ; ===== function loc_0232DA50 =====
 loc_0232DA50:
@@ -28475,7 +29906,7 @@ loc_0232DA50:
 	add r5,r0,#0x0	; 0232DA52
 	add r4,r1,#0x0	; 0232DA54
 	add r6,r2,#0x0	; 0232DA56
-	bl loc_0232D828	; 0232DA58
+	bl P1_GetMainBg1CharacterBase	; 0232DA58
 	add r2,r0,#0x0	; 0232DA5C
 	ldr r0,[pool_0232DA74]	; 0232DA5E
 	ldr r0,[r0,#0x0]	; 0232DA60
@@ -28489,14 +29920,14 @@ loc_0232DA50:
 	.byte 0xC0, 0x46	; 0232DA74
 pool_0232DA74:
 loc_0232DA74:
-	.word 0x02330A60	; 0232DA74
+	.word P1_Data_02330A60	; 0232DA74
 
 ; ===== function loc_0232DA78 =====
 	push {r4,r5,r6,lr}	; 0232DA78
 	add r5,r0,#0x0	; 0232DA7A
 	add r4,r1,#0x0	; 0232DA7C
 	add r6,r2,#0x0	; 0232DA7E
-	bl loc_0232D858	; 0232DA80
+	bl P1_GetSubBg0CharacterBase	; 0232DA80
 	add r2,r0,#0x0	; 0232DA84
 	ldr r0,[pool_0232DA9C]	; 0232DA86
 	ldr r0,[r0,#0x0]	; 0232DA88
@@ -28510,7 +29941,7 @@ loc_0232DA74:
 	.byte 0xC0, 0x46	; 0232DA9C
 pool_0232DA9C:
 loc_0232DA9C:
-	.word 0x02330A60	; 0232DA9C
+	.word P1_Data_02330A60	; 0232DA9C
 	.byte 0x70, 0xB5, 0x05, 0x1C, 0x0C, 0x1C, 0x16, 0x1C, 0xFF, 0xF7, 0xE4, 0xFE, 0x02, 0x1C, 0x05, 0x48	; 0232DAB0
 	.byte 0x00, 0x68, 0x29, 0x1C, 0x12, 0x19, 0x33, 0x1C, 0x00, 0xF0, 0x8C, 0xF9, 0x70, 0xBC, 0x08, 0xBC	; 0232DAC0
 	.byte 0x18, 0x47, 0xC0, 0x46, 0x60, 0x0A, 0x33, 0x02	; 0232DAC8
@@ -28535,7 +29966,7 @@ loc_0232DAC8:
 	.byte 0xC0, 0x46	; 0232DAEC
 pool_0232DAEC:
 loc_0232DAEC:
-	.word 0x02330A60	; 0232DAEC
+	.word P1_Data_02330A60	; 0232DAEC
 
 ; ===== function loc_0232DAF0 =====
 loc_0232DAF0:
@@ -28543,7 +29974,7 @@ loc_0232DAF0:
 	add r5,r0,#0x0	; 0232DAF2
 	add r4,r1,#0x0	; 0232DAF4
 	add r6,r2,#0x0	; 0232DAF6
-	blx loc_02326C74	; 0232DAF8
+	blx P1_GetMainBg3TilemapAddress	; 0232DAF8
 	add r2,r0,#0x0	; 0232DAFC
 	ldr r0,[pool_0232DB14]	; 0232DAFE
 	ldr r0,[r0,#0x0]	; 0232DB00
@@ -28557,7 +29988,7 @@ loc_0232DAF0:
 	.byte 0xC0, 0x46	; 0232DB14
 pool_0232DB14:
 loc_0232DB14:
-	.word 0x02330A60	; 0232DB14
+	.word P1_Data_02330A60	; 0232DB14
 
 ; ===== function loc_0232DB18 =====
 loc_0232DB18:
@@ -28579,7 +30010,7 @@ loc_0232DB18:
 	.byte 0xC0, 0x46	; 0232DB3C
 pool_0232DB3C:
 loc_0232DB3C:
-	.word 0x02330A60	; 0232DB3C
+	.word P1_Data_02330A60	; 0232DB3C
 
 ; ===== function loc_0232DB40 =====
 loc_0232DB40:
@@ -28587,7 +30018,7 @@ loc_0232DB40:
 	add r5,r0,#0x0	; 0232DB42
 	add r4,r1,#0x0	; 0232DB44
 	add r6,r2,#0x0	; 0232DB46
-	blx loc_02326CC8	; 0232DB48
+	blx P1_GetMainBg2TilemapAddress	; 0232DB48
 	add r2,r0,#0x0	; 0232DB4C
 	ldr r0,[pool_0232DB64]	; 0232DB4E
 	ldr r0,[r0,#0x0]	; 0232DB50
@@ -28601,7 +30032,7 @@ loc_0232DB40:
 	.byte 0xC0, 0x46	; 0232DB64
 pool_0232DB64:
 loc_0232DB64:
-	.word 0x02330A60	; 0232DB64
+	.word P1_Data_02330A60	; 0232DB64
 
 ; ===== function loc_0232DB68 =====
 loc_0232DB68:
@@ -28609,7 +30040,7 @@ loc_0232DB68:
 	add r5,r0,#0x0	; 0232DB6A
 	add r4,r1,#0x0	; 0232DB6C
 	add r6,r2,#0x0	; 0232DB6E
-	bl loc_0232D8A4	; 0232DB70
+	bl P1_GetSubBg1TilemapBase	; 0232DB70
 	add r2,r0,#0x0	; 0232DB74
 	ldr r0,[pool_0232DB8C]	; 0232DB76
 	ldr r0,[r0,#0x0]	; 0232DB78
@@ -28623,7 +30054,7 @@ loc_0232DB68:
 	.byte 0xC0, 0x46	; 0232DB8C
 pool_0232DB8C:
 loc_0232DB8C:
-	.word 0x02330A60	; 0232DB8C
+	.word P1_Data_02330A60	; 0232DB8C
 
 ; ===== function loc_0232DB90 =====
 loc_0232DB90:
@@ -28631,7 +30062,7 @@ loc_0232DB90:
 	add r5,r0,#0x0	; 0232DB92
 	add r4,r1,#0x0	; 0232DB94
 	add r6,r2,#0x0	; 0232DB96
-	bl loc_0232D8C4	; 0232DB98
+	bl P1_GetMainBg1TilemapBase	; 0232DB98
 	add r2,r0,#0x0	; 0232DB9C
 	ldr r0,[pool_0232DBB4]	; 0232DB9E
 	ldr r0,[r0,#0x0]	; 0232DBA0
@@ -28645,7 +30076,7 @@ loc_0232DB90:
 	.byte 0xC0, 0x46	; 0232DBB4
 pool_0232DBB4:
 loc_0232DBB4:
-	.word 0x02330A60	; 0232DBB4
+	.word P1_Data_02330A60	; 0232DBB4
 
 ; ===== function loc_0232DBB8 =====
 loc_0232DBB8:
@@ -28653,7 +30084,7 @@ loc_0232DBB8:
 	add r5,r0,#0x0	; 0232DBBA
 	add r4,r1,#0x0	; 0232DBBC
 	add r6,r2,#0x0	; 0232DBBE
-	bl loc_0232D8F8	; 0232DBC0
+	bl P1_GetSubBg0TilemapBase	; 0232DBC0
 	add r2,r0,#0x0	; 0232DBC4
 	ldr r0,[pool_0232DBDC]	; 0232DBC6
 	ldr r0,[r0,#0x0]	; 0232DBC8
@@ -28667,14 +30098,14 @@ loc_0232DBB8:
 	.byte 0xC0, 0x46	; 0232DBDC
 pool_0232DBDC:
 loc_0232DBDC:
-	.word 0x02330A60	; 0232DBDC
+	.word P1_Data_02330A60	; 0232DBDC
 
 ; ===== function loc_0232DBE0 =====
 	push {r4,r5,r6,lr}	; 0232DBE0
 	add r5,r0,#0x0	; 0232DBE2
 	add r4,r1,#0x0	; 0232DBE4
 	add r6,r2,#0x0	; 0232DBE6
-	bl loc_0232D918	; 0232DBE8
+	bl P1_GetMainBg0TilemapBase	; 0232DBE8
 	add r2,r0,#0x0	; 0232DBEC
 	ldr r0,[pool_0232DC04]	; 0232DBEE
 	ldr r0,[r0,#0x0]	; 0232DBF0
@@ -28688,7 +30119,7 @@ loc_0232DBDC:
 	.byte 0xC0, 0x46	; 0232DC04
 pool_0232DC04:
 loc_0232DC04:
-	.word 0x02330A60	; 0232DC04
+	.word P1_Data_02330A60	; 0232DC04
 
 ; ===== function loc_0232DC08 =====
 loc_0232DC08:
@@ -28709,7 +30140,7 @@ loc_0232DC08:
 	bx r3	; 0232DC26
 pool_0232DC28:
 loc_0232DC28:
-	.word 0x02330A60	; 0232DC28
+	.word P1_Data_02330A60	; 0232DC28
 pool_0232DC2C:
 loc_0232DC2C:
 	.word 0x06600000	; 0232DC2C
@@ -28733,7 +30164,7 @@ loc_0232DC30:
 	bx r3	; 0232DC4E
 pool_0232DC50:
 loc_0232DC50:
-	.word 0x02330A60	; 0232DC50
+	.word P1_Data_02330A60	; 0232DC50
 pool_0232DC54:
 loc_0232DC54:
 	.word 0x06400000	; 0232DC54
@@ -28757,7 +30188,7 @@ loc_0232DC58:
 	bx r3	; 0232DC76
 pool_0232DC78:
 loc_0232DC78:
-	.word 0x02330A60	; 0232DC78
+	.word P1_Data_02330A60	; 0232DC78
 pool_0232DC7C:
 loc_0232DC7C:
 	.word 0x07000400	; 0232DC7C
@@ -28781,7 +30212,7 @@ loc_0232DC80:
 	bx r3	; 0232DC9E
 pool_0232DCA0:
 loc_0232DCA0:
-	.word 0x02330A60	; 0232DCA0
+	.word P1_Data_02330A60	; 0232DCA0
 pool_0232DCA4:
 loc_0232DCA4:
 	.word 0x07000000	; 0232DCA4
@@ -28805,7 +30236,7 @@ loc_0232DCA8:
 	bx r3	; 0232DCC6
 pool_0232DCC8:
 loc_0232DCC8:
-	.word 0x02330A60	; 0232DCC8
+	.word P1_Data_02330A60	; 0232DCC8
 pool_0232DCCC:
 loc_0232DCCC:
 	.word 0x05000600	; 0232DCCC
@@ -28829,7 +30260,7 @@ loc_0232DCD0:
 	bx r3	; 0232DCEE
 pool_0232DCF0:
 loc_0232DCF0:
-	.word 0x02330A60	; 0232DCF0
+	.word P1_Data_02330A60	; 0232DCF0
 pool_0232DCF4:
 loc_0232DCF4:
 	.word 0x05000200	; 0232DCF4
@@ -28853,7 +30284,7 @@ loc_0232DCF8:
 	bx r3	; 0232DD16
 pool_0232DD18:
 loc_0232DD18:
-	.word 0x02330A60	; 0232DD18
+	.word P1_Data_02330A60	; 0232DD18
 pool_0232DD1C:
 loc_0232DD1C:
 	.word 0x05000400	; 0232DD1C
@@ -28877,7 +30308,7 @@ loc_0232DD20:
 	bx r3	; 0232DD3E
 pool_0232DD40:
 loc_0232DD40:
-	.word 0x02330A60	; 0232DD40
+	.word P1_Data_02330A60	; 0232DD40
 pool_0232DD44:
 loc_0232DD44:
 	.word 0x05000000	; 0232DD44
@@ -28890,13 +30321,13 @@ loc_0232DD48:
 	.byte 0xC0, 0x46	; 0232DD50
 pool_0232DD50:
 loc_0232DD50:
-	.word 0x04000247	; 0232DD50
+	.word REG_WRAMCNT	; 0232DD50
 
 ; ===== function loc_0232DD54 =====
 loc_0232DD54:
 	push {r4,lr}	; 0232DD54
 	add r4,r0,#0x0	; 0232DD56
-	blx loc_0232C4BC	; 0232DD58
+	blx P1_Arm9DisableIrqReturnPriorMask	; 0232DD58
 	mov r1,#0x6	; 0232DD5C
 	mul r4,r1	; 0232DD5E
 	add r1,r4,#0x5	; 0232DD60
@@ -28913,14 +30344,14 @@ loc_0232DD54:
 	strh r3,[r2,#0x0]	; 0232DD76
 	ldrh r1,[r2,#0x0]	; 0232DD78
 	ldrh r1,[r2,#0x0]	; 0232DD7A
-	blx loc_0232C4D0	; 0232DD7C
+	blx P1_Arm9RestoreIrqMask	; 0232DD7C
 	pop {r4}	; 0232DD80
 	pop {r3}	; 0232DD82
 	bx r3	; 0232DD84
 	.byte 0xC0, 0x46	; 0232DD88
 pool_0232DD88:
 loc_0232DD88:
-	.word 0x040000B0	; 0232DD88
+	.word REG_DMA0SAD	; 0232DD88
 pool_0232DD8C:
 loc_0232DD8C:
 	.word 0xFFFFC5FF	; 0232DD8C
@@ -28949,7 +30380,7 @@ loc_0232DDAA:
 	lsr r3,r3,#0x1	; 0232DDB2
 	ldr r5,[pool_0232DDD0]	; 0232DDB4
 	orr r3,r5	; 0232DDB6
-	bl 0x01ff82dc	; 0232DDB8
+	bl P1_SetDmaChannelRegisters	; 0232DDB8
 	lsl r0,r5,#0	; 0232DDBC
 loc_0232DDBE:
 	ldr r1,[r4,#0x0]	; 0232DDBE
@@ -28962,7 +30393,7 @@ loc_0232DDC6:
 	bx r3	; 0232DDCA
 pool_0232DDCC:
 loc_0232DDCC:
-	.word 0x040000B0	; 0232DDCC
+	.word REG_DMA0SAD	; 0232DDCC
 pool_0232DDD0:
 loc_0232DDD0:
 	.word 0x80000000	; 0232DDD0
@@ -28988,7 +30419,7 @@ loc_0232DDEA:
 	lsr r3,r3,#0x2	; 0232DDF2
 	ldr r5,[pool_0232DE14]	; 0232DDF4
 	orr r3,r5	; 0232DDF6
-	bl 0x01ff82dc	; 0232DDF8
+	bl P1_SetDmaChannelRegisters	; 0232DDF8
 	ldr r0,[pool_0232DE10]	; 0232DDFC
 loc_0232DDFE:
 	ldr r1,[r4,#0x0]	; 0232DDFE
@@ -29001,7 +30432,7 @@ loc_0232DE06:
 	bx r3	; 0232DE0A
 pool_0232DE0C:
 loc_0232DE0C:
-	.word 0x040000B0	; 0232DE0C
+	.word REG_DMA0SAD	; 0232DE0C
 pool_0232DE10:
 loc_0232DE10:
 	.word 0x80000000	; 0232DE10
@@ -29032,6 +30463,9 @@ loc_0232DE34:
 	bx lr	; 0232DE48
 
 ; ===== function loc_0232DE4C =====
+; r0=填充值，r1=目标，r2=字节数；按 32 位字写入。
+; r0=value, r1=destination, r2=byte count; fills in 32-bit words.
+P1_MemFill32:
 loc_0232DE4C:
 	add r12,r1,r2	; 0232DE4C
 loc_0232DE50:
@@ -29041,6 +30475,9 @@ loc_0232DE50:
 	bx lr	; 0232DE5C
 
 ; ===== function loc_0232DE60 =====
+; r0=源，r1=目标，r2=字节数；按 32 位字复制。
+; r0=source, r1=destination, r2=byte count; copies 32-bit words.
+P1_MemCopy32:
 loc_0232DE60:
 	add r12,r1,r2	; 0232DE60
 loc_0232DE64:
@@ -29102,8 +30539,15 @@ loc_0232DF00:
 	addlt r12,r12,#0x1	; 0232DF08
 	blt loc_0232DF00	; 0232DF0C
 	bx lr	; 0232DF10
-	.byte 0x00, 0xC0, 0xA0, 0xE3, 0x02, 0x00, 0x5C, 0xE1, 0x0C, 0x30, 0xD0, 0xB7, 0x0C, 0x30, 0xC1, 0xB7	; 0232DF24
-	.byte 0x01, 0xC0, 0x8C, 0xB2, 0xFA, 0xFF, 0xFF, 0xBA, 0x1E, 0xFF, 0x2F, 0xE1	; 0232DF30
+P1_Entry_0232DF14:
+	mov r12,#0x0	; 0232DF14
+P1_Entry_0232DF18:
+	cmp r12,r2	; 0232DF18
+	ldrltb r3,[r0,r12]	; 0232DF1C
+	strltb r3,[r1,r12]	; 0232DF20
+	addlt r12,r12,#0x1	; 0232DF24
+	blt P1_Entry_0232DF18	; 0232DF28
+	bx lr	; 0232DF2C
 
 ; ===== function loc_0232DF30 =====
 loc_0232DF30:
@@ -29130,7 +30574,7 @@ loc_0232DF50:
 	.byte 0xC0, 0x46	; 0232DF58
 pool_0232DF58:
 loc_0232DF58:
-	.word 0x0235714C	; 0232DF58
+	.word P1_BssStart + 0x266CC	; 0232DF58
 
 ; ===== function loc_0232DF5C =====
 loc_0232DF5C:
@@ -29526,10 +30970,10 @@ loc_0232E212:
 	bx lr	; 0232E212
 pool_0232E214:
 loc_0232E214:
-	.word 0x02357150	; 0232E214
+	.word P1_BssStart + 0x266D0	; 0232E214
 pool_0232E218:
 loc_0232E218:
-	.word 0x02357160	; 0232E218
+	.word P1_BssStart + 0x266E0	; 0232E218
 
 ; ===== function loc_0232E21C =====
 loc_0232E21C:
@@ -29569,7 +31013,7 @@ loc_0232E23C:
 	mov r6,#0x1	; 0232E25E
 loc_0232E260:
 	add r0,r5,#0x0	; 0232E260
-	blx loc_0232C52C	; 0232E262
+	blx P1_Arm9BusyWaitByLoop4	; 0232E262
 	add r0,r4,#0x0	; 0232E266
 	add r1,r6,#0x0	; 0232E268
 	bl loc_0232E958	; 0232E26A
@@ -29587,12 +31031,12 @@ loc_0232E278:
 	push {r4,r5,lr}	; 0232E27C
 	sub sp,#0x4	; 0232E27E
 	add r5,r1,#0x0	; 0232E280
-	blx loc_0232C4BC	; 0232E282
+	blx P1_Arm9DisableIrqReturnPriorMask	; 0232E282
 	add r4,r0,#0x0	; 0232E286
 	add r0,r5,#0x0	; 0232E288
 	bl loc_0232E620	; 0232E28A
 	add r0,r4,#0x0	; 0232E28E
-	blx loc_0232C4D0	; 0232E290
+	blx P1_Arm9RestoreIrqMask	; 0232E290
 	add sp,#0x4	; 0232E294
 	pop {r4,r5}	; 0232E296
 	pop {r3}	; 0232E298
@@ -29630,7 +31074,7 @@ loc_0232E2CA:
 	bx lr	; 0232E2CA
 pool_0232E2CC:
 loc_0232E2CC:
-	.word 0x02357158	; 0232E2CC
+	.word P1_BssStart + 0x266D8	; 0232E2CC
 
 ; ===== function loc_0232E2D0 =====
 loc_0232E2D0:
@@ -29648,7 +31092,7 @@ loc_0232E2E2:
 	bx lr	; 0232E2E2
 pool_0232E2E4:
 loc_0232E2E4:
-	.word 0x02357150	; 0232E2E4
+	.word P1_BssStart + 0x266D0	; 0232E2E4
 
 ; ===== function loc_0232E2E8 =====
 loc_0232E2E8:
@@ -29677,7 +31121,7 @@ loc_0232E30C:
 	bx lr	; 0232E30E
 pool_0232E310:
 loc_0232E310:
-	.word 0x02357154	; 0232E310
+	.word P1_BssStart + 0x266D4	; 0232E310
 pool_0232E314:
 loc_0232E314:
 	.word 0x80000000	; 0232E314
@@ -29697,13 +31141,13 @@ loc_0232E326:
 	bx lr	; 0232E32A
 pool_0232E32C:
 loc_0232E32C:
-	.word 0x02357158	; 0232E32C
+	.word P1_BssStart + 0x266D8	; 0232E32C
 pool_0232E330:
 loc_0232E330:
-	.word 0x02357154	; 0232E330
+	.word P1_BssStart + 0x266D4	; 0232E330
 pool_0232E334:
 loc_0232E334:
-	.word 0x02357170	; 0232E334
+	.word P1_BssStart + 0x266F0	; 0232E334
 
 ; ===== function loc_0232E338 =====
 loc_0232E338:
@@ -29775,7 +31219,7 @@ loc_0232E3AC:
 loc_0232E3BA:
 	ldr r0,[pool_0232E434]	; 0232E3BA
 	ldr r1,[pool_0232E438]	; 0232E3BC
-	blx loc_0232BC20	; 0232E3BE
+	blx P1_CleanAndInvalidateDataCacheRange	; 0232E3BE
 	mov r0,#0x7	; 0232E3C2
 	ldr r1,[pool_0232E42C]	; 0232E3C4
 	ldr r1,[r1,#0x0]	; 0232E3C6
@@ -29832,10 +31276,10 @@ loc_0232E408:
 	.byte 0xC0, 0x46	; 0232E42C
 pool_0232E42C:
 loc_0232E42C:
-	.word 0x02357158	; 0232E42C
+	.word P1_BssStart + 0x266D8	; 0232E42C
 pool_0232E430:
 loc_0232E430:
-	.word 0x0235716C	; 0232E430
+	.word P1_BssStart + 0x266EC	; 0232E430
 pool_0232E434:
 loc_0232E434:
 	.word 0x02357420	; 0232E434
@@ -29844,16 +31288,16 @@ loc_0232E438:
 	.word 0x00001800	; 0232E438
 pool_0232E43C:
 loc_0232E43C:
-	.word 0x02357168	; 0232E43C
+	.word P1_BssStart + 0x266E8	; 0232E43C
 pool_0232E440:
 loc_0232E440:
-	.word 0x02357174	; 0232E440
+	.word P1_BssStart + 0x266F4	; 0232E440
 pool_0232E444:
 loc_0232E444:
-	.word 0x0235715C	; 0232E444
+	.word P1_BssStart + 0x266DC	; 0232E444
 pool_0232E448:
 loc_0232E448:
-	.word 0x02357170	; 0232E448
+	.word P1_BssStart + 0x266F0	; 0232E448
 
 ; ===== function loc_0232E44C =====
 loc_0232E44C:
@@ -29875,10 +31319,10 @@ loc_0232E460:
 	.byte 0xC0, 0x46	; 0232E468
 pool_0232E468:
 loc_0232E468:
-	.word 0x0235715C	; 0232E468
+	.word P1_BssStart + 0x266DC	; 0232E468
 pool_0232E46C:
 loc_0232E46C:
-	.word 0x02357158	; 0232E46C
+	.word P1_BssStart + 0x266D8	; 0232E46C
 
 ; ===== function loc_0232E470 =====
 loc_0232E470:
@@ -30004,22 +31448,22 @@ loc_0232E53A:
 	bx r3	; 0232E552
 pool_0232E554:
 loc_0232E554:
-	.word 0x02357154	; 0232E554
+	.word P1_BssStart + 0x266D4	; 0232E554
 pool_0232E558:
 loc_0232E558:
-	.word 0x02357164	; 0232E558
+	.word P1_BssStart + 0x266E4	; 0232E558
 pool_0232E55C:
 loc_0232E55C:
-	.word 0x02357174	; 0232E55C
+	.word P1_BssStart + 0x266F4	; 0232E55C
 pool_0232E560:
 loc_0232E560:
-	.word 0x02357160	; 0232E560
+	.word P1_BssStart + 0x266E0	; 0232E560
 pool_0232E564:
 loc_0232E564:
-	.word 0x02357150	; 0232E564
+	.word P1_BssStart + 0x266D0	; 0232E564
 pool_0232E568:
 loc_0232E568:
-	.word 0x0235716C	; 0232E568
+	.word P1_BssStart + 0x266EC	; 0232E568
 
 ; ===== function loc_0232E56C =====
 loc_0232E56C:
@@ -30084,46 +31528,46 @@ loc_0232E5E0:
 	.byte 0xC0, 0x46	; 0232E5E8
 pool_0232E5E8:
 loc_0232E5E8:
-	.word 0x02357420	; 0232E5E8
+	.word P1_BssStart + 0x269A0	; 0232E5E8
 pool_0232E5EC:
 loc_0232E5EC:
-	.word 0x02357150	; 0232E5EC
+	.word P1_BssStart + 0x266D0	; 0232E5EC
 pool_0232E5F0:
 loc_0232E5F0:
-	.word 0x02358BA0	; 0232E5F0
+	.word P1_BssStart + 0x28120	; 0232E5F0
 pool_0232E5F4:
 loc_0232E5F4:
 	.word 0x02358C08	; 0232E5F4
 pool_0232E5F8:
 loc_0232E5F8:
-	.word 0x02357160	; 0232E5F8
+	.word P1_BssStart + 0x266E0	; 0232E5F8
 pool_0232E5FC:
 loc_0232E5FC:
-	.word 0x02357158	; 0232E5FC
+	.word P1_BssStart + 0x266D8	; 0232E5FC
 pool_0232E600:
 loc_0232E600:
-	.word 0x0235715C	; 0232E600
+	.word P1_BssStart + 0x266DC	; 0232E600
 pool_0232E604:
 loc_0232E604:
-	.word 0x0235716C	; 0232E604
+	.word P1_BssStart + 0x266EC	; 0232E604
 pool_0232E608:
 loc_0232E608:
-	.word 0x02357164	; 0232E608
+	.word P1_BssStart + 0x266E4	; 0232E608
 pool_0232E60C:
 loc_0232E60C:
-	.word 0x02357168	; 0232E60C
+	.word P1_BssStart + 0x266E8	; 0232E60C
 pool_0232E610:
 loc_0232E610:
-	.word 0x02357170	; 0232E610
+	.word P1_BssStart + 0x266F0	; 0232E610
 pool_0232E614:
 loc_0232E614:
-	.word 0x02357154	; 0232E614
+	.word P1_BssStart + 0x266D4	; 0232E614
 pool_0232E618:
 loc_0232E618:
 	.word 0x023571A0	; 0232E618
 pool_0232E61C:
 loc_0232E61C:
-	.word 0x02358C80	; 0232E61C
+	.word P1_BssStart + 0x28200	; 0232E61C
 
 ; ===== function loc_0232E620 =====
 loc_0232E620:
@@ -30144,7 +31588,7 @@ loc_0232E620:
 	cmp r1,#0x0	; 0232E63C
 	beq loc_0232E644	; 0232E63E
 	ldr r0,[r3,#0x4]	; 0232E640
-	.byte 0x88, 0x47	; 0232E642
+	blx r1	; 0232E642
 loc_0232E644:
 	pop {r4}	; 0232E644
 	pop {r3}	; 0232E646
@@ -30176,7 +31620,7 @@ loc_0232E650:
 	.byte 0xC0, 0x46	; 0232E674
 pool_0232E674:
 loc_0232E674:
-	.word 0x02358C20	; 0232E674
+	.word P1_BssStart + 0x281A0	; 0232E674
 
 ; ===== function loc_0232E678 =====
 loc_0232E678:
@@ -30211,7 +31655,7 @@ loc_0232E696:
 	.byte 0xC0, 0x46	; 0232E6A8
 pool_0232E6A8:
 loc_0232E6A8:
-	.word 0x02358C20	; 0232E6A8
+	.word P1_BssStart + 0x281A0	; 0232E6A8
 
 ; ===== function loc_0232E6AC =====
 loc_0232E6AC:
@@ -30249,7 +31693,7 @@ loc_0232E6DE:
 	cmp r3,#0x10	; 0232E6E4
 	blt loc_0232E6DE	; 0232E6E6
 	ldr r1,[pool_0232E6F8]	; 0232E6E8
-	blx loc_0232BC20	; 0232E6EA
+	blx P1_CleanAndInvalidateDataCacheRange	; 0232E6EA
 	pop {r4,r5,r6}	; 0232E6EE
 	pop {r3}	; 0232E6F0
 	bx r3	; 0232E6F2
@@ -30267,7 +31711,7 @@ loc_0232E6FC:
 	ldr r0,[pool_0232E718]	; 0232E700
 	ldr r0,[r0,#0x0]	; 0232E702
 	ldr r1,[pool_0232E71C]	; 0232E704
-	blx loc_0232BBE8	; 0232E706
+	blx P1_InvalidateDataCacheRange	; 0232E706
 	ldr r0,[pool_0232E718]	; 0232E70A
 	ldr r0,[r0,#0x0]	; 0232E70C
 	ldr r0,[r0,#0x0]	; 0232E70E
@@ -30277,7 +31721,7 @@ loc_0232E6FC:
 	.byte 0xC0, 0x46	; 0232E718
 pool_0232E718:
 loc_0232E718:
-	.word 0x02358C80	; 0232E718
+	.word P1_BssStart + 0x28200	; 0232E718
 pool_0232E71C:
 loc_0232E71C:
 	.word 0x00000280	; 0232E71C
@@ -30289,7 +31733,7 @@ loc_0232E720:
 	ldr r0,[pool_0232E73C]	; 0232E724
 	ldr r0,[r0,#0x0]	; 0232E726
 	ldr r1,[pool_0232E740]	; 0232E728
-	blx loc_0232BBE8	; 0232E72A
+	blx P1_InvalidateDataCacheRange	; 0232E72A
 	ldr r0,[pool_0232E73C]	; 0232E72E
 	ldr r0,[r0,#0x0]	; 0232E730
 	ldrh r0,[r0,#0x8]	; 0232E732
@@ -30299,7 +31743,7 @@ loc_0232E720:
 	.byte 0xC0, 0x46	; 0232E73C
 pool_0232E73C:
 loc_0232E73C:
-	.word 0x02358C80	; 0232E73C
+	.word P1_BssStart + 0x28200	; 0232E73C
 pool_0232E740:
 loc_0232E740:
 	.word 0x00000280	; 0232E740
@@ -30311,7 +31755,7 @@ loc_0232E744:
 	ldr r0,[pool_0232E760]	; 0232E748
 	ldr r0,[r0,#0x0]	; 0232E74A
 	ldr r1,[pool_0232E764]	; 0232E74C
-	blx loc_0232BBE8	; 0232E74E
+	blx P1_InvalidateDataCacheRange	; 0232E74E
 	ldr r0,[pool_0232E760]	; 0232E752
 	ldr r0,[r0,#0x0]	; 0232E754
 	ldr r0,[r0,#0x4]	; 0232E756
@@ -30321,7 +31765,7 @@ loc_0232E744:
 	.byte 0xC0, 0x46	; 0232E760
 pool_0232E760:
 loc_0232E760:
-	.word 0x02358C80	; 0232E760
+	.word P1_BssStart + 0x28200	; 0232E760
 pool_0232E764:
 loc_0232E764:
 	.word 0x00000280	; 0232E764
@@ -30350,7 +31794,7 @@ loc_0232E768:
 	str r2,[r0,#0x18]	; 0232E78E
 	ldr r0,[r1,#0x18]	; 0232E790
 	mov r1,#0x3c	; 0232E792
-	blx loc_0232BC04	; 0232E794
+	blx P1_CleanDataCacheRange	; 0232E794
 	b loc_0232E7B8	; 0232E798
 loc_0232E79A:
 	cmp r6,#0x0	; 0232E79A
@@ -30368,7 +31812,7 @@ loc_0232E7AA:
 	str r0,[r6,#0x4]	; 0232E7AE
 	add r0,r6,#0x0	; 0232E7B0
 	mov r1,#0x8	; 0232E7B2
-	blx loc_0232BC04	; 0232E7B4
+	blx P1_CleanDataCacheRange	; 0232E7B4
 loc_0232E7B8:
 	ldr r0,[r4,#0x18]	; 0232E7B8
 	lsl r3,r7,#0x3	; 0232E7BA
@@ -30381,10 +31825,10 @@ loc_0232E7B8:
 	str r4,[r2,r3]	; 0232E7C8
 	add r0,r5,#0x0	; 0232E7CA
 	mov r1,#0x3c	; 0232E7CC
-	blx loc_0232BC04	; 0232E7CE
+	blx P1_CleanDataCacheRange	; 0232E7CE
 	add r0,r4,#0x0	; 0232E7D2
 	mov r1,#0x3c	; 0232E7D4
-	blx loc_0232BC04	; 0232E7D6
+	blx P1_CleanDataCacheRange	; 0232E7D6
 loc_0232E7DA:
 	add sp,#0x4	; 0232E7DA
 	pop {r4,r5,r6,r7}	; 0232E7DC
@@ -30398,9 +31842,10 @@ loc_0232E7E4:
 	bx r3	; 0232E7E6
 pool_0232E7E8:
 loc_0232E7E8:
-	.word 0x0232E9D5	; 0232E7E8
+	.word loc_0232E9D4 + 1	; 0232E7E8
 
 ; ===== function loc_0232E7EC =====
+P1_IrqHandler_0232E7EC:
 	push {r4,r5,r6,r7,lr}	; 0232E7EC
 	sub sp,#0x4	; 0232E7EE
 	ldr r5,[pool_0232E8A8]	; 0232E7F0
@@ -30421,20 +31866,20 @@ loc_0232E7FA:
 	add r0,r4,#0x0	; 0232E80C
 	b loc_0232E832	; 0232E80E
 loc_0232E810:
-	blx loc_0232C4BC	; 0232E810
+	blx P1_Arm9DisableIrqReturnPriorMask	; 0232E810
 	ldrh r2,[r5,#0x0]	; 0232E814
 	ldr r1,[pool_0232E8B4]	; 0232E816
 	and r2,r1	; 0232E818
 	cmp r2,#0x0	; 0232E81A
 	beq loc_0232E826	; 0232E81C
-	blx loc_0232C4D0	; 0232E81E
+	blx P1_Arm9RestoreIrqMask	; 0232E81E
 	add r0,r6,#0x0	; 0232E822
 	b loc_0232E832	; 0232E824
 loc_0232E826:
 	ldr r1,[pool_0232E8B8]	; 0232E826
 	ldr r1,[r1,#0x0]	; 0232E828
 	str r1,[sp,#0x0]	; 0232E82A
-	blx loc_0232C4D0	; 0232E82C
+	blx P1_Arm9RestoreIrqMask	; 0232E82C
 	mov r0,#0x0	; 0232E830
 loc_0232E832:
 	mov r1,#0x3	; 0232E832
@@ -30457,7 +31902,7 @@ loc_0232E832:
 	lsr r1,r2,#0x6	; 0232E854
 	lsl r2,r2,#0x1a	; 0232E856
 	lsr r2,r2,#0x1f	; 0232E858
-	.byte 0x98, 0x47	; 0232E85A
+	blx r3	; 0232E85A
 	b loc_0232E7FA	; 0232E85C
 loc_0232E85E:
 	lsl r0,r2,#0x1a	; 0232E85E
@@ -30478,18 +31923,18 @@ loc_0232E85E:
 	strh r1,[r5,#0x0]	; 0232E87C
 	b loc_0232E7FA	; 0232E87E
 loc_0232E880:
-	blx loc_0232C4BC	; 0232E880
+	blx P1_Arm9DisableIrqReturnPriorMask	; 0232E880
 	ldrh r1,[r5,#0x0]	; 0232E884
 	and r1,r7	; 0232E886
 	cmp r1,#0x0	; 0232E888
 	beq loc_0232E892	; 0232E88A
-	blx loc_0232C4D0	; 0232E88C
+	blx P1_Arm9RestoreIrqMask	; 0232E88C
 	b loc_0232E7FA	; 0232E890
 loc_0232E892:
 	ldr r2,[sp,#0x0]	; 0232E892
 	ldr r1,[pool_0232E8C0]	; 0232E894
 	str r2,[r1,#0x0]	; 0232E896
-	blx loc_0232C4D0	; 0232E898
+	blx P1_Arm9RestoreIrqMask	; 0232E898
 	b loc_0232E7FA	; 0232E89C
 loc_0232E89E:
 	add sp,#0x4	; 0232E89E
@@ -30499,7 +31944,7 @@ loc_0232E89E:
 	.byte 0xC0, 0x46	; 0232E8A8
 pool_0232E8A8:
 loc_0232E8A8:
-	.word 0x04000184	; 0232E8A8
+	.word REG_IPC_FIFO_CR	; 0232E8A8
 pool_0232E8AC:
 loc_0232E8AC:
 	.word 0x00004000	; 0232E8AC
@@ -30511,13 +31956,13 @@ loc_0232E8B4:
 	.word 0x00000100	; 0232E8B4
 pool_0232E8B8:
 loc_0232E8B8:
-	.word 0x04100000	; 0232E8B8
+	.word REG_IPC_FIFO_RX	; 0232E8B8
 pool_0232E8BC:
 loc_0232E8BC:
-	.word 0x02358C88	; 0232E8BC
+	.word P1_BssStart + 0x28208	; 0232E8BC
 pool_0232E8C0:
 loc_0232E8C0:
-	.word 0x04000188	; 0232E8C0
+	.word REG_IPC_FIFO_TX	; 0232E8C0
 
 ; ===== function loc_0232E8C4 =====
 loc_0232E8C4:
@@ -30560,14 +32005,14 @@ loc_0232E8C4:
 	pop {r3}	; 0232E90C
 	bx r3	; 0232E90E
 loc_0232E910:
-	blx loc_0232C4BC	; 0232E910
+	blx P1_Arm9DisableIrqReturnPriorMask	; 0232E910
 	ldr r1,[pool_0232E948]	; 0232E914
 	ldrh r2,[r1,#0x0]	; 0232E916
 	mov r1,#0x2	; 0232E918
 	and r2,r1	; 0232E91A
 	cmp r2,#0x0	; 0232E91C
 	beq loc_0232E930	; 0232E91E
-	blx loc_0232C4D0	; 0232E920
+	blx P1_Arm9RestoreIrqMask	; 0232E920
 	mov r0,#0x1	; 0232E924
 	mvn r0,r0	; 0232E926
 	add sp,#0x8	; 0232E928
@@ -30578,7 +32023,7 @@ loc_0232E930:
 	ldr r2,[sp,#0x0]	; 0232E930
 	ldr r1,[pool_0232E954]	; 0232E932
 	str r2,[r1,#0x0]	; 0232E934
-	blx loc_0232C4D0	; 0232E936
+	blx P1_Arm9RestoreIrqMask	; 0232E936
 	mov r0,#0x0	; 0232E93A
 	add sp,#0x8	; 0232E93C
 	pop {r4}	; 0232E93E
@@ -30589,7 +32034,7 @@ loc_0232E944:
 	.word 0x03FFFFFF	; 0232E944
 pool_0232E948:
 loc_0232E948:
-	.word 0x04000184	; 0232E948
+	.word REG_IPC_FIFO_CR	; 0232E948
 pool_0232E94C:
 loc_0232E94C:
 	.word 0x00004000	; 0232E94C
@@ -30598,7 +32043,7 @@ loc_0232E950:
 	.word 0x0000C000	; 0232E950
 pool_0232E954:
 loc_0232E954:
-	.word 0x04000188	; 0232E954
+	.word REG_IPC_FIFO_TX	; 0232E954
 
 ; ===== function loc_0232E958 =====
 loc_0232E958:
@@ -30634,7 +32079,7 @@ loc_0232E984:
 	sub sp,#0x4	; 0232E986
 	add r5,r0,#0x0	; 0232E988
 	add r4,r1,#0x0	; 0232E98A
-	blx loc_0232C4BC	; 0232E98C
+	blx P1_Arm9DisableIrqReturnPriorMask	; 0232E98C
 	lsl r2,r5,#0x2	; 0232E990
 	ldr r1,[pool_0232E9C8]	; 0232E992
 	str r4,[r1,r2]	; 0232E994
@@ -30659,14 +32104,14 @@ loc_0232E9AC:
 	bic r3,r2	; 0232E9B8
 	str r3,[r1,#0x0]	; 0232E9BA
 loc_0232E9BC:
-	blx loc_0232C4D0	; 0232E9BC
+	blx P1_Arm9RestoreIrqMask	; 0232E9BC
 	add sp,#0x4	; 0232E9C0
 	pop {r4,r5}	; 0232E9C2
 	pop {r3}	; 0232E9C4
 	bx r3	; 0232E9C6
 pool_0232E9C8:
 loc_0232E9C8:
-	.word 0x02358C88	; 0232E9C8
+	.word P1_BssStart + 0x28208	; 0232E9C8
 pool_0232E9CC:
 loc_0232E9CC:
 	.word 0x027FFC00	; 0232E9CC
@@ -30678,7 +32123,7 @@ loc_0232E9D0:
 loc_0232E9D4:
 	push {r4,r5,r6,r7,lr}	; 0232E9D4
 	sub sp,#0x4	; 0232E9D6
-	blx loc_0232C4BC	; 0232E9D8
+	blx P1_Arm9DisableIrqReturnPriorMask	; 0232E9D8
 	str r0,[sp,#0x0]	; 0232E9DC
 	ldr r0,[pool_0232EA5C]	; 0232E9DE
 	ldrh r1,[r0,#0x0]	; 0232E9E0
@@ -30741,7 +32186,7 @@ loc_0232EA48:
 	b loc_0232EA1C	; 0232EA4A
 loc_0232EA4C:
 	ldr r0,[sp,#0x0]	; 0232EA4C
-	blx loc_0232C4D0	; 0232EA4E
+	blx P1_Arm9RestoreIrqMask	; 0232EA4E
 	add sp,#0x4	; 0232EA52
 	pop {r4,r5,r6,r7}	; 0232EA54
 	pop {r3}	; 0232EA56
@@ -30749,10 +32194,10 @@ loc_0232EA4C:
 	.byte 0xC0, 0x46	; 0232EA5C
 pool_0232EA5C:
 loc_0232EA5C:
-	.word 0x02358C84	; 0232EA5C
+	.word P1_BssStart + 0x28204	; 0232EA5C
 pool_0232EA60:
 loc_0232EA60:
-	.word 0x027FFC00	; 0232EA60
+	.word FirmwareBootInfoAddress	; 0232EA60
 pool_0232EA64:
 loc_0232EA64:
 	.word 0x00000388	; 0232EA64
@@ -30764,16 +32209,16 @@ loc_0232EA6C:
 	.word 0x00040000	; 0232EA6C
 pool_0232EA70:
 loc_0232EA70:
-	.word 0x0232E7ED	; 0232EA70
+	.word P1_IrqHandler_0232E7EC + 1	; 0232EA70
 pool_0232EA74:
 loc_0232EA74:
 	.word 0x0000C408	; 0232EA74
 pool_0232EA78:
 loc_0232EA78:
-	.word 0x04000184	; 0232EA78
+	.word REG_IPC_FIFO_CR	; 0232EA78
 pool_0232EA7C:
 loc_0232EA7C:
-	.word 0x04000180	; 0232EA7C
+	.word REG_IPC_SYNC	; 0232EA7C
 pool_0232EA80:
 loc_0232EA80:
 	.word 0x000003E8	; 0232EA80
@@ -30804,19 +32249,19 @@ loc_0232EA84:
 	bx lr	; 0232EAAE
 pool_0232EAB0:
 loc_0232EAB0:
-	.word 0x04000290	; 0232EAB0
+	.word REG_DIV_NUMER	; 0232EAB0
 pool_0232EAB4:
 loc_0232EAB4:
-	.word 0x04000298	; 0232EAB4
+	.word REG_DIV_DENOM	; 0232EAB4
 pool_0232EAB8:
 loc_0232EAB8:
-	.word 0x04000280	; 0232EAB8
+	.word REG_DIVCNT	; 0232EAB8
 pool_0232EABC:
 loc_0232EABC:
-	.word 0x040002B8	; 0232EABC
+	.word REG_SQRT_PARAM	; 0232EABC
 pool_0232EAC0:
 loc_0232EAC0:
-	.word 0x040002B0	; 0232EAC0
+	.word REG_SQRTCNT	; 0232EAC0
 
 ; ===== function loc_0232EAC4 =====
 loc_0232EAC4:
@@ -30848,19 +32293,19 @@ loc_0232EAC4:
 	bx lr	; 0232EAF6
 pool_0232EAF8:
 loc_0232EAF8:
-	.word 0x04000290	; 0232EAF8
+	.word REG_DIV_NUMER	; 0232EAF8
 pool_0232EAFC:
 loc_0232EAFC:
-	.word 0x04000298	; 0232EAFC
+	.word REG_DIV_DENOM	; 0232EAFC
 pool_0232EB00:
 loc_0232EB00:
-	.word 0x04000280	; 0232EB00
+	.word REG_DIVCNT	; 0232EB00
 pool_0232EB04:
 loc_0232EB04:
-	.word 0x040002B8	; 0232EB04
+	.word REG_SQRT_PARAM	; 0232EB04
 pool_0232EB08:
 loc_0232EB08:
-	.word 0x040002B0	; 0232EB08
+	.word REG_SQRTCNT	; 0232EB08
 
 ; ===== function loc_0232EB0C =====
 loc_0232EB0C:
@@ -30873,7 +32318,7 @@ loc_0232EB0E:
 	bx lr	; 0232EB16
 pool_0232EB18:
 loc_0232EB18:
-	.word 0x02358D0C	; 0232EB18
+	.word P1_BssStart + 0x2828C	; 0232EB18
 
 ; ===== function loc_0232EB1C =====
 loc_0232EB1C:
@@ -30924,7 +32369,7 @@ loc_0232EB60:
 	asr r7,r2,#0x1f	; 0232EB70
 	sub r2,r6,r2	; 0232EB72
 	sbc r3,r7	; 0232EB74
-	blx loc_0232CD18	; 0232EB76
+	blx P1_AeabiLmul	; 0232EB76
 	lsl r1,r1,#0xa	; 0232EB7A
 	lsr r0,r0,#0x16	; 0232EB7C
 	orr r0,r1	; 0232EB7E
@@ -30952,7 +32397,7 @@ loc_0232EB96:
 	asr r4,r6,#0x1f	; 0232EBA6
 	sub r2,r2,r6	; 0232EBA8
 	sbc r3,r4	; 0232EBAA
-	blx loc_0232CD18	; 0232EBAC
+	blx P1_AeabiLmul	; 0232EBAC
 	lsl r1,r1,#0xa	; 0232EBB0
 	lsr r0,r0,#0x16	; 0232EBB2
 	orr r0,r1	; 0232EBB4
@@ -30979,10 +32424,10 @@ loc_0232EBD4:
 	bx r3	; 0232EBDA
 pool_0232EBDC:
 loc_0232EBDC:
-	.word 0x02358D0C	; 0232EBDC
+	.word P1_BssStart + 0x2828C	; 0232EBDC
 pool_0232EBE0:
 loc_0232EBE0:
-	.word 0x02358D24	; 0232EBE0
+	.word P1_BssStart + 0x282A4	; 0232EBE0
 
 ; ===== function loc_0232EBE4 =====
 loc_0232EBE4:
@@ -31050,7 +32495,7 @@ loc_0232EC4E:
 	pop {r3}	; 0232EC54
 	bx r3	; 0232EC56
 loc_0232EC58:
-	blx loc_0232C4BC	; 0232EC58
+	blx P1_Arm9DisableIrqReturnPriorMask	; 0232EC58
 	str r0,[sp,#0x4]	; 0232EC5C
 	mov r3,#0x0	; 0232EC5E
 	ldr r0,[pool_0232ED78]	; 0232EC60
@@ -31108,7 +32553,7 @@ loc_0232EC9C:
 	bge loc_0232ECD8	; 0232ECC6
 loc_0232ECC8:
 	ldr r0,[sp,#0x4]	; 0232ECC8
-	blx loc_0232C4D0	; 0232ECCA
+	blx P1_Arm9RestoreIrqMask	; 0232ECCA
 	mov r0,#0x1	; 0232ECCE
 	add sp,#0x24	; 0232ECD0
 	pop {r4,r5,r6,r7}	; 0232ECD2
@@ -31134,7 +32579,7 @@ loc_0232ECD8:
 	bge loc_0232ED0A	; 0232ECF8
 loc_0232ECFA:
 	ldr r0,[sp,#0x4]	; 0232ECFA
-	blx loc_0232C4D0	; 0232ECFC
+	blx P1_Arm9RestoreIrqMask	; 0232ECFC
 	mov r0,#0x1	; 0232ED00
 	add sp,#0x24	; 0232ED02
 	pop {r4,r5,r6,r7}	; 0232ED04
@@ -31151,7 +32596,7 @@ loc_0232ED0E:
 	ldr r0,[pool_0232ED88]	; 0232ED16
 	ldr r4,[r0,#0x0]	; 0232ED18
 	ldr r0,[sp,#0x4]	; 0232ED1A
-	blx loc_0232C4D0	; 0232ED1C
+	blx P1_Arm9RestoreIrqMask	; 0232ED1C
 	ldr r1,[pool_0232ED84]	; 0232ED20
 	cmp r4,r1	; 0232ED22
 	bge loc_0232ED2C	; 0232ED24
@@ -31204,19 +32649,19 @@ loc_0232ED74:
 	.word 0x00000100	; 0232ED74
 pool_0232ED78:
 loc_0232ED78:
-	.word 0x04000280	; 0232ED78
+	.word REG_DIVCNT	; 0232ED78
 pool_0232ED7C:
 loc_0232ED7C:
-	.word 0x04000290	; 0232ED7C
+	.word REG_DIV_NUMER	; 0232ED7C
 pool_0232ED80:
 loc_0232ED80:
-	.word 0x04000298	; 0232ED80
+	.word REG_DIV_DENOM	; 0232ED80
 pool_0232ED84:
 loc_0232ED84:
 	.word 0x00008000	; 0232ED84
 pool_0232ED88:
 loc_0232ED88:
-	.word 0x040002A0	; 0232ED88
+	.word REG_DIV_RESULT	; 0232ED88
 pool_0232ED8C:
 loc_0232ED8C:
 	.word 0xFFFF8000	; 0232ED8C
@@ -31249,12 +32694,12 @@ loc_0232EDB8:
 	.byte 0xC0, 0x46	; 0232EDC0
 pool_0232EDC0:
 loc_0232EDC0:
-	.word 0x02358D0C	; 0232EDC0
+	.word P1_BssStart + 0x2828C	; 0232EDC0
 
 ; ===== function loc_0232EDC4 =====
 loc_0232EDC4:
 	push {r4,lr}	; 0232EDC4
-	blx loc_0232C4BC	; 0232EDC6
+	blx P1_Arm9DisableIrqReturnPriorMask	; 0232EDC6
 	add r4,r0,#0x0	; 0232EDCA
 	mov r0,#0x6	; 0232EDCC
 	ldr r1,[pool_0232EE24]	; 0232EDCE
@@ -31270,7 +32715,7 @@ loc_0232EDE0:
 	cmp r0,#0x0	; 0232EDE0
 	bne loc_0232EE08	; 0232EDE2
 	add r0,r4,#0x0	; 0232EDE4
-	blx loc_0232C4D0	; 0232EDE6
+	blx P1_Arm9RestoreIrqMask	; 0232EDE6
 	ldr r1,[pool_0232EE28]	; 0232EDEA
 	ldrh r2,[r1,#0x34]	; 0232EDEC
 	mov r0,#0x1	; 0232EDEE
@@ -31282,7 +32727,7 @@ loc_0232EDE0:
 	mov r0,#0x0	; 0232EDFA
 	mov r1,#0x4	; 0232EDFC
 	add r2,r0,#0x0	; 0232EDFE
-	.byte 0x98, 0x47	; 0232EE00
+	blx r3	; 0232EE00
 	pop {r4}	; 0232EE02
 	pop {r3}	; 0232EE04
 	bx r3	; 0232EE06
@@ -31296,7 +32741,7 @@ loc_0232EE08:
 	bic r2,r0	; 0232EE14
 	strh r2,[r1,#0x34]	; 0232EE16
 	add r0,r4,#0x0	; 0232EE18
-	blx loc_0232C4D0	; 0232EE1A
+	blx P1_Arm9RestoreIrqMask	; 0232EE1A
 loc_0232EE1E:
 	pop {r4}	; 0232EE1E
 	pop {r3}	; 0232EE20
@@ -31306,7 +32751,7 @@ loc_0232EE24:
 	.word 0x03000000	; 0232EE24
 pool_0232EE28:
 loc_0232EE28:
-	.word 0x02358D0C	; 0232EE28
+	.word P1_BssStart + 0x2828C	; 0232EE28
 
 ; ===== function loc_0232EE2C =====
 loc_0232EE2C:
@@ -31323,7 +32768,7 @@ loc_0232EE2C:
 	pop {r3}	; 0232EE40
 	bx r3	; 0232EE42
 loc_0232EE44:
-	blx loc_0232C4BC	; 0232EE44
+	blx P1_Arm9DisableIrqReturnPriorMask	; 0232EE44
 	add r6,r0,#0x0	; 0232EE48
 	mov r7,#0x4	; 0232EE4A
 	ldrsh r5,[r4,r7]	; 0232EE4C
@@ -31378,7 +32823,7 @@ loc_0232EE9E:
 	ldr r0,[pool_0232EEC4]	; 0232EEAA
 	str r1,[r0,#0x2c]	; 0232EEAC
 	add r0,r6,#0x0	; 0232EEAE
-	blx loc_0232C4D0	; 0232EEB0
+	blx P1_Arm9RestoreIrqMask	; 0232EEB0
 	mov r1,#0x1	; 0232EEB4
 	ldr r0,[pool_0232EEC4]	; 0232EEB6
 	strh r1,[r0,#0x30]	; 0232EEB8
@@ -31389,25 +32834,25 @@ loc_0232EE9E:
 	.byte 0xC0, 0x46	; 0232EEC4
 pool_0232EEC4:
 loc_0232EEC4:
-	.word 0x02358D0C	; 0232EEC4
+	.word P1_BssStart + 0x2828C	; 0232EEC4
 pool_0232EEC8:
 loc_0232EEC8:
-	.word 0x04000280	; 0232EEC8
+	.word REG_DIVCNT	; 0232EEC8
 pool_0232EECC:
 loc_0232EECC:
 	.word 0x10000000	; 0232EECC
 pool_0232EED0:
 loc_0232EED0:
-	.word 0x04000290	; 0232EED0
+	.word REG_DIV_NUMER	; 0232EED0
 pool_0232EED4:
 loc_0232EED4:
-	.word 0x04000298	; 0232EED4
+	.word REG_DIV_DENOM	; 0232EED4
 pool_0232EED8:
 loc_0232EED8:
 	.word 0x00008000	; 0232EED8
 pool_0232EEDC:
 loc_0232EEDC:
-	.word 0x040002A0	; 0232EEDC
+	.word REG_DIV_RESULT	; 0232EEDC
 
 ; ===== function loc_0232EEE0 =====
 loc_0232EEE0:
@@ -31448,10 +32893,10 @@ loc_0232EF1E:
 	.byte 0xC0, 0x46	; 0232EF28
 pool_0232EF28:
 loc_0232EF28:
-	.word 0x02358D08	; 0232EF28
+	.word P1_BssStart + 0x28288	; 0232EF28
 pool_0232EF2C:
 loc_0232EF2C:
-	.word 0x02358D0C	; 0232EF2C
+	.word P1_BssStart + 0x2828C	; 0232EF2C
 pool_0232EF30:
 loc_0232EF30:
 	.word 0x0232EF35	; 0232EF30
@@ -31479,7 +32924,7 @@ loc_0232EF30:
 	beq loc_0232F020	; 0232EF5A
 	mov r1,#0x4	; 0232EF5C
 	mov r2,#0x0	; 0232EF5E
-	.byte 0x98, 0x47	; 0232EF60
+	blx r3	; 0232EF60
 	add sp,#0x8	; 0232EF62
 	pop {r4}	; 0232EF64
 	pop {r3}	; 0232EF66
@@ -31494,13 +32939,23 @@ loc_0232EF6A:
 	cmp r1,#0x4	; 0232EF76
 	bhi loc_0232F01C	; 0232EF78
 	add r1,r1,r1	; 0232EF7A
+P1_SwitchIndexPC_0232EF7A:
 	add r1,pc	; 0232EF7C
-	ldrh r1,[r1,#0x8]	; 0232EF7E
+	ldrh r1,[r1,#(P1_SwitchTable_0232EF7A - (P1_SwitchIndexPC_0232EF7A + 4))]	; 0232EF7E
 	lsl r1,r1,#0x10	; 0232EF80
 	asr r1,r1,#0x10	; 0232EF82
+P1_SwitchTargetPC_0232EF7A:
 	add r1,pc	; 0232EF84
 	bx r1	; 0232EF86
-	.byte 0x0B, 0x00, 0x95, 0x00, 0x67, 0x00, 0x6B, 0x00, 0x63, 0x00	; 0232EF92
+; 表项是相对 ADD 所读 PC 的有符号偏移，保留 ARM/Thumb 状态位。
+; Signed offsets from the ADD's PC, including the ARM/Thumb state bit.
+P1_SwitchTable_0232EF7A:
+	.halfword (loc_0232EF92 + 1) - (P1_SwitchTargetPC_0232EF7A + 4)
+	.halfword (loc_0232F01C + 1) - (P1_SwitchTargetPC_0232EF7A + 4)
+	.halfword (loc_0232EFEE + 1) - (P1_SwitchTargetPC_0232EF7A + 4)
+	.halfword (loc_0232EFF2 + 1) - (P1_SwitchTargetPC_0232EF7A + 4)
+	.halfword (loc_0232EFEA + 1) - (P1_SwitchTargetPC_0232EF7A + 4)
+P1_SwitchTable_0232EF7AEnd:
 loc_0232EF92:
 	cmp r0,#0x0	; 0232EF92
 	bne loc_0232EFC8	; 0232EF94
@@ -31542,7 +32997,7 @@ loc_0232EFC8:
 	cmp r3,#0x0	; 0232EFDA
 	beq loc_0232F020	; 0232EFDC
 	add r2,r1,#0x0	; 0232EFDE
-	.byte 0x98, 0x47	; 0232EFE0
+	blx r3	; 0232EFE0
 	add sp,#0x8	; 0232EFE2
 	pop {r4}	; 0232EFE4
 	pop {r3}	; 0232EFE6
@@ -31571,7 +33026,7 @@ loc_0232EFF4:
 	mov r2,#0xff	; 0232F00C
 	and r1,r2	; 0232F00E
 	mov r2,#0x0	; 0232F010
-	.byte 0x98, 0x47	; 0232F012
+	blx r3	; 0232F012
 	add sp,#0x8	; 0232F014
 	pop {r4}	; 0232F016
 	pop {r3}	; 0232F018
@@ -31588,16 +33043,16 @@ loc_0232F028:
 	.word 0x00007F00	; 0232F028
 pool_0232F02C:
 loc_0232F02C:
-	.word 0x02358D0C	; 0232F02C
+	.word P1_BssStart + 0x2828C	; 0232F02C
 pool_0232F030:
 loc_0232F030:
 	.word 0x01000000	; 0232F030
 pool_0232F034:
 loc_0232F034:
-	.word 0x027FFFAA	; 0232F034
+	.word FirmwareSystemWorkAddress + SystemWorkTouchPanelOffset	; 0232F034
 pool_0232F038:
 loc_0232F038:
-	.word 0x027FFFAC	; 0232F038
+	.word FirmwareSystemWorkAddress + SystemWorkTouchPanelOffset + 0x2	; 0232F038
 
 ; ===== function loc_0232F03C =====
 loc_0232F03C:
@@ -31665,13 +33120,13 @@ loc_0232F0AA:
 	.byte 0xC0, 0x46	; 0232F0B4
 pool_0232F0B4:
 loc_0232F0B4:
-	.word 0x027FFC3C	; 0232F0B4
+	.word FirmwareBootInfoAddress + BootInfoVBlankCountOffset	; 0232F0B4
 pool_0232F0B8:
 loc_0232F0B8:
-	.word 0x02358D50	; 0232F0B8
+	.word P1_BssStart + 0x282D0	; 0232F0B8
 pool_0232F0BC:
 loc_0232F0BC:
-	.word 0x04000304	; 0232F0BC
+	.word REG_POWERCNT	; 0232F0BC
 
 ; ===== function loc_0232F0C0 =====
 loc_0232F0C0:
@@ -31684,7 +33139,7 @@ loc_0232F0C0:
 	ldr r0,[pool_0232F174]	; 0232F0CC
 	ldrh r7,[r0,#0x0]	; 0232F0CE
 	strh r6,[r0,#0x0]	; 0232F0D0
-	blx loc_0232C4BC	; 0232F0D2
+	blx P1_Arm9DisableIrqReturnPriorMask	; 0232F0D2
 	str r0,[sp,#0x4]	; 0232F0D6
 	ldr r0,[pool_0232F178]	; 0232F0D8
 	bl loc_0232B144	; 0232F0DA
@@ -31692,7 +33147,7 @@ loc_0232F0C0:
 	ldr r0,[pool_0232F17C]	; 0232F0E0
 	bl loc_0232B194	; 0232F0E2
 	ldr r0,[sp,#0x4]	; 0232F0E6
-	blx loc_0232C4D0	; 0232F0E8
+	blx P1_Arm9RestoreIrqMask	; 0232F0E8
 	ldr r1,[pool_0232F174]	; 0232F0EC
 	ldrh r0,[r1,#0x0]	; 0232F0EE
 	mov r0,#0x1	; 0232F0F0
@@ -31718,9 +33173,9 @@ loc_0232F10E:
 	bl loc_0232F3A0	; 0232F116
 	cmp r0,#0x0	; 0232F11A
 	bne loc_0232F10E	; 0232F11C
-	blx loc_0232C520	; 0232F11E
+	blx P1_Arm9WaitForInterrupt	; 0232F11E
 	ldr r0,[pool_0232F180]	; 0232F122
-	blx loc_0232C52C	; 0232F124
+	blx P1_Arm9BusyWaitByLoop4	; 0232F124
 	mov r0,#0x8	; 0232F128
 	and r5,r0	; 0232F12A
 	cmp r5,#0x0	; 0232F12C
@@ -31741,11 +33196,11 @@ loc_0232F13E:
 	mov r3,#0x0	; 0232F148
 	bl loc_0232F03C	; 0232F14A
 loc_0232F14E:
-	blx loc_0232C4BC	; 0232F14E
+	blx P1_Arm9DisableIrqReturnPriorMask	; 0232F14E
 	ldr r0,[sp,#0x8]	; 0232F152
 	bl loc_0232B194	; 0232F154
 	ldr r0,[sp,#0x4]	; 0232F158
-	blx loc_0232C4D0	; 0232F15A
+	blx P1_Arm9RestoreIrqMask	; 0232F15A
 	ldr r1,[pool_0232F174]	; 0232F15E
 	ldrh r0,[r1,#0x0]	; 0232F160
 	strh r7,[r1,#0x0]	; 0232F162
@@ -31759,7 +33214,7 @@ loc_0232F16C:
 	bx r3	; 0232F172
 pool_0232F174:
 loc_0232F174:
-	.word 0x04000208	; 0232F174
+	.word REG_IME	; 0232F174
 pool_0232F178:
 loc_0232F178:
 	.word 0x003FFFFF	; 0232F178
@@ -31771,7 +33226,7 @@ loc_0232F180:
 	.word 0x00332340	; 0232F180
 pool_0232F184:
 loc_0232F184:
-	.word 0x04000214	; 0232F184
+	.word REG_IF	; 0232F184
 pool_0232F188:
 loc_0232F188:
 	.word 0x00100000	; 0232F188
@@ -31845,7 +33300,7 @@ loc_0232F1F0:
 	bx r3	; 0232F1FA
 pool_0232F1FC:
 loc_0232F1FC:
-	.word 0x0232F34D	; 0232F1FC
+	.word loc_0232F34C + 1	; 0232F1FC
 
 ; ===== function loc_0232F200 =====
 loc_0232F200:
@@ -32036,13 +33491,13 @@ loc_0232F312:
 	bx r3	; 0232F33A
 pool_0232F33C:
 loc_0232F33C:
-	.word 0x02358D54	; 0232F33C
+	.word P1_BssStart + 0x282D4	; 0232F33C
 pool_0232F340:
 loc_0232F340:
-	.word 0x02358D78	; 0232F340
+	.word P1_BssStart + 0x282F8	; 0232F340
 pool_0232F344:
 loc_0232F344:
-	.word 0x02358D7C	; 0232F344
+	.word P1_BssStart + 0x282FC	; 0232F344
 pool_0232F348:
 loc_0232F348:
 	.word 0x03006500	; 0232F348
@@ -32083,7 +33538,7 @@ loc_0232F364:
 	.byte 0xC0, 0x46	; 0232F390
 pool_0232F390:
 loc_0232F390:
-	.word 0x02358D54	; 0232F390
+	.word P1_BssStart + 0x282D4	; 0232F390
 pool_0232F394:
 loc_0232F394:
 	.word 0x02006300	; 0232F394
@@ -32147,13 +33602,13 @@ loc_0232F3C8:
 	.byte 0xC0, 0x46	; 0232F408
 pool_0232F408:
 loc_0232F408:
-	.word 0x02358D48	; 0232F408
+	.word P1_BssStart + 0x282C8	; 0232F408
 pool_0232F40C:
 loc_0232F40C:
 	.word 0x03006000	; 0232F40C
 pool_0232F410:
 loc_0232F410:
-	.word 0x02358D4C	; 0232F410
+	.word P1_BssStart + 0x282CC	; 0232F410
 pool_0232F414:
 loc_0232F414:
 	.word 0x02006100	; 0232F414
@@ -32239,19 +33694,19 @@ loc_0232F4A0:
 	.word 0x00007F00	; 0232F4A0
 pool_0232F4A4:
 loc_0232F4A4:
-	.word 0x02358D7C	; 0232F4A4
+	.word P1_BssStart + 0x282FC	; 0232F4A4
 pool_0232F4A8:
 loc_0232F4A8:
-	.word 0x02358D78	; 0232F4A8
+	.word P1_BssStart + 0x282F8	; 0232F4A8
 pool_0232F4AC:
 loc_0232F4AC:
-	.word 0x02358D48	; 0232F4AC
+	.word P1_BssStart + 0x282C8	; 0232F4AC
 pool_0232F4B0:
 loc_0232F4B0:
-	.word 0x02358D4C	; 0232F4B0
+	.word P1_BssStart + 0x282CC	; 0232F4B0
 pool_0232F4B4:
 loc_0232F4B4:
-	.word 0x02358D54	; 0232F4B4
+	.word P1_BssStart + 0x282D4	; 0232F4B4
 
 ; ===== function loc_0232F4B8 =====
 loc_0232F4B8:
@@ -32302,25 +33757,25 @@ loc_0232F50A:
 	.byte 0xC0, 0x46	; 0232F514
 pool_0232F514:
 loc_0232F514:
-	.word 0x02358D44	; 0232F514
+	.word P1_BssStart + 0x282C4	; 0232F514
 pool_0232F518:
 loc_0232F518:
-	.word 0x02358D54	; 0232F518
+	.word P1_BssStart + 0x282D4	; 0232F518
 pool_0232F51C:
 loc_0232F51C:
 	.word 0x0232F421	; 0232F51C
 pool_0232F520:
 loc_0232F520:
-	.word 0x02358D78	; 0232F520
+	.word P1_BssStart + 0x282F8	; 0232F520
 pool_0232F524:
 loc_0232F524:
 	.word 0x02358D64	; 0232F524
 pool_0232F528:
 loc_0232F528:
-	.word 0x027FFC3C	; 0232F528
+	.word FirmwareBootInfoAddress + BootInfoVBlankCountOffset	; 0232F528
 pool_0232F52C:
 loc_0232F52C:
-	.word 0x02358D50	; 0232F52C
+	.word P1_BssStart + 0x282D0	; 0232F52C
 
 ; ===== function loc_0232F530 =====
 loc_0232F530:
@@ -32339,14 +33794,14 @@ loc_0232F542:
 	mov r4,#0x0	; 0232F546
 	ldr r3,[pool_0232F554]	; 0232F548
 	str r4,[r3,#0x4]	; 0232F54A
-	.byte 0x90, 0x47	; 0232F54C
+	blx r2	; 0232F54C
 loc_0232F54E:
 	pop {r4}	; 0232F54E
 	pop {r3}	; 0232F550
 	bx r3	; 0232F552
 pool_0232F554:
 loc_0232F554:
-	.word 0x02358D54	; 0232F554
+	.word P1_BssStart + 0x282D4	; 0232F554
 	str r0,[r1,#0x0]	; 0232F558
 	bx lr	; 0232F55A
 
@@ -32361,18 +33816,18 @@ loc_0232F55E:
 	.byte 0xC0, 0x46	; 0232F568
 pool_0232F568:
 loc_0232F568:
-	.word 0x02358D54	; 0232F568
+	.word P1_BssStart + 0x282D4	; 0232F568
 
 ; ===== function loc_0232F56C =====
 loc_0232F56C:
 	push {lr}	; 0232F56C
 	sub sp,#0x4	; 0232F56E
-	blx loc_0232C4BC	; 0232F570
+	blx P1_Arm9DisableIrqReturnPriorMask	; 0232F570
 	ldr r1,[pool_0232F598]	; 0232F574
 	ldr r2,[r1,#0x0]	; 0232F576
 	cmp r2,#0x0	; 0232F578
 	beq loc_0232F588	; 0232F57A
-	blx loc_0232C4D0	; 0232F57C
+	blx P1_Arm9RestoreIrqMask	; 0232F57C
 	mov r0,#0x0	; 0232F580
 	add sp,#0x4	; 0232F582
 	pop {r3}	; 0232F584
@@ -32380,14 +33835,14 @@ loc_0232F56C:
 loc_0232F588:
 	mov r2,#0x1	; 0232F588
 	str r2,[r1,#0x0]	; 0232F58A
-	blx loc_0232C4D0	; 0232F58C
+	blx P1_Arm9RestoreIrqMask	; 0232F58C
 	mov r0,#0x1	; 0232F590
 	add sp,#0x4	; 0232F592
 	pop {r3}	; 0232F594
 	bx r3	; 0232F596
 pool_0232F598:
 loc_0232F598:
-	.word 0x02358D54	; 0232F598
+	.word P1_BssStart + 0x282D4	; 0232F598
 .arm
 
 ; ===== function loc_0232F59C =====
@@ -32400,7 +33855,7 @@ loc_0232F5A0:
 	bx lr	; 0232F5AC
 pool_0232F5B0:
 loc_0232F5B0:
-	.word 0x02358D9C	; 0232F5B0
+	.word P1_BssStart + 0x2831C	; 0232F5B0
 .thumb
 	ldr r1,[pool_0232F5BC]	; 0232F5B4
 	str r0,[r1,#0x20]	; 0232F5B6
@@ -32408,7 +33863,7 @@ loc_0232F5B0:
 	.byte 0xC0, 0x46	; 0232F5BC
 pool_0232F5BC:
 loc_0232F5BC:
-	.word 0x02358D9C	; 0232F5BC
+	.word P1_BssStart + 0x2831C	; 0232F5BC
 
 ; ===== function loc_0232F5C0 =====
 loc_0232F5C0:
@@ -32633,12 +34088,12 @@ loc_0232F74C:
 loc_0232F750:
 	add r0,r5,#0x0	; 0232F750
 	mov r1,#0xa	; 0232F752
-	blx loc_0232CF44	; 0232F754
+	blx P1_UnsignedDivMod	; 0232F754
 	lsl r1,r4	; 0232F758
 	add r6,r6,r1	; 0232F75A
 	add r0,r5,#0x0	; 0232F75C
 	mov r1,#0xa	; 0232F75E
-	blx loc_0232CF44	; 0232F760
+	blx P1_UnsignedDivMod	; 0232F760
 	add r5,r0,#0x0	; 0232F764
 	add r4,r4,#0x4	; 0232F766
 	add r7,r7,#0x1	; 0232F768
@@ -32724,7 +34179,7 @@ loc_0232F7EE:
 	str r0,[r1,#0x4]	; 0232F7F0
 	mov r0,#0x6	; 0232F7F2
 	ldr r1,[r1,#0x10]	; 0232F7F4
-	.byte 0x90, 0x47	; 0232F7F6
+	blx r2	; 0232F7F6
 	add sp,#0x4	; 0232F7F8
 	pop {r4,r5}	; 0232F7FA
 	pop {r3}	; 0232F7FC
@@ -32746,7 +34201,7 @@ loc_0232F800:
 	bne loc_0232F81E	; 0232F81A
 	b loc_0232FA8E	; 0232F81C
 loc_0232F81E:
-	.byte 0x80, 0x47	; 0232F81E
+	blx r0	; 0232F81E
 	add sp,#0x4	; 0232F820
 	pop {r4,r5}	; 0232F822
 	pop {r3}	; 0232F824
@@ -32764,14 +34219,34 @@ loc_0232F82E:
 	b loc_0232FA30	; 0232F838
 loc_0232F83A:
 	add r1,r1,r1	; 0232F83A
+P1_SwitchIndexPC_0232F83A:
 	add r1,pc	; 0232F83C
-	ldrh r1,[r1,#0x8]	; 0232F83E
+	ldrh r1,[r1,#(P1_SwitchTable_0232F83A - (P1_SwitchIndexPC_0232F83A + 4))]	; 0232F83E
 	lsl r1,r1,#0x10	; 0232F840
 	asr r1,r1,#0x10	; 0232F842
+P1_SwitchTargetPC_0232F83A:
 	add r1,pc	; 0232F844
 	bx r1	; 0232F846
-	.byte 0xE9, 0x01, 0xE9, 0x01, 0x21, 0x00, 0xE9, 0x01, 0xE9, 0x01, 0x23, 0x02, 0x85, 0x00, 0x9D, 0x00	; 0232F858
-	.byte 0xB5, 0x00, 0x19, 0x01, 0x83, 0x01, 0x23, 0x02, 0x23, 0x02, 0x23, 0x02, 0x23, 0x02, 0x23, 0x02	; 0232F868
+; 表项是相对 ADD 所读 PC 的有符号偏移，保留 ARM/Thumb 状态位。
+; Signed offsets from the ADD's PC, including the ARM/Thumb state bit.
+P1_SwitchTable_0232F83A:
+	.halfword (loc_0232FA30 + 1) - (P1_SwitchTargetPC_0232F83A + 4)
+	.halfword (loc_0232FA30 + 1) - (P1_SwitchTargetPC_0232F83A + 4)
+	.halfword (loc_0232F868 + 1) - (P1_SwitchTargetPC_0232F83A + 4)
+	.halfword (loc_0232FA30 + 1) - (P1_SwitchTargetPC_0232F83A + 4)
+	.halfword (loc_0232FA30 + 1) - (P1_SwitchTargetPC_0232F83A + 4)
+	.halfword (loc_0232FA6A + 1) - (P1_SwitchTargetPC_0232F83A + 4)
+	.halfword (loc_0232F8CC + 1) - (P1_SwitchTargetPC_0232F83A + 4)
+	.halfword (loc_0232F8E4 + 1) - (P1_SwitchTargetPC_0232F83A + 4)
+	.halfword (loc_0232F8FC + 1) - (P1_SwitchTargetPC_0232F83A + 4)
+	.halfword (loc_0232F960 + 1) - (P1_SwitchTargetPC_0232F83A + 4)
+	.halfword (loc_0232F9CA + 1) - (P1_SwitchTargetPC_0232F83A + 4)
+	.halfword (loc_0232FA6A + 1) - (P1_SwitchTargetPC_0232F83A + 4)
+	.halfword (loc_0232FA6A + 1) - (P1_SwitchTargetPC_0232F83A + 4)
+	.halfword (loc_0232FA6A + 1) - (P1_SwitchTargetPC_0232F83A + 4)
+	.halfword (loc_0232FA6A + 1) - (P1_SwitchTargetPC_0232F83A + 4)
+	.halfword (loc_0232FA6A + 1) - (P1_SwitchTargetPC_0232F83A + 4)
+P1_SwitchTable_0232F83AEnd:
 loc_0232F868:
 	ldr r5,[r0,#0x8]	; 0232F868
 	ldr r0,[pool_0232FAA0]	; 0232F86A
@@ -33016,13 +34491,23 @@ loc_0232FA3A:
 	cmp r0,#0x4	; 0232FA40
 	bhi loc_0232FA68	; 0232FA42
 	add r0,r0,r0	; 0232FA44
+P1_SwitchIndexPC_0232FA44:
 	add r0,pc	; 0232FA46
-	ldrh r0,[r0,#0x8]	; 0232FA48
+	ldrh r0,[r0,#(P1_SwitchTable_0232FA44 - (P1_SwitchIndexPC_0232FA44 + 4))]	; 0232FA48
 	lsl r0,r0,#0x10	; 0232FA4A
 	asr r0,r0,#0x10	; 0232FA4C
+P1_SwitchTargetPC_0232FA44:
 	add r0,pc	; 0232FA4E
 	bx r0	; 0232FA50
-	.byte 0x17, 0x00, 0x0B, 0x00, 0x0F, 0x00, 0x13, 0x00, 0x17, 0x00	; 0232FA5C
+; 表项是相对 ADD 所读 PC 的有符号偏移，保留 ARM/Thumb 状态位。
+; Signed offsets from the ADD's PC, including the ARM/Thumb state bit.
+P1_SwitchTable_0232FA44:
+	.halfword (loc_0232FA68 + 1) - (P1_SwitchTargetPC_0232FA44 + 4)
+	.halfword (loc_0232FA5C + 1) - (P1_SwitchTargetPC_0232FA44 + 4)
+	.halfword (loc_0232FA60 + 1) - (P1_SwitchTargetPC_0232FA44 + 4)
+	.halfword (loc_0232FA64 + 1) - (P1_SwitchTargetPC_0232FA44 + 4)
+	.halfword (loc_0232FA68 + 1) - (P1_SwitchTargetPC_0232FA44 + 4)
+P1_SwitchTable_0232FA44End:
 loc_0232FA5C:
 	mov r4,#0x4	; 0232FA5C
 	b loc_0232FA6A	; 0232FA5E
@@ -33053,7 +34538,7 @@ loc_0232FA7C:
 	str r0,[r1,#0x4]	; 0232FA86
 	add r0,r4,#0x0	; 0232FA88
 	ldr r1,[r1,#0x10]	; 0232FA8A
-	.byte 0x90, 0x47	; 0232FA8C
+	blx r2	; 0232FA8C
 loc_0232FA8E:
 	add sp,#0x4	; 0232FA8E
 	pop {r4,r5}	; 0232FA90
@@ -33062,19 +34547,19 @@ loc_0232FA8E:
 	.byte 0xC0, 0x46	; 0232FA98
 pool_0232FA98:
 loc_0232FA98:
-	.word 0x02358D9C	; 0232FA98
+	.word P1_BssStart + 0x2831C	; 0232FA98
 pool_0232FA9C:
 loc_0232FA9C:
 	.word 0x00007F00	; 0232FA9C
 pool_0232FAA0:
 loc_0232FAA0:
-	.word 0x027FFDE8	; 0232FAA0
+	.word FirmwareSystemWorkAddress + SystemWorkRtcOffset	; 0232FAA0
 pool_0232FAA4:
 loc_0232FAA4:
-	.word 0x027FFDEC	; 0232FAA4
+	.word FirmwareSystemWorkAddress + SystemWorkRtcOffset + 0x4	; 0232FAA4
 pool_0232FAA8:
 loc_0232FAA8:
-	.word 0x027FFDEA	; 0232FAA8
+	.word FirmwareSystemWorkAddress + SystemWorkRtcOffset + 0x2	; 0232FAA8
 
 ; ===== function loc_0232FAAC =====
 loc_0232FAAC:
@@ -33100,7 +34585,7 @@ loc_0232FAD0:
 	.word 0x0232F5B5	; 0232FAD0
 pool_0232FAD4:
 loc_0232FAD4:
-	.word 0x02358D9C	; 0232FAD4
+	.word P1_BssStart + 0x2831C	; 0232FAD4
 
 ; ===== function loc_0232FAD8 =====
 loc_0232FAD8:
@@ -33110,12 +34595,12 @@ loc_0232FAD8:
 	add r7,r1,#0x0	; 0232FADE
 	add r4,r2,#0x0	; 0232FAE0
 	add r6,r3,#0x0	; 0232FAE2
-	blx loc_0232C4BC	; 0232FAE4
+	blx P1_Arm9DisableIrqReturnPriorMask	; 0232FAE4
 	ldr r1,[pool_0232FB50]	; 0232FAE8
 	ldr r2,[r1,#0x0]	; 0232FAEA
 	cmp r2,#0x0	; 0232FAEC
 	beq loc_0232FAFE	; 0232FAEE
-	blx loc_0232C4D0	; 0232FAF0
+	blx P1_Arm9RestoreIrqMask	; 0232FAF0
 	mov r0,#0x1	; 0232FAF4
 	add sp,#0x4	; 0232FAF6
 	pop {r4,r5,r6,r7}	; 0232FAF8
@@ -33124,7 +34609,7 @@ loc_0232FAD8:
 loc_0232FAFE:
 	mov r2,#0x1	; 0232FAFE
 	str r2,[r1,#0x0]	; 0232FB00
-	blx loc_0232C4D0	; 0232FB02
+	blx P1_Arm9RestoreIrqMask	; 0232FB02
 	mov r1,#0x0	; 0232FB06
 	ldr r0,[pool_0232FB50]	; 0232FB08
 	str r1,[r0,#0x18]	; 0232FB0A
@@ -33164,10 +34649,10 @@ loc_0232FB44:
 	.byte 0xC0, 0x46	; 0232FB50
 pool_0232FB50:
 loc_0232FB50:
-	.word 0x02358D9C	; 0232FB50
+	.word P1_BssStart + 0x2831C	; 0232FB50
 pool_0232FB54:
 loc_0232FB54:
-	.word 0x027FFDEC	; 0232FB54
+	.word FirmwareSystemWorkAddress + SystemWorkRtcOffset + 0x4	; 0232FB54
 
 ; ===== function loc_0232FB58 =====
 loc_0232FB58:
@@ -33193,7 +34678,7 @@ loc_0232FB7C:
 	.word 0x0232F5B5	; 0232FB7C
 pool_0232FB80:
 loc_0232FB80:
-	.word 0x02358D9C	; 0232FB80
+	.word P1_BssStart + 0x2831C	; 0232FB80
 
 ; ===== function loc_0232FB84 =====
 loc_0232FB84:
@@ -33203,12 +34688,12 @@ loc_0232FB84:
 	add r4,r1,#0x0	; 0232FB8A
 	add r6,r2,#0x0	; 0232FB8C
 	add r7,r3,#0x0	; 0232FB8E
-	blx loc_0232C4BC	; 0232FB90
+	blx P1_Arm9DisableIrqReturnPriorMask	; 0232FB90
 	ldr r1,[pool_0232FBEC]	; 0232FB94
 	ldr r2,[r1,#0x0]	; 0232FB96
 	cmp r2,#0x0	; 0232FB98
 	beq loc_0232FBAA	; 0232FB9A
-	blx loc_0232C4D0	; 0232FB9C
+	blx P1_Arm9RestoreIrqMask	; 0232FB9C
 	mov r0,#0x1	; 0232FBA0
 	add sp,#0x4	; 0232FBA2
 	pop {r4,r5,r6,r7}	; 0232FBA4
@@ -33217,7 +34702,7 @@ loc_0232FB84:
 loc_0232FBAA:
 	mov r2,#0x1	; 0232FBAA
 	str r2,[r1,#0x0]	; 0232FBAC
-	blx loc_0232C4D0	; 0232FBAE
+	blx P1_Arm9RestoreIrqMask	; 0232FBAE
 	cmp r5,#0x0	; 0232FBB2
 	bne loc_0232FBBE	; 0232FBB4
 	mov r1,#0x9	; 0232FBB6
@@ -33251,7 +34736,7 @@ loc_0232FBE2:
 	bx r3	; 0232FBEA
 pool_0232FBEC:
 loc_0232FBEC:
-	.word 0x02358D9C	; 0232FBEC
+	.word P1_BssStart + 0x2831C	; 0232FBEC
 
 ; ===== function loc_0232FBF0 =====
 loc_0232FBF0:
@@ -33261,7 +34746,7 @@ loc_0232FBF0:
 	.byte 0xC0, 0x46	; 0232FBF8
 pool_0232FBF8:
 loc_0232FBF8:
-	.word 0x02358D9C	; 0232FBF8
+	.word P1_BssStart + 0x2831C	; 0232FBF8
 
 ; ===== function loc_0232FBFC =====
 loc_0232FBFC:
@@ -33287,7 +34772,7 @@ loc_0232FC20:
 	.word 0x0232F5B5	; 0232FC20
 pool_0232FC24:
 loc_0232FC24:
-	.word 0x02358D9C	; 0232FC24
+	.word P1_BssStart + 0x2831C	; 0232FC24
 
 ; ===== function loc_0232FC28 =====
 loc_0232FC28:
@@ -33298,12 +34783,12 @@ loc_0232FC28:
 	ldrb r1,[r0,#0x0]	; 0232FC30
 	ldr r0,[pool_0232FC84]	; 0232FC32
 	strb r1,[r0,#0x0]	; 0232FC34
-	blx loc_0232C4BC	; 0232FC36
+	blx P1_Arm9DisableIrqReturnPriorMask	; 0232FC36
 	ldr r1,[pool_0232FC88]	; 0232FC3A
 	ldr r2,[r1,#0x0]	; 0232FC3C
 	cmp r2,#0x0	; 0232FC3E
 	beq loc_0232FC50	; 0232FC40
-	blx loc_0232C4D0	; 0232FC42
+	blx P1_Arm9RestoreIrqMask	; 0232FC42
 	mov r0,#0x1	; 0232FC46
 	add sp,#0x4	; 0232FC48
 	pop {r4,r5}	; 0232FC4A
@@ -33312,7 +34797,7 @@ loc_0232FC28:
 loc_0232FC50:
 	mov r2,#0x1	; 0232FC50
 	str r2,[r1,#0x0]	; 0232FC52
-	blx loc_0232C4D0	; 0232FC54
+	blx P1_Arm9RestoreIrqMask	; 0232FC54
 	mov r1,#0xf	; 0232FC58
 	ldr r0,[pool_0232FC88]	; 0232FC5A
 	str r1,[r0,#0x14]	; 0232FC5C
@@ -33337,12 +34822,13 @@ loc_0232FC78:
 	.byte 0xC0, 0x46	; 0232FC84
 pool_0232FC84:
 loc_0232FC84:
-	.word 0x027FFDEC	; 0232FC84
+	.word FirmwareSystemWorkAddress + SystemWorkRtcOffset + 0x4	; 0232FC84
 pool_0232FC88:
 loc_0232FC88:
-	.word 0x02358D9C	; 0232FC88
+	.word P1_BssStart + 0x2831C	; 0232FC88
 
 ; ===== function loc_0232FC8C =====
+P1_Entry_0232FC8C:
 	push {lr}	; 0232FC8C
 	sub sp,#0x4	; 0232FC8E
 	ldr r2,[pool_0232FCB0]	; 0232FC90
@@ -33365,7 +34851,7 @@ loc_0232FCB0:
 	.word 0x0232F5B5	; 0232FCB0
 pool_0232FCB4:
 loc_0232FCB4:
-	.word 0x02358D9C	; 0232FCB4
+	.word P1_BssStart + 0x2831C	; 0232FCB4
 
 ; ===== function loc_0232FCB8 =====
 loc_0232FCB8:
@@ -33378,12 +34864,12 @@ loc_0232FCB8:
 	add r0,r6,#0x0	; 0232FCC6
 	ldr r1,[pool_0232FD18]	; 0232FCC8
 	bl loc_0232F5C0	; 0232FCCA
-	blx loc_0232C4BC	; 0232FCCE
+	blx P1_Arm9DisableIrqReturnPriorMask	; 0232FCCE
 	ldr r1,[pool_0232FD1C]	; 0232FCD2
 	ldr r2,[r1,#0x0]	; 0232FCD4
 	cmp r2,#0x0	; 0232FCD6
 	beq loc_0232FCE6	; 0232FCD8
-	blx loc_0232C4D0	; 0232FCDA
+	blx P1_Arm9RestoreIrqMask	; 0232FCDA
 	mov r0,#0x1	; 0232FCDE
 	pop {r4,r5,r6}	; 0232FCE0
 	pop {r3}	; 0232FCE2
@@ -33391,7 +34877,7 @@ loc_0232FCB8:
 loc_0232FCE6:
 	mov r2,#0x1	; 0232FCE6
 	str r2,[r1,#0x0]	; 0232FCE8
-	blx loc_0232C4D0	; 0232FCEA
+	blx P1_Arm9RestoreIrqMask	; 0232FCEA
 	mov r1,#0x5	; 0232FCEE
 	ldr r0,[pool_0232FD1C]	; 0232FCF0
 	str r1,[r0,#0x14]	; 0232FCF2
@@ -33419,7 +34905,7 @@ loc_0232FD18:
 	.word 0x027FFDEC	; 0232FD18
 pool_0232FD1C:
 loc_0232FD1C:
-	.word 0x02358D9C	; 0232FD1C
+	.word P1_BssStart + 0x2831C	; 0232FD1C
 
 ; ===== function loc_0232FD20 =====
 loc_0232FD20:
@@ -33445,7 +34931,7 @@ loc_0232FD44:
 	.word 0x0232F5B5	; 0232FD44
 pool_0232FD48:
 loc_0232FD48:
-	.word 0x02358D9C	; 0232FD48
+	.word P1_BssStart + 0x2831C	; 0232FD48
 
 ; ===== function loc_0232FD4C =====
 loc_0232FD4C:
@@ -33455,12 +34941,12 @@ loc_0232FD4C:
 	add r4,r1,#0x0	; 0232FD52
 	add r6,r2,#0x0	; 0232FD54
 	add r7,r3,#0x0	; 0232FD56
-	blx loc_0232C4BC	; 0232FD58
+	blx P1_Arm9DisableIrqReturnPriorMask	; 0232FD58
 	ldr r1,[pool_0232FDA8]	; 0232FD5C
 	ldr r2,[r1,#0x0]	; 0232FD5E
 	cmp r2,#0x0	; 0232FD60
 	beq loc_0232FD72	; 0232FD62
-	blx loc_0232C4D0	; 0232FD64
+	blx P1_Arm9RestoreIrqMask	; 0232FD64
 	mov r0,#0x1	; 0232FD68
 	add sp,#0x4	; 0232FD6A
 	pop {r4,r5,r6,r7}	; 0232FD6C
@@ -33469,7 +34955,7 @@ loc_0232FD4C:
 loc_0232FD72:
 	mov r2,#0x1	; 0232FD72
 	str r2,[r1,#0x0]	; 0232FD74
-	blx loc_0232C4D0	; 0232FD76
+	blx P1_Arm9RestoreIrqMask	; 0232FD76
 	mov r1,#0x2	; 0232FD7A
 	ldr r0,[pool_0232FDA8]	; 0232FD7C
 	str r1,[r0,#0x14]	; 0232FD7E
@@ -33495,7 +34981,7 @@ loc_0232FD9E:
 	bx r3	; 0232FDA6
 pool_0232FDA8:
 loc_0232FDA8:
-	.word 0x02358D9C	; 0232FDA8
+	.word P1_BssStart + 0x2831C	; 0232FDA8
 
 ; ===== function loc_0232FDAC =====
 loc_0232FDAC:
@@ -33534,10 +35020,10 @@ loc_0232FDE6:
 	.byte 0xC0, 0x46	; 0232FDF0
 pool_0232FDF0:
 loc_0232FDF0:
-	.word 0x02358D98	; 0232FDF0
+	.word P1_BssStart + 0x28318	; 0232FDF0
 pool_0232FDF4:
 loc_0232FDF4:
-	.word 0x02358D9C	; 0232FDF4
+	.word P1_BssStart + 0x2831C	; 0232FDF4
 pool_0232FDF8:
 loc_0232FDF8:
 	.word 0x0232F7C5	; 0232FDF8
@@ -33574,7 +35060,7 @@ loc_0232FE28:
 	.byte 0xC0, 0x46	; 0232FE30
 pool_0232FE30:
 loc_0232FE30:
-	.word 0x0232FDFD	; 0232FE30
+	.word loc_0232FDFC + 1	; 0232FE30
 
 ; ===== function loc_0232FE34 =====
 loc_0232FE34:
@@ -33584,7 +35070,7 @@ loc_0232FE34:
 	.byte 0xC0, 0x46	; 0232FE3C
 pool_0232FE3C:
 loc_0232FE3C:
-	.word 0x0232FDFD	; 0232FE3C
+	.word loc_0232FDFC + 1	; 0232FE3C
 
 ; ===== function loc_0232FE40 =====
 loc_0232FE40:
@@ -33594,7 +35080,7 @@ loc_0232FE40:
 	.byte 0xC0, 0x46	; 0232FE48
 pool_0232FE48:
 loc_0232FE48:
-	.word 0x0232FDFD	; 0232FE48
+	.word loc_0232FDFC + 1	; 0232FE48
 
 ; ===== function loc_0232FE4C =====
 loc_0232FE4C:
@@ -33604,7 +35090,7 @@ loc_0232FE4C:
 	.byte 0xC0, 0x46	; 0232FE54
 pool_0232FE54:
 loc_0232FE54:
-	.word 0x0232FDFD	; 0232FE54
+	.word loc_0232FDFC + 1	; 0232FE54
 
 ; ===== function loc_0232FE58 =====
 loc_0232FE58:
@@ -33614,7 +35100,7 @@ loc_0232FE58:
 	.byte 0xC0, 0x46	; 0232FE60
 pool_0232FE60:
 loc_0232FE60:
-	.word 0x0232FDFD	; 0232FE60
+	.word loc_0232FDFC + 1	; 0232FE60
 
 ; ===== function loc_0232FE64 =====
 loc_0232FE64:
@@ -33624,7 +35110,7 @@ loc_0232FE64:
 	.byte 0xC0, 0x46	; 0232FE6C
 pool_0232FE6C:
 loc_0232FE6C:
-	.word 0x0232FDFD	; 0232FE6C
+	.word loc_0232FDFC + 1	; 0232FE6C
 
 ; ===== function loc_0232FE70 =====
 loc_0232FE70:
@@ -33634,14 +35120,23 @@ loc_0232FE70:
 	.byte 0xC0, 0x46	; 0232FE78
 pool_0232FE78:
 loc_0232FE78:
-	.word 0x0232FDFD	; 0232FE78
+	.word loc_0232FDFC + 1	; 0232FE78
 	.byte 0xE9, 0xD1, 0x32, 0x02, 0x21, 0x00, 0x00, 0x00, 0x80, 0x01, 0x10, 0x00, 0x0D, 0x3E, 0x36, 0x02	; 0232FE8C
-	.byte 0xA9, 0x78, 0x36, 0x02, 0xC1, 0x8D, 0x35, 0x02, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00	; 0232FE9C
-	.byte 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00	; 0232FEAC
+	.byte 0xA9, 0x78, 0x36, 0x02, 0xC1, 0x8D, 0x35, 0x02	; 0232FE8C
+P1_Data_0232FE94:
+	.byte 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00	; 0232FE94
+P1_Data_0232FE9C:
+	.byte 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00	; 0232FE9C
+P1_Data_0232FEA4:
+	.byte 0x02, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00	; 0232FEA4
 	.byte 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x03, 0x00, 0x02, 0x00, 0x05, 0x00, 0x04, 0x00	; 0232FEBC
 	.byte 0x01, 0x00, 0x03, 0x00, 0x02, 0x00, 0x05, 0x00, 0x04, 0x00, 0x00, 0x00, 0x01, 0x00, 0x02, 0x00	; 0232FECC
-	.byte 0x05, 0x00, 0x03, 0x00, 0x04, 0x00, 0x00, 0x00, 0x09, 0x00, 0x00, 0x00, 0x0A, 0x00, 0x00, 0x00	; 0232FEDC
-	.byte 0x0B, 0x00, 0x00, 0x00, 0x0C, 0x00, 0x00, 0x00, 0x05, 0x00, 0x01, 0x00, 0x02, 0x00, 0x03, 0x00	; 0232FEEC
+	.byte 0x05, 0x00, 0x03, 0x00, 0x04, 0x00, 0x00, 0x00	; 0232FECC
+P1_Data_0232FED4:
+	.byte 0x09, 0x00, 0x00, 0x00, 0x0A, 0x00, 0x00, 0x00	; 0232FED4
+	.byte 0x0B, 0x00, 0x00, 0x00, 0x0C, 0x00, 0x00, 0x00	; 0232FEDC
+P1_Data_0232FEE4:
+	.byte 0x05, 0x00, 0x01, 0x00, 0x02, 0x00, 0x03, 0x00	; 0232FEE4
 	.byte 0x04, 0x00, 0x00, 0x00, 0x06, 0x00, 0x07, 0x00, 0x08, 0x00, 0x09, 0x00, 0x0A, 0x00, 0x0B, 0x00	; 0232FEFC
 	.byte 0x0C, 0x00, 0x0C, 0x00, 0x0C, 0x00, 0x0C, 0x00, 0x0C, 0x00, 0x0C, 0x00, 0x0C, 0x00, 0x0C, 0x00	; 0232FF0C
 	.byte 0x00, 0x00, 0x54, 0x00, 0x06, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0x05, 0x00, 0x00, 0x00	; 0232FF1C
@@ -33664,9 +35159,16 @@ loc_0232FE78:
 	.byte 0x00, 0x70, 0x00, 0x00, 0x00, 0xE0, 0x0A, 0x00, 0x00, 0x80, 0x01, 0x00, 0x00, 0xE0, 0x0A, 0x00	; 0233002C
 	.byte 0x00, 0x80, 0x01, 0x00, 0x00, 0xA0, 0x0B, 0x00, 0x00, 0x70, 0x00, 0x00, 0x00, 0xA0, 0x0B, 0x00	; 0233003C
 	.byte 0xFF, 0x7F, 0x00, 0x00, 0xFF, 0x7F, 0x00, 0x00, 0xFF, 0x7F, 0x00, 0x00, 0xFF, 0x7F, 0x00, 0x00	; 0233004C
-	.byte 0x0A, 0x00, 0x00, 0x00, 0x09, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x07, 0x00, 0x00, 0x00	; 0233005C
+P1_Data_0233004C:
+	.byte 0x0A, 0x00, 0x00, 0x00, 0x09, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x07, 0x00, 0x00, 0x00	; 0233004C
 	.byte 0x06, 0x00, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00	; 0233006C
-	.byte 0x02, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x95, 0x00, 0x7F, 0x00, 0x00, 0x00	; 0233007C
+	.byte 0x02, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00	; 0233006C
+P1_Data_02330074:
+	.byte 0x00, 0x00	; 02330074
+P1_Data_02330076:
+	.byte 0x95, 0x00	; 02330076
+P1_Data_02330078:
+	.byte 0x7F, 0x00, 0x00, 0x00	; 02330078
 	.byte 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0x02, 0x00, 0x8A, 0x00, 0x74, 0x00, 0x0E, 0x00, 0x01, 0x00	; 0233008C
 	.byte 0x00, 0x00, 0x06, 0x00, 0x02, 0x00, 0x91, 0x00, 0x7B, 0x00, 0x0E, 0x00, 0x02, 0x00, 0x00, 0x00	; 0233009C
 	.byte 0x09, 0x00, 0x02, 0x00, 0x86, 0x00, 0x70, 0x00, 0x0E, 0x00, 0x03, 0x00, 0x00, 0x00, 0x0C, 0x00	; 023300AC
@@ -33682,10 +35184,22 @@ loc_0232FE78:
 	.byte 0x7A, 0x00, 0x0E, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x01, 0x00, 0x85, 0x00, 0x6F, 0x00	; 0233014C
 	.byte 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0x03, 0x00, 0x87, 0x00, 0x71, 0x00, 0x0E, 0x00	; 0233015C
 	.byte 0x03, 0x00, 0x10, 0x00, 0x0C, 0x00, 0x02, 0x00, 0x85, 0x00, 0x6F, 0x00, 0x0F, 0x00, 0x11, 0x00	; 0233016C
-	.byte 0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00, 0x60, 0x00, 0x02, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00	; 0233017C
-	.byte 0x03, 0x00, 0x24, 0x00, 0x01, 0x00, 0x01, 0x00, 0x02, 0x00, 0x2B, 0x00, 0x00, 0x00, 0x02, 0x00	; 0233018C
-	.byte 0x30, 0x00, 0x31, 0x00, 0x32, 0x00, 0x33, 0x00, 0x34, 0x00, 0x35, 0x00, 0x36, 0x00, 0x37, 0x00	; 0233019C
-	.byte 0x38, 0x00, 0x39, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0x03, 0x00, 0x00, 0x07, 0x00, 0x00, 0x00	; 023301AC
+	.byte 0x00, 0x00, 0xFF, 0xFF	; 0233016C
+P1_Data_02330170:
+	.byte 0x00, 0x00, 0x60, 0x00	; 02330170
+P1_Data_02330174:
+	.byte 0x02, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00	; 02330174
+P1_Data_0233017C:
+	.byte 0x03, 0x00, 0x24, 0x00	; 0233017C
+P1_Data_02330180:
+	.byte 0x01, 0x00	; 02330180
+P1_Data_02330182:
+	.byte 0x01, 0x00, 0x02, 0x00, 0x2B, 0x00, 0x00, 0x00, 0x02, 0x00	; 02330182
+P1_Data_0233018C:
+	.byte 0x30, 0x00, 0x31, 0x00, 0x32, 0x00, 0x33, 0x00, 0x34, 0x00, 0x35, 0x00, 0x36, 0x00, 0x37, 0x00	; 0233018C
+	.byte 0x38, 0x00, 0x39, 0x00, 0x00, 0x00, 0x00, 0x00	; 0233019C
+P1_Data_023301A4:
+	.byte 0x03, 0x03, 0x00, 0x00, 0x07, 0x00, 0x00, 0x00	; 023301A4
 	.byte 0xFF, 0x0F, 0xFF, 0x0F, 0xC7, 0x01, 0x00, 0x00, 0x31, 0x86, 0x32, 0x02, 0x2D, 0x86, 0x32, 0x02	; 023301BC
 	.byte 0x29, 0x86, 0x32, 0x02, 0x00, 0x00, 0x00, 0x00, 0x25, 0x86, 0x32, 0x02, 0x24, 0xD4, 0x00, 0x00	; 023301CC
 	.byte 0x0F, 0x40, 0x00, 0x00, 0x00, 0x01, 0x81, 0x82, 0x82, 0x83, 0x0F, 0x83, 0x0C, 0xC3, 0x03, 0x83	; 023301DC
@@ -33764,157 +35278,498 @@ loc_023302E8:
 	.byte 0x50, 0x1D, 0x04, 0x6D, 0x78, 0x95, 0x01, 0x02, 0x90, 0x7D, 0x05, 0x02, 0x90, 0x86, 0x05, 0x02	; 0233043C
 	.byte 0xF4, 0xC0, 0x05, 0x02, 0xFC, 0xBB, 0x05, 0x02, 0xC4, 0xBD, 0x05, 0x02, 0xE4, 0xC1, 0x06, 0x02	; 0233044C
 	.byte 0x48, 0x44, 0x08, 0x02, 0xF9, 0xA4, 0xFE, 0xEB, 0x84, 0x01, 0x00, 0xEA, 0xEC, 0x49, 0x00, 0x02	; 0233045C
-	.byte 0x56, 0x49, 0x42, 0x32, 0x2E, 0x31, 0x31, 0x4D, 0x61, 0x79, 0x20, 0x32, 0x36, 0x20, 0x32, 0x30	; 0233046C
-	.byte 0x30, 0x35, 0x00, 0x00, 0xC0, 0x0D, 0x33, 0x02, 0xD8, 0x0D, 0x33, 0x02, 0x80, 0x0A, 0x33, 0x02	; 0233047C
-	.byte 0x80, 0x0A, 0x33, 0x02, 0xC0, 0x8D, 0x35, 0x02, 0x2D, 0xFD, 0x5B, 0xFE, 0x97, 0xFE, 0xBB, 0xFE	; 0233048C
-	.byte 0xD4, 0xFE, 0xE7, 0xFE, 0xF7, 0xFE, 0x04, 0xFF, 0x10, 0xFF, 0x1A, 0xFF, 0x23, 0xFF, 0x2C, 0xFF	; 0233049C
-	.byte 0x33, 0xFF, 0x3A, 0xFF, 0x40, 0xFF, 0x46, 0xFF, 0x4C, 0xFF, 0x51, 0xFF, 0x56, 0xFF, 0x5B, 0xFF	; 023304AC
-	.byte 0x5F, 0xFF, 0x64, 0xFF, 0x68, 0xFF, 0x6C, 0xFF, 0x6F, 0xFF, 0x73, 0xFF, 0x76, 0xFF, 0x7A, 0xFF	; 023304BC
-	.byte 0x7D, 0xFF, 0x80, 0xFF, 0x83, 0xFF, 0x86, 0xFF, 0x88, 0xFF, 0x8B, 0xFF, 0x8E, 0xFF, 0x90, 0xFF	; 023304CC
-	.byte 0x92, 0xFF, 0x95, 0xFF, 0x97, 0xFF, 0x99, 0xFF, 0x9C, 0xFF, 0x9E, 0xFF, 0xA0, 0xFF, 0xA2, 0xFF	; 023304DC
-	.byte 0xA4, 0xFF, 0xA6, 0xFF, 0xA8, 0xFF, 0xAA, 0xFF, 0xAB, 0xFF, 0xAD, 0xFF, 0xAF, 0xFF, 0xB1, 0xFF	; 023304EC
-	.byte 0xB2, 0xFF, 0xB4, 0xFF, 0xB6, 0xFF, 0xB7, 0xFF, 0xB9, 0xFF, 0xBA, 0xFF, 0xBC, 0xFF, 0xBD, 0xFF	; 023304FC
-	.byte 0xBF, 0xFF, 0xC0, 0xFF, 0xC2, 0xFF, 0xC3, 0xFF, 0xC4, 0xFF, 0xC6, 0xFF, 0xC7, 0xFF, 0xC8, 0xFF	; 0233050C
-	.byte 0xCA, 0xFF, 0xCB, 0xFF, 0xCC, 0xFF, 0xCD, 0xFF, 0xCF, 0xFF, 0xD0, 0xFF, 0xD1, 0xFF, 0xD2, 0xFF	; 0233051C
-	.byte 0xD3, 0xFF, 0xD5, 0xFF, 0xD6, 0xFF, 0xD7, 0xFF, 0xD8, 0xFF, 0xD9, 0xFF, 0xDA, 0xFF, 0xDB, 0xFF	; 0233052C
-	.byte 0xDC, 0xFF, 0xDD, 0xFF, 0xDE, 0xFF, 0xDF, 0xFF, 0xE0, 0xFF, 0xE1, 0xFF, 0xE2, 0xFF, 0xE3, 0xFF	; 0233053C
-	.byte 0xE4, 0xFF, 0xE5, 0xFF, 0xE6, 0xFF, 0xE7, 0xFF, 0xE8, 0xFF, 0xE9, 0xFF, 0xE9, 0xFF, 0xEA, 0xFF	; 0233054C
-	.byte 0xEB, 0xFF, 0xEC, 0xFF, 0xED, 0xFF, 0xEE, 0xFF, 0xEF, 0xFF, 0xEF, 0xFF, 0xF0, 0xFF, 0xF1, 0xFF	; 0233055C
-	.byte 0xF2, 0xFF, 0xF3, 0xFF, 0xF4, 0xFF, 0xF4, 0xFF, 0xF5, 0xFF, 0xF6, 0xFF, 0xF7, 0xFF, 0xF7, 0xFF	; 0233056C
-	.byte 0xF8, 0xFF, 0xF9, 0xFF, 0xFA, 0xFF, 0xFA, 0xFF, 0xFB, 0xFF, 0xFC, 0xFF, 0xFD, 0xFF, 0xFD, 0xFF	; 0233057C
-	.byte 0xFE, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	; 0233058C
-	.byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	; 0233059C
-	.byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xAA, 0x01, 0x50, 0x03, 0xED, 0x04, 0x82, 0x06, 0xFE, 0x07	; 023305AC
-	.byte 0x65, 0x09, 0xB1, 0x0A, 0xE3, 0x0B, 0xF0, 0x0C, 0xD9, 0x0D, 0x9B, 0x0E, 0x37, 0x0F, 0xA6, 0x0F	; 023305BC
-	.byte 0xE9, 0x0F, 0x00, 0x10, 0xEA, 0x0F, 0xA7, 0x0F, 0x39, 0x0F, 0xA1, 0x0E, 0xDC, 0x0D, 0xF4, 0x0C	; 023305CC
-	.byte 0xE8, 0x0B, 0xBA, 0x0A, 0x6A, 0x09, 0x04, 0x08, 0x87, 0x06, 0xF9, 0x04, 0x56, 0x03, 0xB1, 0x01	; 023305DC
-	.byte 0x06, 0x00, 0x5C, 0xFE, 0xB0, 0xFC, 0x13, 0xFB, 0x84, 0xF9, 0x07, 0xF8, 0x9B, 0xF6, 0x4F, 0xF5	; 023305EC
-	.byte 0x21, 0xF4, 0x13, 0xF3, 0x27, 0xF2, 0x65, 0xF1, 0xCB, 0xF0, 0x5B, 0xF0, 0x17, 0xF0, 0x00, 0xF0	; 023305FC
-	.byte 0x16, 0xF0, 0x58, 0xF0, 0xC7, 0xF0, 0x5F, 0xF1, 0x21, 0xF2, 0x08, 0xF3, 0x18, 0xF4, 0x46, 0xF5	; 0233060C
-	.byte 0x91, 0xF6, 0xF7, 0xF7, 0x79, 0xF9, 0x07, 0xFB, 0xA3, 0xFC, 0x49, 0xFE, 0x00, 0x10, 0xEA, 0x0F	; 0233061C
-	.byte 0xA7, 0x0F, 0x39, 0x0F, 0x9E, 0x0E, 0xDC, 0x0D, 0xF4, 0x0C, 0xE8, 0x0B, 0xB5, 0x0A, 0x6A, 0x09	; 0233062C
-	.byte 0x04, 0x08, 0x87, 0x06, 0xF3, 0x04, 0x56, 0x03, 0xB1, 0x01, 0x06, 0x00, 0x56, 0xFE, 0xB0, 0xFC	; 0233063C
-	.byte 0x13, 0xFB, 0x84, 0xF9, 0x02, 0xF8, 0x9B, 0xF6, 0x4F, 0xF5, 0x21, 0xF4, 0x10, 0xF3, 0x27, 0xF2	; 0233064C
-	.byte 0x65, 0xF1, 0xCB, 0xF0, 0x5A, 0xF0, 0x17, 0xF0, 0x00, 0xF0, 0x16, 0xF0, 0x59, 0xF0, 0xC7, 0xF0	; 0233065C
-	.byte 0x5F, 0xF1, 0x21, 0xF2, 0x0C, 0xF3, 0x18, 0xF4, 0x46, 0xF5, 0x91, 0xF6, 0xFC, 0xF7, 0x79, 0xF9	; 0233066C
-	.byte 0x07, 0xFB, 0xA3, 0xFC, 0x4F, 0xFE, 0xFA, 0xFF, 0xA4, 0x01, 0x4A, 0x03, 0xED, 0x04, 0x7C, 0x06	; 0233067C
-	.byte 0xF9, 0x07, 0x5F, 0x09, 0xB1, 0x0A, 0xDF, 0x0B, 0xED, 0x0C, 0xD6, 0x0D, 0x9B, 0x0E, 0x35, 0x0F	; 0233068C
-	.byte 0xA5, 0x0F, 0xE8, 0x0F, 0x83, 0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x00, 0x96, 0x00, 0x00, 0x00	; 0233069C
-	.byte 0x97, 0x00, 0x00, 0x00, 0x84, 0x00, 0x00, 0x00, 0x6E, 0x00, 0x00, 0x00, 0x82, 0x00, 0x00, 0x00	; 023306AC
-	.byte 0x0D, 0x00, 0x00, 0x00, 0x0E, 0x00, 0x00, 0x00, 0x0E, 0x00, 0x00, 0x00, 0x0E, 0x00, 0x00, 0x00	; 023306BC
-	.byte 0x0E, 0x00, 0x00, 0x00, 0x0E, 0x00, 0x00, 0x00, 0x0C, 0x00, 0x00, 0x00, 0x32, 0x00, 0x30, 0x00	; 023306CC
-	.byte 0x59, 0x00, 0x59, 0x00, 0x2F, 0x00, 0x4D, 0x00, 0x4D, 0x00, 0x00, 0x00, 0x4D, 0x00, 0x4D, 0x00	; 023306DC
-	.byte 0x2E, 0x00, 0x32, 0x00, 0x30, 0x00, 0x59, 0x00, 0x59, 0x00, 0x00, 0x00, 0x4D, 0x00, 0x4D, 0x00	; 023306EC
-	.byte 0x2F, 0x00, 0x32, 0x00, 0x30, 0x00, 0x59, 0x00, 0x59, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00	; 023306FC
-	.byte 0x00, 0x00, 0x00, 0x00, 0x54, 0x00, 0x00, 0x00, 0xA9, 0x00, 0x00, 0x00, 0x58, 0x00, 0x00, 0x00	; 0233070C
-	.byte 0x40, 0x00, 0x00, 0x00, 0x00, 0x6B, 0x3D, 0x02, 0xA0, 0x84, 0x3D, 0x02, 0xE0, 0x98, 0x3D, 0x02	; 0233071C
-	.byte 0x20, 0xAF, 0x3D, 0x02, 0x20, 0xC5, 0x3D, 0x02, 0x00, 0xDB, 0x3D, 0x02, 0x01, 0x00, 0x02, 0x00	; 0233072C
-	.byte 0x00, 0x00, 0x03, 0x00, 0x03, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	; 0233073C
-	.byte 0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x04, 0x00, 0x06, 0x00, 0x08, 0x00, 0x00, 0x00, 0x01, 0x00	; 0233074C
-	.byte 0x02, 0x00, 0x02, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x00	; 0233075C
-	.byte 0x01, 0x00, 0x03, 0x00, 0x00, 0x00, 0x01, 0x00, 0x02, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00	; 0233076C
-	.byte 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	; 0233077C
-	.byte 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x02, 0x00, 0x02, 0x00, 0x03, 0x00, 0x03, 0x00, 0x03, 0x00	; 0233078C
-	.byte 0x03, 0x00, 0x04, 0x00, 0x00, 0x00, 0x01, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	; 0233079C
-	.byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	; 023307AC
-	.byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	; 023307BC
-	.byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	; 023307CC
-	.byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	; 023307DC
-	.byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	; 023307EC
-	.byte 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x02, 0x00, 0x04, 0x00, 0x03, 0x00, 0x00, 0x00	; 023307FC
-	.byte 0x01, 0x00, 0x05, 0x00, 0x08, 0x00, 0x09, 0x00, 0x06, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	; 0233080C
-	.byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	; 0233081C
-	.byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x0A, 0x00	; 0233082C
-	.byte 0x07, 0x00, 0x01, 0x00, 0x05, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00	; 0233083C
-	.byte 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00	; 0233084C
-	.byte 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x03, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00	; 0233085C
-	.byte 0x00, 0x00, 0x03, 0x00, 0x02, 0x00, 0x02, 0x00, 0x02, 0x00, 0x01, 0x00, 0x01, 0x00, 0x02, 0x00	; 0233086C
-	.byte 0x00, 0x00, 0x00, 0x00, 0x4D, 0x00, 0x4D, 0x00, 0x2F, 0x00, 0x44, 0x00, 0x44, 0x00, 0x00, 0x00	; 0233087C
-	.byte 0x44, 0x00, 0x44, 0x00, 0x2E, 0x00, 0x4D, 0x00, 0x4D, 0x00, 0x2E, 0x00, 0x00, 0x00, 0x00, 0x00	; 0233088C
-	.byte 0x44, 0x00, 0x44, 0x00, 0x2F, 0x00, 0x4D, 0x00, 0x4D, 0x00, 0x00, 0x00, 0x32, 0x00, 0x30, 0x00	; 0233089C
-	.byte 0x59, 0x00, 0x59, 0x00, 0x2F, 0x00, 0x4D, 0x00, 0x4D, 0x00, 0x2F, 0x00, 0x44, 0x00, 0x44, 0x00	; 023308AC
-	.byte 0x00, 0x00, 0x00, 0x00, 0x4D, 0x00, 0x4D, 0x00, 0x2F, 0x00, 0x44, 0x00, 0x44, 0x00, 0x2F, 0x00	; 023308BC
-	.byte 0x32, 0x00, 0x30, 0x00, 0x59, 0x00, 0x59, 0x00, 0x00, 0x00, 0x00, 0x00, 0x44, 0x00, 0x44, 0x00	; 023308CC
-	.byte 0x2E, 0x00, 0x4D, 0x00, 0x4D, 0x00, 0x2E, 0x00, 0x32, 0x00, 0x30, 0x00, 0x59, 0x00, 0x59, 0x00	; 023308DC
-	.byte 0x00, 0x00, 0x00, 0x00, 0x44, 0x00, 0x44, 0x00, 0x2F, 0x00, 0x4D, 0x00, 0x4D, 0x00, 0x2F, 0x00	; 023308EC
-	.byte 0x32, 0x00, 0x30, 0x00, 0x59, 0x00, 0x59, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1F, 0x00, 0x1C, 0x00	; 023308FC
-	.byte 0x1F, 0x00, 0x1E, 0x00, 0x1F, 0x00, 0x1E, 0x00, 0x1F, 0x00, 0x1F, 0x00, 0x1E, 0x00, 0x1F, 0x00	; 0233090C
-	.byte 0x1E, 0x00, 0x1F, 0x00, 0xFF, 0x00, 0x00, 0x00, 0x9B, 0x47, 0x26, 0x74, 0xBC, 0x11, 0x4F, 0x6D	; 0233091C
-	.byte 0xBD, 0x11, 0xF1, 0x32, 0xD9, 0x7F, 0xE7, 0x2C, 0xA5, 0x5D, 0xBD, 0x11, 0x10, 0x46, 0xA4, 0x5D	; 0233092C
-	.byte 0x90, 0x4E, 0x73, 0x61, 0x84, 0x2A, 0x91, 0x4E, 0x6A, 0x10, 0xFE, 0x75, 0xC8, 0x29, 0x39, 0x78	; 0233093C
-	.byte 0x0E, 0x42, 0x1B, 0x5D, 0x38, 0x78, 0xA8, 0x12, 0x7D, 0x3F, 0xB9, 0x67, 0xF3, 0x26, 0xEF, 0x54	; 0233094C
-	.byte 0x23, 0x7C, 0xF2, 0x26, 0xC6, 0x6B, 0x37, 0x41, 0xAB, 0x15, 0x0D, 0x73, 0xC7, 0x6B, 0x4F, 0x3B	; 0233095C
-	.byte 0x24, 0x5F, 0xDA, 0x3D, 0x3F, 0x25, 0x49, 0x17, 0xDB, 0x3D, 0xE6, 0x70, 0x6C, 0x74, 0xF7, 0x30	; 0233096C
-	.byte 0x1F, 0x53, 0x38, 0x67, 0x1E, 0x53, 0x51, 0x1A, 0x71, 0x19, 0x7D, 0x5B, 0xD6, 0x4E, 0x70, 0x19	; 0233097C
-	.byte 0x27, 0x3F, 0xCB, 0x75, 0x62, 0x3D, 0x8C, 0x12, 0xB8, 0x74, 0xAD, 0x2F, 0xB9, 0x74, 0xFD, 0x64	; 0233098C
-	.byte 0x9A, 0x6C, 0x3A, 0x4F, 0x6D, 0x27, 0xEF, 0x73, 0xB1, 0x38, 0x3B, 0x4F, 0x1E, 0x57, 0xA3, 0x7E	; 0233099C
-	.byte 0x49, 0x62, 0x87, 0x35, 0x7C, 0x1B, 0x86, 0x35, 0xFB, 0x7A, 0xE4, 0x67, 0x92, 0x5C, 0xE5, 0x67	; 023309AC
-	.byte 0xCA, 0x2B, 0x8C, 0x43, 0x6F, 0x2E, 0x7F, 0x58, 0xB7, 0x14, 0x6E, 0x2E, 0xB9, 0x4C, 0xA2, 0x6F	; 023309BC
-	.byte 0xF0, 0x38, 0x9E, 0x71, 0x5A, 0x47, 0x3C, 0x1F, 0xD8, 0x6A, 0x5B, 0x47, 0x99, 0x51, 0x64, 0x32	; 023309CC
-	.byte 0x41, 0x7B, 0xEF, 0x49, 0x98, 0x51, 0xD7, 0x1C, 0xC0, 0x01, 0x01, 0x04, 0x00, 0x00, 0x00, 0x00	; 023309DC
-	.byte 0x30, 0x31, 0x00, 0x00, 0x41, 0x53, 0x4D, 0x4A, 0x00, 0x00, 0x00, 0x00, 0x41, 0x53, 0x4D, 0x45	; 023309EC
-	.byte 0x00, 0x00, 0x00, 0x00, 0x08, 0x00, 0x09, 0x00, 0x0A, 0x00, 0x0B, 0x00, 0x03, 0x00, 0x04, 0x00	; 023309FC
-	.byte 0x05, 0x00, 0x06, 0x00, 0x19, 0xB1, 0x32, 0x02, 0x19, 0xB1, 0x32, 0x02, 0x19, 0xB1, 0x32, 0x02	; 02330A0C
-	.byte 0x7D, 0xB0, 0x32, 0x02, 0x71, 0xB0, 0x32, 0x02, 0x65, 0xB0, 0x32, 0x02, 0x59, 0xB0, 0x32, 0x02	; 02330A1C
-	.byte 0x19, 0xB1, 0x32, 0x02, 0xAD, 0xB0, 0x32, 0x02, 0xA1, 0xB0, 0x32, 0x02, 0x95, 0xB0, 0x32, 0x02	; 02330A2C
-	.byte 0x89, 0xB0, 0x32, 0x02, 0x19, 0xB1, 0x32, 0x02, 0x19, 0xB1, 0x32, 0x02, 0x19, 0xB1, 0x32, 0x02	; 02330A3C
-	.byte 0x19, 0xB1, 0x32, 0x02, 0x19, 0xB1, 0x32, 0x02, 0x19, 0xB1, 0x32, 0x02, 0x19, 0xB1, 0x32, 0x02	; 02330A4C
-	.byte 0x19, 0xB1, 0x32, 0x02, 0x19, 0xB1, 0x32, 0x02, 0x19, 0xB1, 0x32, 0x02, 0xFF, 0xFF, 0xFF, 0xFF	; 02330A5C
-	.byte 0x01, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	; 02330A6C
-	.byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	; 02330A7C
-	.byte 0x00, 0x00, 0x00, 0x00, 0x02, 0x69, 0xA0, 0xE3, 0x03, 0x74, 0xA0, 0xE3, 0x68, 0x00, 0x9F, 0xE5	; 02330A8C
-	.byte 0x09, 0x10, 0xA0, 0xE3, 0xB0, 0x10, 0xC0, 0xE1, 0xB0, 0x10, 0xD0, 0xE1, 0x09, 0x10, 0x51, 0xE2	; 02330A9C
-	.byte 0xF9, 0xFF, 0xFF, 0x1A, 0x10, 0xB4, 0x81, 0xB0, 0x13, 0x4A, 0x50, 0x79, 0xC0, 0x07, 0xC0, 0x0F	; 02330AAC
-	.byte 0x00, 0x28, 0x1D, 0xD0, 0x10, 0x88, 0x00, 0x28, 0x1A, 0xD1, 0xD1, 0x88, 0x0F, 0x48, 0x81, 0x42	; 02330ABC
-	.byte 0x16, 0xD1, 0x90, 0x68, 0x00, 0x28, 0x13, 0xD1, 0x00, 0x24, 0x0D, 0x4B, 0x0D, 0x4A, 0x11, 0x88	; 02330ACC
-	.byte 0x18, 0x88, 0x81, 0x42, 0x03, 0xD0, 0x00, 0x20, 0x01, 0xB0, 0x10, 0xBC, 0x70, 0x47, 0x9B, 0x1C	; 02330ADC
-	.byte 0x92, 0x1C, 0x64, 0x1C, 0x10, 0x2C, 0xF2, 0xD3, 0x01, 0x20, 0x01, 0xB0, 0x10, 0xBC, 0x70, 0x47	; 02330AEC
-	.byte 0x00, 0x20, 0x01, 0xB0, 0x10, 0xBC, 0x70, 0x47, 0x30, 0xFC, 0x7F, 0x02, 0x30, 0x31, 0x00, 0x00	; 02330AFC
-	.byte 0x80, 0x01, 0x00, 0x08, 0x00, 0x80, 0xFF, 0x01, 0xF0, 0xB5, 0x83, 0xB0, 0x33, 0xF3, 0xF2, 0xE8	; 02330B0C
-	.byte 0x00, 0x04, 0x00, 0x0C, 0x00, 0x90, 0x33, 0xF3, 0x99, 0xF9, 0xFF, 0xF7, 0xC3, 0xFF, 0x00, 0x28	; 02330B1C
-	.byte 0x35, 0xD0, 0x34, 0xF3, 0x0E, 0xEA, 0x01, 0x90, 0x01, 0x20, 0x34, 0xF3, 0x87, 0xFB, 0x00, 0x25	; 02330B2C
-	.byte 0x0B, 0x27, 0x1C, 0x4E, 0x2C, 0x1C, 0x37, 0x80, 0x01, 0x20, 0x34, 0xF3, 0x7F, 0xFB, 0x30, 0x5F	; 02330B3C
-	.byte 0x0B, 0x28, 0x02, 0xD0, 0x6D, 0x1C, 0x19, 0x2D, 0xF5, 0xDB, 0x00, 0x25, 0x15, 0x4F, 0x2C, 0x1C	; 02330B4C
-	.byte 0x15, 0x4E, 0x01, 0x20, 0x34, 0xF3, 0x72, 0xFB, 0x38, 0x5F, 0x30, 0x40, 0xB0, 0x42, 0x02, 0xD0	; 02330B5C
-	.byte 0x6D, 0x1C, 0x19, 0x2D, 0xF5, 0xDB, 0x11, 0x49, 0x11, 0x48, 0x01, 0x80, 0x00, 0x25, 0x01, 0x26	; 02330B6C
-	.byte 0x0C, 0x4F, 0x2C, 0x1C, 0x30, 0x1C, 0x34, 0xF3, 0x61, 0xFB, 0x38, 0x5F, 0x30, 0x40, 0x00, 0x28	; 02330B7C
-	.byte 0x02, 0xD0, 0x6D, 0x1C, 0x19, 0x2D, 0xF5, 0xDB, 0x01, 0x98, 0x34, 0xF3, 0xE4, 0xE9, 0x00, 0x98	; 02330B8C
-	.byte 0x33, 0xF3, 0xA8, 0xF8, 0x00, 0x98, 0x33, 0xF3, 0xDA, 0xE8, 0x03, 0xB0, 0xF0, 0xBC, 0x08, 0xBC	; 02330B9C
-	.byte 0x18, 0x47, 0xC0, 0x46, 0x20, 0x04, 0x01, 0x08, 0x00, 0x40, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00	; 02330BAC
-	.byte 0x0A, 0x04, 0x01, 0x08, 0x00, 0x40, 0x2D, 0xE9, 0x01, 0xC3, 0xA0, 0xE3, 0x21, 0xCE, 0x8C, 0xE2	; 02330BBC
-	.byte 0x08, 0x10, 0x1C, 0xE5, 0x00, 0x00, 0x51, 0xE3, 0x00, 0x80, 0xBD, 0x08, 0x06, 0x00, 0x9C, 0xE8	; 02330BCC
-	.byte 0x02, 0x10, 0x11, 0xE0, 0x00, 0x80, 0xBD, 0x08, 0x02, 0x31, 0xA0, 0xE3, 0x11, 0x0F, 0x6F, 0xE1	; 02330BDC
-	.byte 0x33, 0x10, 0xD1, 0xE1, 0xFC, 0xFF, 0xFF, 0x1A, 0x33, 0x10, 0xA0, 0xE1, 0x04, 0x10, 0x8C, 0xE5	; 02330BEC
-	.byte 0x1F, 0x00, 0x70, 0xE2, 0x08, 0x10, 0x9F, 0xE5, 0x00, 0x01, 0x91, 0xE7, 0x04, 0xE0, 0x9F, 0xE5	; 02330BFC
-	.byte 0x10, 0xFF, 0x2F, 0xE1, 0x00, 0x0A, 0x33, 0x02, 0x88, 0x81, 0xFF, 0x01, 0x3C, 0xC1, 0x9F, 0xE5	; 02330C0C
-	.byte 0xB0, 0x30, 0xDC, 0xE1, 0x00, 0x00, 0xA0, 0xE3, 0x00, 0x00, 0x53, 0xE3, 0x0C, 0x00, 0x00, 0x0A	; 02330C1C
-	.byte 0xB0, 0x00, 0xCC, 0xE1, 0x28, 0xC1, 0x9F, 0xE5, 0x01, 0x10, 0xA0, 0xE3, 0xB0, 0x10, 0xCC, 0xE1	; 02330C2C
-	.byte 0x0C, 0xC0, 0x9C, 0xE5, 0x01, 0x20, 0xA0, 0xE3, 0x00, 0x00, 0x5C, 0xE3, 0x04, 0x00, 0x00, 0x0A	; 02330C3C
-	.byte 0x6C, 0x00, 0x9C, 0xE5, 0x11, 0x00, 0x13, 0xE1, 0x64, 0x20, 0x8C, 0x15, 0x68, 0xC0, 0x9C, 0xE5	; 02330C4C
-	.byte 0xF8, 0xFF, 0xFF, 0xEA, 0xF8, 0xC0, 0x9F, 0xE5, 0xB0, 0x10, 0xDC, 0xE1, 0x00, 0x00, 0x51, 0xE3	; 02330C5C
-	.byte 0x04, 0xF0, 0x9D, 0x04, 0x00, 0x10, 0xA0, 0xE3, 0xB0, 0x10, 0xCC, 0xE1, 0xD2, 0x30, 0xA0, 0xE3	; 02330C6C
-	.byte 0x03, 0xF0, 0x21, 0xE1, 0x0C, 0x20, 0x8C, 0xE2, 0x00, 0x10, 0x92, 0xE5, 0x00, 0x00, 0x51, 0xE3	; 02330C7C
-	.byte 0xB4, 0x06, 0xD1, 0x11, 0x01, 0x00, 0x50, 0x13, 0x68, 0x10, 0x91, 0x15, 0xFA, 0xFF, 0xFF, 0x1A	; 02330C8C
-	.byte 0x00, 0x00, 0x51, 0xE3, 0x02, 0x00, 0x00, 0x1A, 0x92, 0x30, 0xA0, 0xE3, 0x03, 0xF0, 0x21, 0xE1	; 02330C9C
-	.byte 0x04, 0xF0, 0x9D, 0xE4, 0x08, 0x00, 0x9C, 0xE5, 0x00, 0x00, 0x51, 0xE1, 0xF9, 0xFF, 0xFF, 0x0A	; 02330CAC
-	.byte 0x10, 0x30, 0x9C, 0xE5, 0x00, 0x00, 0x53, 0xE3, 0x03, 0x00, 0x00, 0x0A, 0x03, 0x10, 0x2D, 0xE9	; 02330CBC
-	.byte 0x0F, 0xE0, 0xA0, 0xE1, 0x13, 0xFF, 0x2F, 0xE1, 0x03, 0x10, 0xBD, 0xE8, 0x08, 0x10, 0x8C, 0xE5	; 02330CCC
-	.byte 0x00, 0x20, 0x4F, 0xE1, 0x00, 0x20, 0xA0, 0xE5, 0x03, 0x00, 0x2D, 0xE9, 0x00, 0x00, 0x80, 0xE2	; 02330CDC
-	.byte 0x48, 0x00, 0x80, 0xE2, 0x6C, 0x10, 0x9F, 0xE5, 0x31, 0xFF, 0x2F, 0xE1, 0x03, 0x00, 0xBD, 0xE8	; 02330CEC
-	.byte 0x0C, 0x00, 0xBD, 0xE9, 0x0C, 0x00, 0xA0, 0xE9, 0x0C, 0x50, 0xBD, 0xE9, 0xFC, 0x7F, 0xE0, 0xE9	; 02330CFC
-	.byte 0x00, 0x40, 0xA0, 0xE9, 0xD3, 0x30, 0xA0, 0xE3, 0x03, 0xF0, 0x21, 0xE1, 0x00, 0x20, 0xA0, 0xE9	; 02330D0C
-	.byte 0x02, 0x00, 0x2D, 0xE9, 0x00, 0x00, 0x81, 0xE2, 0x48, 0x00, 0x80, 0xE2, 0x38, 0x10, 0x9F, 0xE5	; 02330D1C
-	.byte 0x31, 0xFF, 0x2F, 0xE1, 0x02, 0x00, 0xBD, 0xE8, 0x44, 0xD0, 0x91, 0xE5, 0xD2, 0x30, 0xA0, 0xE3	; 02330D2C
-	.byte 0x03, 0xF0, 0x21, 0xE1, 0x00, 0x20, 0xB1, 0xE5, 0x02, 0xF0, 0x69, 0xE1, 0x40, 0xE0, 0x91, 0xE5	; 02330D3C
-	.byte 0xFF, 0x7F, 0xF1, 0xE9, 0x00, 0x00, 0xA0, 0xE1, 0x0F, 0x50, 0x2D, 0xE8, 0x00, 0x80, 0xBD, 0xE8	; 02330D4C
-	.byte 0x00, 0x00, 0x00, 0x03, 0x00, 0x6E, 0x35, 0x02, 0xC5, 0xEA, 0x32, 0x02, 0x85, 0xEA, 0x32, 0x02	; 02330D5C
-	.byte 0xF0, 0xB5, 0x81, 0xB0, 0x05, 0x1C, 0x0C, 0x1C, 0x16, 0x1C, 0x1F, 0x1C, 0x34, 0xF3, 0xE8, 0xE8	; 02330D6C
-	.byte 0x0C, 0x21, 0x4D, 0x43, 0x06, 0x4A, 0xA9, 0x18, 0x0C, 0x60, 0x4E, 0x60, 0x8F, 0x60, 0x11, 0x68	; 02330D7C
-	.byte 0x11, 0x68, 0x34, 0xF3, 0xE8, 0xE8, 0x01, 0xB0, 0xF0, 0xBC, 0x08, 0xBC, 0x18, 0x47, 0xC0, 0x46	; 02330D8C
-	.byte 0xB0, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	; 02330D9C
-	.byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	; 02330DAC
-	.byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	; 02330DBC
-	.byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0xFF, 0x01, 0x20, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	; 02330DCC
-	.byte 0x00, 0x00, 0x00, 0x03, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x21, 0x06, 0xC0, 0xDE	; 02330DDC
-	.byte 0x70, 0x04, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00	; 02330DE4
+; ASCII VIB build identifier with the embedded build date. / 含内嵌构建日期的 ASCII VIB 构建标识。
+P1_VibBuildIdentifier:
+	.ascii "VIB2.11May 26 2005", 0
+	.byte 0x00	; 0233046F
+; CRT：复制描述符范围、初始化数据源、主 BSS 范围。
+; CRT: copy-descriptor bounds, initialized-data source, main BSS bounds.
+P1_CrtDataInitTable:
+	.word P1_CopyDescriptors, P1_CopyDescriptorsEnd
+	.word P1_ItcmLoadStart
+	.word P1_BssStart, P3_FirmwareUiEntry
+	.byte 0x2D, 0xFD, 0x5B, 0xFE, 0x97, 0xFE, 0xBB, 0xFE, 0xD4, 0xFE, 0xE7, 0xFE, 0xF7, 0xFE, 0x04, 0xFF	; 02330484
+	.byte 0x10, 0xFF, 0x1A, 0xFF, 0x23, 0xFF, 0x2C, 0xFF, 0x33, 0xFF, 0x3A, 0xFF, 0x40, 0xFF, 0x46, 0xFF	; 02330494
+	.byte 0x4C, 0xFF, 0x51, 0xFF, 0x56, 0xFF, 0x5B, 0xFF, 0x5F, 0xFF, 0x64, 0xFF, 0x68, 0xFF, 0x6C, 0xFF	; 023304A4
+	.byte 0x6F, 0xFF, 0x73, 0xFF, 0x76, 0xFF, 0x7A, 0xFF, 0x7D, 0xFF, 0x80, 0xFF, 0x83, 0xFF, 0x86, 0xFF	; 023304B4
+	.byte 0x88, 0xFF, 0x8B, 0xFF, 0x8E, 0xFF, 0x90, 0xFF, 0x92, 0xFF, 0x95, 0xFF, 0x97, 0xFF, 0x99, 0xFF	; 023304C4
+	.byte 0x9C, 0xFF, 0x9E, 0xFF, 0xA0, 0xFF, 0xA2, 0xFF, 0xA4, 0xFF, 0xA6, 0xFF, 0xA8, 0xFF, 0xAA, 0xFF	; 023304D4
+	.byte 0xAB, 0xFF, 0xAD, 0xFF, 0xAF, 0xFF, 0xB1, 0xFF, 0xB2, 0xFF, 0xB4, 0xFF, 0xB6, 0xFF, 0xB7, 0xFF	; 023304E4
+	.byte 0xB9, 0xFF, 0xBA, 0xFF, 0xBC, 0xFF, 0xBD, 0xFF, 0xBF, 0xFF, 0xC0, 0xFF, 0xC2, 0xFF, 0xC3, 0xFF	; 023304F4
+	.byte 0xC4, 0xFF, 0xC6, 0xFF, 0xC7, 0xFF, 0xC8, 0xFF, 0xCA, 0xFF, 0xCB, 0xFF, 0xCC, 0xFF, 0xCD, 0xFF	; 02330504
+	.byte 0xCF, 0xFF, 0xD0, 0xFF, 0xD1, 0xFF, 0xD2, 0xFF, 0xD3, 0xFF, 0xD5, 0xFF, 0xD6, 0xFF, 0xD7, 0xFF	; 02330514
+	.byte 0xD8, 0xFF, 0xD9, 0xFF, 0xDA, 0xFF, 0xDB, 0xFF, 0xDC, 0xFF, 0xDD, 0xFF, 0xDE, 0xFF, 0xDF, 0xFF	; 02330524
+	.byte 0xE0, 0xFF, 0xE1, 0xFF, 0xE2, 0xFF, 0xE3, 0xFF, 0xE4, 0xFF, 0xE5, 0xFF, 0xE6, 0xFF, 0xE7, 0xFF	; 02330534
+	.byte 0xE8, 0xFF, 0xE9, 0xFF, 0xE9, 0xFF, 0xEA, 0xFF, 0xEB, 0xFF, 0xEC, 0xFF, 0xED, 0xFF, 0xEE, 0xFF	; 02330544
+	.byte 0xEF, 0xFF, 0xEF, 0xFF, 0xF0, 0xFF, 0xF1, 0xFF, 0xF2, 0xFF, 0xF3, 0xFF, 0xF4, 0xFF, 0xF4, 0xFF	; 02330554
+	.byte 0xF5, 0xFF, 0xF6, 0xFF, 0xF7, 0xFF, 0xF7, 0xFF, 0xF8, 0xFF, 0xF9, 0xFF, 0xFA, 0xFF, 0xFA, 0xFF	; 02330564
+	.byte 0xFB, 0xFF, 0xFC, 0xFF, 0xFD, 0xFF, 0xFD, 0xFF, 0xFE, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00	; 02330574
+	.byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	; 02330584
+	.byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	; 02330594
+P1_Data_023305A0:
+	.byte 0x00, 0x00, 0xAA, 0x01	; 023305A0
+	.byte 0x50, 0x03, 0xED, 0x04, 0x82, 0x06, 0xFE, 0x07, 0x65, 0x09, 0xB1, 0x0A, 0xE3, 0x0B, 0xF0, 0x0C	; 023305A4
+	.byte 0xD9, 0x0D, 0x9B, 0x0E, 0x37, 0x0F, 0xA6, 0x0F, 0xE9, 0x0F, 0x00, 0x10, 0xEA, 0x0F, 0xA7, 0x0F	; 023305B4
+	.byte 0x39, 0x0F, 0xA1, 0x0E, 0xDC, 0x0D, 0xF4, 0x0C, 0xE8, 0x0B, 0xBA, 0x0A, 0x6A, 0x09, 0x04, 0x08	; 023305C4
+	.byte 0x87, 0x06, 0xF9, 0x04, 0x56, 0x03, 0xB1, 0x01, 0x06, 0x00, 0x5C, 0xFE, 0xB0, 0xFC, 0x13, 0xFB	; 023305D4
+	.byte 0x84, 0xF9, 0x07, 0xF8, 0x9B, 0xF6, 0x4F, 0xF5, 0x21, 0xF4, 0x13, 0xF3, 0x27, 0xF2, 0x65, 0xF1	; 023305E4
+	.byte 0xCB, 0xF0, 0x5B, 0xF0, 0x17, 0xF0, 0x00, 0xF0, 0x16, 0xF0, 0x58, 0xF0, 0xC7, 0xF0, 0x5F, 0xF1	; 023305F4
+	.byte 0x21, 0xF2, 0x08, 0xF3, 0x18, 0xF4, 0x46, 0xF5, 0x91, 0xF6, 0xF7, 0xF7, 0x79, 0xF9, 0x07, 0xFB	; 02330604
+	.byte 0xA3, 0xFC, 0x49, 0xFE	; 02330614
+P1_Data_02330618:
+	.byte 0x00, 0x10, 0xEA, 0x0F, 0xA7, 0x0F, 0x39, 0x0F, 0x9E, 0x0E, 0xDC, 0x0D	; 02330618
+	.byte 0xF4, 0x0C, 0xE8, 0x0B, 0xB5, 0x0A, 0x6A, 0x09, 0x04, 0x08, 0x87, 0x06, 0xF3, 0x04, 0x56, 0x03	; 02330624
+	.byte 0xB1, 0x01, 0x06, 0x00, 0x56, 0xFE, 0xB0, 0xFC, 0x13, 0xFB, 0x84, 0xF9, 0x02, 0xF8, 0x9B, 0xF6	; 02330634
+	.byte 0x4F, 0xF5, 0x21, 0xF4, 0x10, 0xF3, 0x27, 0xF2, 0x65, 0xF1, 0xCB, 0xF0, 0x5A, 0xF0, 0x17, 0xF0	; 02330644
+	.byte 0x00, 0xF0, 0x16, 0xF0, 0x59, 0xF0, 0xC7, 0xF0, 0x5F, 0xF1, 0x21, 0xF2, 0x0C, 0xF3, 0x18, 0xF4	; 02330654
+	.byte 0x46, 0xF5, 0x91, 0xF6, 0xFC, 0xF7, 0x79, 0xF9, 0x07, 0xFB, 0xA3, 0xFC, 0x4F, 0xFE, 0xFA, 0xFF	; 02330664
+	.byte 0xA4, 0x01, 0x4A, 0x03, 0xED, 0x04, 0x7C, 0x06, 0xF9, 0x07, 0x5F, 0x09, 0xB1, 0x0A, 0xDF, 0x0B	; 02330674
+	.byte 0xED, 0x0C, 0xD6, 0x0D, 0x9B, 0x0E, 0x35, 0x0F, 0xA5, 0x0F, 0xE8, 0x0F, 0x83, 0x00, 0x00, 0x00	; 02330684
+	.byte 0x80, 0x00, 0x00, 0x00, 0x96, 0x00, 0x00, 0x00, 0x97, 0x00, 0x00, 0x00, 0x84, 0x00, 0x00, 0x00	; 02330694
+	.byte 0x6E, 0x00, 0x00, 0x00, 0x82, 0x00, 0x00, 0x00, 0x0D, 0x00, 0x00, 0x00, 0x0E, 0x00, 0x00, 0x00	; 023306A4
+	.byte 0x0E, 0x00, 0x00, 0x00, 0x0E, 0x00, 0x00, 0x00, 0x0E, 0x00, 0x00, 0x00, 0x0E, 0x00, 0x00, 0x00	; 023306B4
+	.byte 0x0C, 0x00, 0x00, 0x00, 0x32, 0x00, 0x30, 0x00, 0x59, 0x00, 0x59, 0x00, 0x2F, 0x00, 0x4D, 0x00	; 023306C4
+	.byte 0x4D, 0x00, 0x00, 0x00, 0x4D, 0x00, 0x4D, 0x00, 0x2E, 0x00, 0x32, 0x00, 0x30, 0x00, 0x59, 0x00	; 023306D4
+	.byte 0x59, 0x00, 0x00, 0x00, 0x4D, 0x00, 0x4D, 0x00, 0x2F, 0x00, 0x32, 0x00, 0x30, 0x00, 0x59, 0x00	; 023306E4
+	.byte 0x59, 0x00, 0x00, 0x00	; 023306F4
+P1_Data_023306F8:
+	.byte 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x54, 0x00, 0x00, 0x00	; 023306F8
+	.byte 0xA9, 0x00, 0x00, 0x00	; 02330704
+P1_Data_02330708:
+	.byte 0x58, 0x00, 0x00, 0x00, 0x40, 0x00, 0x00, 0x00, 0x00, 0x6B, 0x3D, 0x02	; 02330708
+	.byte 0xA0, 0x84, 0x3D, 0x02, 0xE0, 0x98, 0x3D, 0x02, 0x20, 0xAF, 0x3D, 0x02, 0x20, 0xC5, 0x3D, 0x02	; 02330714
+	.byte 0x00, 0xDB, 0x3D, 0x02	; 02330724
+P1_Data_02330728:
+	.byte 0x01, 0x00, 0x02, 0x00, 0x00, 0x00, 0x03, 0x00, 0x03, 0x00, 0x03, 0x00	; 02330728
+	.byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x04, 0x00	; 02330734
+	.byte 0x06, 0x00, 0x08, 0x00, 0x00, 0x00, 0x01, 0x00, 0x02, 0x00, 0x02, 0x00, 0x01, 0x00, 0x00, 0x00	; 02330744
+	.byte 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x01, 0x00, 0x03, 0x00, 0x00, 0x00, 0x01, 0x00	; 02330754
+	.byte 0x02, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00	; 02330764
+	.byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x02, 0x00	; 02330774
+	.byte 0x02, 0x00, 0x03, 0x00, 0x03, 0x00, 0x03, 0x00, 0x03, 0x00, 0x04, 0x00, 0x00, 0x00, 0x01, 0x00	; 02330784
+	.byte 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	; 02330794
+	.byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	; 023307A4
+	.byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	; 023307B4
+	.byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	; 023307C4
+	.byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	; 023307D4
+	.byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00	; 023307E4
+	.byte 0x02, 0x00, 0x04, 0x00, 0x03, 0x00, 0x00, 0x00, 0x01, 0x00, 0x05, 0x00, 0x08, 0x00, 0x09, 0x00	; 023307F4
+	.byte 0x06, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	; 02330804
+	.byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	; 02330814
+	.byte 0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x0A, 0x00, 0x07, 0x00, 0x01, 0x00, 0x05, 0x00, 0x01, 0x00	; 02330824
+	.byte 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00	; 02330834
+	.byte 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00	; 02330844
+	.byte 0x03, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0x00, 0x02, 0x00, 0x02, 0x00	; 02330854
+	.byte 0x02, 0x00, 0x01, 0x00, 0x01, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x4D, 0x00, 0x4D, 0x00	; 02330864
+	.byte 0x2F, 0x00, 0x44, 0x00, 0x44, 0x00, 0x00, 0x00, 0x44, 0x00, 0x44, 0x00, 0x2E, 0x00, 0x4D, 0x00	; 02330874
+	.byte 0x4D, 0x00, 0x2E, 0x00, 0x00, 0x00, 0x00, 0x00, 0x44, 0x00, 0x44, 0x00, 0x2F, 0x00, 0x4D, 0x00	; 02330884
+	.byte 0x4D, 0x00, 0x00, 0x00, 0x32, 0x00, 0x30, 0x00, 0x59, 0x00, 0x59, 0x00, 0x2F, 0x00, 0x4D, 0x00	; 02330894
+	.byte 0x4D, 0x00, 0x2F, 0x00, 0x44, 0x00, 0x44, 0x00, 0x00, 0x00, 0x00, 0x00, 0x4D, 0x00, 0x4D, 0x00	; 023308A4
+	.byte 0x2F, 0x00, 0x44, 0x00, 0x44, 0x00, 0x2F, 0x00, 0x32, 0x00, 0x30, 0x00, 0x59, 0x00, 0x59, 0x00	; 023308B4
+	.byte 0x00, 0x00, 0x00, 0x00, 0x44, 0x00, 0x44, 0x00, 0x2E, 0x00, 0x4D, 0x00, 0x4D, 0x00, 0x2E, 0x00	; 023308C4
+	.byte 0x32, 0x00, 0x30, 0x00, 0x59, 0x00, 0x59, 0x00, 0x00, 0x00, 0x00, 0x00, 0x44, 0x00, 0x44, 0x00	; 023308D4
+	.byte 0x2F, 0x00, 0x4D, 0x00, 0x4D, 0x00, 0x2F, 0x00, 0x32, 0x00, 0x30, 0x00, 0x59, 0x00, 0x59, 0x00	; 023308E4
+	.byte 0x00, 0x00, 0x00, 0x00	; 023308F4
+P1_Data_023308F8:
+	.byte 0x1F, 0x00, 0x1C, 0x00, 0x1F, 0x00, 0x1E, 0x00, 0x1F, 0x00, 0x1E, 0x00	; 023308F8
+	.byte 0x1F, 0x00, 0x1F, 0x00, 0x1E, 0x00, 0x1F, 0x00, 0x1E, 0x00, 0x1F, 0x00	; 02330904
+P1_Data_02330910:
+	.byte 0xFF, 0x00, 0x00, 0x00	; 02330910
+	.byte 0x9B, 0x47, 0x26, 0x74, 0xBC, 0x11, 0x4F, 0x6D, 0xBD, 0x11, 0xF1, 0x32, 0xD9, 0x7F, 0xE7, 0x2C	; 02330914
+	.byte 0xA5, 0x5D, 0xBD, 0x11, 0x10, 0x46, 0xA4, 0x5D, 0x90, 0x4E, 0x73, 0x61, 0x84, 0x2A, 0x91, 0x4E	; 02330924
+	.byte 0x6A, 0x10, 0xFE, 0x75, 0xC8, 0x29, 0x39, 0x78, 0x0E, 0x42, 0x1B, 0x5D, 0x38, 0x78, 0xA8, 0x12	; 02330934
+	.byte 0x7D, 0x3F, 0xB9, 0x67, 0xF3, 0x26, 0xEF, 0x54, 0x23, 0x7C, 0xF2, 0x26, 0xC6, 0x6B, 0x37, 0x41	; 02330944
+	.byte 0xAB, 0x15, 0x0D, 0x73, 0xC7, 0x6B, 0x4F, 0x3B, 0x24, 0x5F, 0xDA, 0x3D, 0x3F, 0x25, 0x49, 0x17	; 02330954
+	.byte 0xDB, 0x3D, 0xE6, 0x70, 0x6C, 0x74, 0xF7, 0x30, 0x1F, 0x53, 0x38, 0x67, 0x1E, 0x53, 0x51, 0x1A	; 02330964
+	.byte 0x71, 0x19, 0x7D, 0x5B, 0xD6, 0x4E, 0x70, 0x19, 0x27, 0x3F, 0xCB, 0x75, 0x62, 0x3D, 0x8C, 0x12	; 02330974
+	.byte 0xB8, 0x74, 0xAD, 0x2F, 0xB9, 0x74, 0xFD, 0x64, 0x9A, 0x6C, 0x3A, 0x4F, 0x6D, 0x27, 0xEF, 0x73	; 02330984
+	.byte 0xB1, 0x38, 0x3B, 0x4F, 0x1E, 0x57, 0xA3, 0x7E, 0x49, 0x62, 0x87, 0x35, 0x7C, 0x1B, 0x86, 0x35	; 02330994
+	.byte 0xFB, 0x7A, 0xE4, 0x67, 0x92, 0x5C, 0xE5, 0x67, 0xCA, 0x2B, 0x8C, 0x43, 0x6F, 0x2E, 0x7F, 0x58	; 023309A4
+	.byte 0xB7, 0x14, 0x6E, 0x2E, 0xB9, 0x4C, 0xA2, 0x6F, 0xF0, 0x38, 0x9E, 0x71, 0x5A, 0x47, 0x3C, 0x1F	; 023309B4
+	.byte 0xD8, 0x6A, 0x5B, 0x47, 0x99, 0x51, 0x64, 0x32, 0x41, 0x7B, 0xEF, 0x49, 0x98, 0x51, 0xD7, 0x1C	; 023309C4
+P1_Data_023309D4:
+	.byte 0xC0, 0x01, 0x01, 0x04, 0x00, 0x00, 0x00, 0x00, 0x30, 0x31, 0x00, 0x00, 0x41, 0x53, 0x4D, 0x4A	; 023309D4
+	.byte 0x00, 0x00, 0x00, 0x00, 0x41, 0x53, 0x4D, 0x45, 0x00, 0x00, 0x00, 0x00	; 023309E4
+P1_Data_023309F0:
+	.byte 0x08, 0x00, 0x09, 0x00	; 023309F0
+	.byte 0x0A, 0x00, 0x0B, 0x00, 0x03, 0x00, 0x04, 0x00, 0x05, 0x00, 0x06, 0x00	; 023309F4
+P1_Data_02330A00:
+; 按中断位编号索引的处理入口；保留每项 ARM/Thumb 状态位。
+; Handler entries indexed by IRQ bit, preserving each ARM/Thumb state bit.
+P1_IrqHandlers:
+	.word P1_IrqHandler_0232B118 + 1	; IRQ 0
+	.word P1_IrqHandler_0232B118 + 1	; IRQ 1
+	.word P1_IrqHandler_0232B118 + 1	; IRQ 2
+	.word P1_IrqHandler_0232B07C + 1	; IRQ 3
+	.word P1_IrqHandler_0232B070 + 1	; IRQ 4
+	.word P1_IrqHandler_0232B064 + 1	; IRQ 5
+	.word P1_IrqHandler_0232B058 + 1	; IRQ 6
+	.word P1_IrqHandler_0232B118 + 1	; IRQ 7
+	.word P1_IrqHandler_0232B0AC + 1	; IRQ 8
+	.word P1_IrqHandler_0232B0A0 + 1	; IRQ 9
+	.word P1_IrqHandler_0232B094 + 1	; IRQ 10
+	.word P1_IrqHandler_0232B088 + 1	; IRQ 11
+	.word P1_IrqHandler_0232B118 + 1	; IRQ 12
+	.word P1_IrqHandler_0232B118 + 1	; IRQ 13
+	.word P1_IrqHandler_0232B118 + 1	; IRQ 14
+	.word P1_IrqHandler_0232B118 + 1	; IRQ 15
+	.word P1_IrqHandler_0232B118 + 1	; IRQ 16
+	.word P1_IrqHandler_0232B118 + 1	; IRQ 17
+	.word P1_IrqHandler_0232B118 + 1	; IRQ 18
+	.word P1_IrqHandler_0232B118 + 1	; IRQ 19
+	.word P1_IrqHandler_0232B118 + 1	; IRQ 20
+	.word P1_IrqHandler_0232B118 + 1	; IRQ 21
+P1_IrqHandlersEnd:
+P1_Data_02330A58:
+	.byte 0xFF, 0xFF, 0xFF, 0xFF	; 02330A58
+P1_Data_02330A5C:
+	.byte 0x01, 0x00, 0x00, 0x00	; 02330A5C
+P1_Data_02330A60:
+	.byte 0x03, 0x00, 0x00, 0x00	; 02330A60
+	.byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	; 02330A64
+	.byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	; 02330A74
+; CRT 复制后，此保存区复用为主 BSS；下游偏移仍保留原内存布局。
+; After CRT copying, reuse this load area as BSS; keep the original field offsets.
+P1_BssStart:
+; 异常对象位于已由 CRT 清零的主 BSS，不是固定硬件地址。
+; Exception objects live in CRT-cleared BSS, not fixed hardware slots.
+.definelabel P1_UserExceptionHandler, P1_BssStart + 0x265C8
+.definelabel P1_UserExceptionArgument, P1_BssStart + 0x265CC
+.definelabel P1_PreviousExceptionHandler, P1_BssStart + 0x265D0
+.definelabel P1_ExceptionContext, P1_BssStart + 0x265D4
+
+; 按运行地址汇编；物理字节仍保留在组件的初始化数据区。
+; Assemble at the copied execution address; keep bytes in the load image.
+P1_ItcmLoadStart:
+.headersize 0x01FF8000 - orga()
+P1_ItcmRuntimeStart:
+.definelabel P1_ExceptionStackTop, P1_ItcmRuntimeStart + 0x8000
+	.byte 0x02, 0x69, 0xA0, 0xE3, 0x03, 0x74, 0xA0, 0xE3, 0x68, 0x00, 0x9F, 0xE5, 0x09, 0x10, 0xA0, 0xE3	; 01FF8000
+	.byte 0xB0, 0x10, 0xC0, 0xE1, 0xB0, 0x10, 0xD0, 0xE1, 0x09, 0x10, 0x51, 0xE2, 0xF9, 0xFF, 0xFF, 0x1A	; 01FF8010
+P1_Runtime_01FF8020:
+.thumb
+	push {r4}	; 01FF8020
+	sub sp,#0x4	; 01FF8022
+	ldr r2,[pool_01FF8074]	; 01FF8024
+	ldrb r0,[r2,#0x5]	; 01FF8026
+	lsl r0,r0,#0x1f	; 01FF8028
+	lsr r0,r0,#0x1f	; 01FF802A
+	cmp r0,#0x0	; 01FF802C
+	beq P1_Runtime_01FF806C	; 01FF802E
+	ldrh r0,[r2,#0x0]	; 01FF8030
+	cmp r0,#0x0	; 01FF8032
+	bne P1_Runtime_01FF806C	; 01FF8034
+	ldrh r1,[r2,#0x6]	; 01FF8036
+	ldr r0,[pool_01FF8078]	; 01FF8038
+	cmp r1,r0	; 01FF803A
+	bne P1_Runtime_01FF806C	; 01FF803C
+	ldr r0,[r2,#0x8]	; 01FF803E
+	cmp r0,#0x0	; 01FF8040
+	bne P1_Runtime_01FF806C	; 01FF8042
+	mov r4,#0x0	; 01FF8044
+	ldr r3,[pool_01FF807C]	; 01FF8046
+	ldr r2,[pool_01FF8080]	; 01FF8048
+P1_Runtime_01FF804A:
+	ldrh r1,[r2,#0x0]	; 01FF804A
+	ldrh r0,[r3,#0x0]	; 01FF804C
+	cmp r1,r0	; 01FF804E
+	beq P1_Runtime_01FF805A	; 01FF8050
+	mov r0,#0x0	; 01FF8052
+	add sp,#0x4	; 01FF8054
+	pop {r4}	; 01FF8056
+	bx lr	; 01FF8058
+P1_Runtime_01FF805A:
+	add r3,r3,#0x2	; 01FF805A
+	add r2,r2,#0x2	; 01FF805C
+	add r4,r4,#0x1	; 01FF805E
+	cmp r4,#0x10	; 01FF8060
+	bcc P1_Runtime_01FF804A	; 01FF8062
+	mov r0,#0x1	; 01FF8064
+	add sp,#0x4	; 01FF8066
+	pop {r4}	; 01FF8068
+	bx lr	; 01FF806A
+P1_Runtime_01FF806C:
+	mov r0,#0x0	; 01FF806C
+	add sp,#0x4	; 01FF806E
+	pop {r4}	; 01FF8070
+	bx lr	; 01FF8072
+pool_01FF8074:
+	.word FirmwareBootInfoAddress + BootInfoGbaIdOffset	; 01FF8074
+pool_01FF8078:
+	.word 0x00003130	; 01FF8078
+pool_01FF807C:
+	.word 0x08000180	; 01FF807C
+pool_01FF8080:
+	.word P1_ItcmRuntimeStart	; 01FF8080
+P1_Runtime_01FF8084:
+	push {r4,r5,r6,r7,lr}	; 01FF8084
+	sub sp,#0xc	; 01FF8086
+	blx loc_0232B270	; 01FF8088
+	lsl r0,r0,#0x10	; 01FF808C
+	lsr r0,r0,#0x10	; 01FF808E
+	str r0,[sp,#0x0]	; 01FF8090
+	bl loc_0232B3C8	; 01FF8092
+	bl P1_Runtime_01FF8020	; 01FF8096
+	cmp r0,#0x0	; 01FF809A
+	beq P1_Runtime_01FF810A	; 01FF809C
+	blx P1_Arm9DisableIrqReturnPriorMask	; 01FF809E
+	str r0,[sp,#0x4]	; 01FF80A2
+	mov r0,#0x1	; 01FF80A4
+	bl P1_SwiWaitByLoop	; 01FF80A6
+	mov r5,#0x0	; 01FF80AA
+	mov r7,#0xb	; 01FF80AC
+	ldr r6,[pool_01FF8120]	; 01FF80AE
+	add r4,r5,#0x0	; 01FF80B0
+P1_Runtime_01FF80B2:
+	strh r7,[r6,#0x0]	; 01FF80B2
+	mov r0,#0x1	; 01FF80B4
+	bl P1_SwiWaitByLoop	; 01FF80B6
+	ldrsh r0,[r6,r4]	; 01FF80BA
+	cmp r0,#0xb	; 01FF80BC
+	beq P1_Runtime_01FF80C6	; 01FF80BE
+	add r5,r5,#0x1	; 01FF80C0
+	cmp r5,#0x19	; 01FF80C2
+	blt P1_Runtime_01FF80B2	; 01FF80C4
+P1_Runtime_01FF80C6:
+	mov r5,#0x0	; 01FF80C6
+	ldr r7,[pool_01FF8120]	; 01FF80C8
+	add r4,r5,#0x0	; 01FF80CA
+	ldr r6,[pool_01FF8124]	; 01FF80CC
+P1_Runtime_01FF80CE:
+	mov r0,#0x1	; 01FF80CE
+	bl P1_SwiWaitByLoop	; 01FF80D0
+	ldrsh r0,[r7,r4]	; 01FF80D4
+	and r0,r6	; 01FF80D6
+	cmp r0,r6	; 01FF80D8
+	beq P1_Runtime_01FF80E2	; 01FF80DA
+	add r5,r5,#0x1	; 01FF80DC
+	cmp r5,#0x19	; 01FF80DE
+	blt P1_Runtime_01FF80CE	; 01FF80E0
+P1_Runtime_01FF80E2:
+	ldr r1,[pool_01FF8128]	; 01FF80E2
+	ldr r0,[pool_01FF812C]	; 01FF80E4
+	strh r1,[r0,#0x0]	; 01FF80E6
+	mov r5,#0x0	; 01FF80E8
+	mov r6,#0x1	; 01FF80EA
+	ldr r7,[pool_01FF8120]	; 01FF80EC
+	add r4,r5,#0x0	; 01FF80EE
+P1_Runtime_01FF80F0:
+	add r0,r6,#0x0	; 01FF80F0
+	bl P1_SwiWaitByLoop	; 01FF80F2
+	ldrsh r0,[r7,r4]	; 01FF80F6
+	and r0,r6	; 01FF80F8
+	cmp r0,#0x0	; 01FF80FA
+	beq P1_Runtime_01FF8104	; 01FF80FC
+	add r5,r5,#0x1	; 01FF80FE
+	cmp r5,#0x19	; 01FF8100
+	blt P1_Runtime_01FF80F0	; 01FF8102
+P1_Runtime_01FF8104:
+	ldr r0,[sp,#0x4]	; 01FF8104
+	blx P1_Arm9RestoreIrqMask	; 01FF8106
+P1_Runtime_01FF810A:
+	ldr r0,[sp,#0x0]	; 01FF810A
+	bl loc_0232B260	; 01FF810C
+	ldr r0,[sp,#0x0]	; 01FF8110
+	blx loc_0232B2C8	; 01FF8112
+	add sp,#0xc	; 01FF8116
+	pop {r4,r5,r6,r7}	; 01FF8118
+	pop {r3}	; 01FF811A
+	bx r3	; 01FF811C
+	.byte 0xC0, 0x46	; 01FF811E
+pool_01FF8120:
+	.word 0x08010420	; 01FF8120
+pool_01FF8124:
+	.word 0x00004000	; 01FF8124
+pool_01FF8128:
+	.word 0x00000400	; 01FF8128
+pool_01FF812C:
+	.word 0x0801040A	; 01FF812C
+
+; 按 IE/IF 选择并应答 IRQ，再调用对应回调。
+; Select and acknowledge an enabled IRQ, then dispatch its callback.
+.func P1_DispatchIrq
+.arm
+	stmdb sp!,{lr}	; 01FF8130
+	mov r12,#0x4000000	; 01FF8134
+	add r12,r12,#0x210	; 01FF8138
+	ldr r1,[r12,#-0x8]	; 01FF813C
+	cmp r1,#0x0	; 01FF8140
+	ldmeqia sp!,{pc}	; 01FF8144
+	ldmia r12,{r1,r2}	; 01FF8148
+	ands r1,r1,r2	; 01FF814C
+	ldmeqia sp!,{pc}	; 01FF8150
+	mov r3,#0x80000000	; 01FF8154
+P1_Runtime_01FF8158:
+	clz r0,r1	; 01FF8158
+	bics r1,r1,r3, lsr r0	; 01FF815C
+	bne P1_Runtime_01FF8158	; 01FF8160
+	mov r1,r3, lsr r0	; 01FF8164
+	str r1,[r12,#0x4]	; 01FF8168
+	rsbs r0,r0,#0x1f	; 01FF816C
+	ldr r1,[pool_01FF8180]	; 01FF8170
+	ldr r0,[r1,r0,lsl #0x2]	; 01FF8174
+	ldr lr,[pool_01FF8184]	; 01FF8178
+	bx r0	; 01FF817C
+.endfunc
+pool_01FF8180:
+	.word P1_IrqHandlers	; 01FF8180
+pool_01FF8184:
+	.word P1_IrqReturnContinuation	; 01FF8184
+; 中断回调返回后处理待执行状态，必要时保存并切换执行上下文。
+; After the IRQ callback, process pending state and save/switch context when needed.
+.func P1_IrqReturnContinuation
+	ldr r12,[pool_01FF82CC]	; 01FF8188
+	ldrh r3,[r12,#0x0]	; 01FF818C
+	mov r0,#0x0	; 01FF8190
+	cmp r3,#0x0	; 01FF8194
+	beq P1_Entry_01FF81D0	; 01FF8198
+	strh r0,[r12,#0x0]	; 01FF819C
+	ldr r12,[pool_01FF82D0]	; 01FF81A0
+	mov r1,#0x1	; 01FF81A4
+	strh r1,[r12,#0x0]	; 01FF81A8
+	ldr r12,[r12,#0xc]	; 01FF81AC
+	mov r2,#0x1	; 01FF81B0
+P1_Entry_01FF81B4:
+	cmp r12,#0x0	; 01FF81B4
+	beq P1_Entry_01FF81D0	; 01FF81B8
+	ldr r0,[r12,#0x6c]	; 01FF81BC
+	tst r3,r1, lsl r0	; 01FF81C0
+	strne r2,[r12,#0x64]	; 01FF81C4
+	ldr r12,[r12,#0x68]	; 01FF81C8
+	b P1_Entry_01FF81B4	; 01FF81CC
+P1_Entry_01FF81D0:
+	ldr r12,[pool_01FF82D0]	; 01FF81D0
+	ldrh r1,[r12,#0x0]	; 01FF81D4
+	cmp r1,#0x0	; 01FF81D8
+	ldreq pc,[sp],#0x4	; 01FF81DC
+	mov r1,#0x0	; 01FF81E0
+	strh r1,[r12,#0x0]	; 01FF81E4
+	mov r3,#0xd2	; 01FF81E8
+	msr cpsr_c,r3	; 01FF81EC
+	add r2,r12,#0xc	; 01FF81F0
+	ldr r1,[r2,#0x0]	; 01FF81F4
+P1_Entry_01FF81F8:
+	cmp r1,#0x0	; 01FF81F8
+	ldrneh r0,[r1,#0x64]	; 01FF81FC
+	cmpne r0,#0x1	; 01FF8200
+	ldrne r1,[r1,#0x68]	; 01FF8204
+	bne P1_Entry_01FF81F8	; 01FF8208
+	cmp r1,#0x0	; 01FF820C
+	bne P1_Entry_01FF8220	; 01FF8210
+P1_Entry_01FF8214:
+	mov r3,#0x92	; 01FF8214
+	msr cpsr_c,r3	; 01FF8218
+	ldr pc,[sp],#0x4	; 01FF821C
+P1_Entry_01FF8220:
+	ldr r0,[r12,#0x8]	; 01FF8220
+	cmp r1,r0	; 01FF8224
+	beq P1_Entry_01FF8214	; 01FF8228
+	ldr r3,[r12,#0x10]	; 01FF822C
+	cmp r3,#0x0	; 01FF8230
+	beq P1_Entry_01FF8248	; 01FF8234
+	stmdb sp!,{r0,r1,r12}	; 01FF8238
+	mov lr,pc	; 01FF823C
+	bx r3	; 01FF8240
+	ldmia sp!,{r0,r1,r12}	; 01FF8244
+P1_Entry_01FF8248:
+	str r1,[r12,#0x8]	; 01FF8248
+	mrs r2,spsr	; 01FF824C
+	str r2,[r0,#0x0]!	; 01FF8250
+	stmdb sp!,{r0,r1}	; 01FF8254
+	add r0,r0,#0x0	; 01FF8258
+	add r0,r0,#0x48	; 01FF825C
+	ldr r1,[pool_01FF82D4]	; 01FF8260
+	blx r1	; 01FF8264
+	ldmia sp!,{r0,r1}	; 01FF8268
+	ldmib sp!,{r2,r3}	; 01FF826C
+	stmib r0!,{r2,r3}	; 01FF8270
+	ldmib sp!,{r2,r3,r12,lr}	; 01FF8274
+	stmib r0!,{r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,sp,lr}^	; 01FF8278
+	stmib r0!,{lr}	; 01FF827C
+	mov r3,#0xd3	; 01FF8280
+	msr cpsr_c,r3	; 01FF8284
+	stmib r0!,{sp}	; 01FF8288
+	stmdb sp!,{r1}	; 01FF828C
+	add r0,r1,#0x0	; 01FF8290
+	add r0,r0,#0x48	; 01FF8294
+	ldr r1,[pool_01FF82D8]	; 01FF8298
+	blx r1	; 01FF829C
+	ldmia sp!,{r1}	; 01FF82A0
+	ldr sp,[r1,#0x44]	; 01FF82A4
+	mov r3,#0xd2	; 01FF82A8
+	msr cpsr_c,r3	; 01FF82AC
+	ldr r2,[r1,#0x0]!	; 01FF82B0
+	msr spsr_cf,r2	; 01FF82B4
+	ldr lr,[r1,#0x40]	; 01FF82B8
+	ldmib r1!,{r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,sp,lr}^	; 01FF82BC
+	mov r0,r0	; 01FF82C0
+	stmda sp!,{r0,r1,r2,r3,r12,lr}	; 01FF82C4
+	ldmia sp!,{pc}	; 01FF82C8
+.endfunc
+pool_01FF82CC:
+	.word P1_DtcmRuntimeStart	; 01FF82CC
+pool_01FF82D0:
+	.word P1_BssStart + 0x26380	; 01FF82D0
+pool_01FF82D4:
+	.word loc_0232EAC4 + 1	; 01FF82D4
+pool_01FF82D8:
+	.word loc_0232EA84 + 1	; 01FF82D8
+
+; 写入所选 DMA 通道的源、目的和控制寄存器。
+; Set source, destination and control registers for the selected DMA channel.
+.func P1_SetDmaChannelRegisters
+.thumb
+	push {r4,r5,r6,r7,lr}	; 01FF82DC
+	sub sp,#0x4	; 01FF82DE
+	add r5,r0,#0x0	; 01FF82E0
+	add r4,r1,#0x0	; 01FF82E2
+	add r6,r2,#0x0	; 01FF82E4
+	add r7,r3,#0x0	; 01FF82E6
+	blx P1_Arm9DisableIrqReturnPriorMask	; 01FF82E8
+	mov r1,#0xc	; 01FF82EC
+	mul r5,r1	; 01FF82EE
+	ldr r2,[pool_01FF830C]	; 01FF82F0
+	add r1,r5,r2	; 01FF82F2
+	str r4,[r1,#0x0]	; 01FF82F4
+	str r6,[r1,#0x4]	; 01FF82F6
+	str r7,[r1,#0x8]	; 01FF82F8
+	ldr r1,[r2,#0x0]	; 01FF82FA
+	ldr r1,[r2,#0x0]	; 01FF82FC
+	blx P1_Arm9RestoreIrqMask	; 01FF82FE
+	add sp,#0x4	; 01FF8302
+	pop {r4,r5,r6,r7}	; 01FF8304
+	pop {r3}	; 01FF8306
+	bx r3	; 01FF8308
+.endfunc
+	.byte 0xC0, 0x46	; 01FF830A
+pool_01FF830C:
+	.word REG_DMA0SAD	; 01FF830C
+	.byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	; 01FF8310
+P1_ItcmRuntimeEnd:
+.definelabel P1_ItcmZeroBytes, 0x0
+.definelabel P1_ItcmBssStart, P1_ItcmRuntimeEnd
+.definelabel P1_ItcmBssEnd, P1_ItcmBssStart + P1_ItcmZeroBytes
+.headersize 0x02320000
+P1_ItcmLoadEnd:
+
+; 按运行地址汇编；物理字节仍保留在组件的初始化数据区。
+; Assemble at the copied execution address; keep bytes in the load image.
+P1_DtcmLoadStart:
+.headersize 0x03000000 - orga()
+P1_DtcmRuntimeStart:
+.definelabel P1_DtcmExceptionVector, P1_DtcmRuntimeStart + 0x3FDC
+	.byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	; 03000000
+	.byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	; 03000010
+P1_DtcmRuntimeEnd:
+.definelabel P1_DtcmZeroBytes, 0x0
+.definelabel P1_DtcmBssStart, P1_DtcmRuntimeEnd
+.definelabel P1_DtcmBssEnd, P1_DtcmBssStart + P1_DtcmZeroBytes
+.headersize 0x02320000
+P1_DtcmLoadEnd:
+P1_CopyDescriptors:
+	.word P1_ItcmRuntimeStart, P1_ItcmRuntimeEnd - P1_ItcmRuntimeStart, P1_ItcmZeroBytes
+	.word P1_DtcmRuntimeStart, P1_DtcmRuntimeEnd - P1_DtcmRuntimeStart, P1_DtcmZeroBytes
+P1_CopyDescriptorsEnd:
+	.byte 0x21, 0x06, 0xC0, 0xDE, 0x70, 0x04, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00	; 02330DD8
+.arm
 .close

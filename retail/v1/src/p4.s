@@ -5,117 +5,137 @@
 .create "build/p4.bin", 0x02300200
 .arm
 
-; ===== function loc_02300200 =====
+; P4 的公共服务入口，转接到固定系统服务向量；各子服务 ABI 待逐项恢复。
+; Public P4 service entry, forwarding to fixed system-service vectors; sub-service ABI remains to map.
+.func P4_FirmwareServiceEntry
 loc_02300200:
 	stmdb sp!,{r4,lr}	; 02300200
 	mov r0,#0x8	; 02300204
-	bl loc_02300280	; 02300208
+	bl P4_ForwardSystemServiceA	; 02300208
 	mov r4,r0	; 0230020C
 	mov r0,#0x8	; 02300210
-	bl loc_0230028C	; 02300214
+	bl P4_ForwardSystemServiceB	; 02300214
 	mov r1,r0	; 02300218
 	mov r0,#0x8	; 0230021C
 	mov r2,r4	; 02300220
 	mov r3,#0x1	; 02300224
-	bl loc_02300298	; 02300228
+	bl P4_ForwardSystemServiceC	; 02300228
 	mov r1,r0	; 0230022C
 	mov r0,#0x8	; 02300230
-	bl loc_023002A4	; 02300234
+	bl P4_ForwardSystemServiceD	; 02300234
 	mov r0,#0x8	; 02300238
-	bl loc_023002B0	; 0230023C
+	bl P4_ForwardSystemServiceE	; 0230023C
 	mov r4,r0	; 02300240
 	mov r0,#0x8	; 02300244
-	bl loc_023002BC	; 02300248
+	bl P4_ForwardSystemServiceF	; 02300248
 	mov r1,r0	; 0230024C
 	mov r0,#0x8	; 02300250
 	mov r2,r4	; 02300254
-	bl loc_023002C8	; 02300258
+	bl P4_ForwardSystemServiceG	; 02300258
 	movs r4,r0	; 0230025C
 	bpl loc_02300268	; 02300260
-	bl loc_023002D4	; 02300264
+	bl P4_ForwardSystemServiceH	; 02300264
 loc_02300268:
 	mov r0,#0x8	; 02300268
 	mov r1,r4	; 0230026C
-	bl loc_023002E0	; 02300270
+	bl P4_ForwardSystemServiceI	; 02300270
 	mov r0,r4	; 02300274
 	ldmia sp!,{r4,lr}	; 02300278
 	bx lr	; 0230027C
+.endfunc
 
 ; ===== function loc_02300280 =====
+; System-service vector forwarding stubs; target ABI is not yet recovered.
+; 系统服务向量转发桩；目标 ABI 尚未恢复。
+P4_ForwardSystemServiceA:
 loc_02300280:
 	ldr r12,[pool_02300288]	; 02300280
 	bx r12	; 02300284
 pool_02300288:
 loc_02300288:
-	.word 0x037FC07D	; 02300288
+	.word P2_Entry_037FC07C + 1	; 02300288
 
 ; ===== function loc_0230028C =====
+P4_ForwardSystemServiceB:
 loc_0230028C:
 	ldr r12,[pool_02300294]	; 0230028C
 	bx r12	; 02300290
 pool_02300294:
 loc_02300294:
-	.word 0x037FC071	; 02300294
+	.word P2_Entry_037FC070 + 1	; 02300294
 
 ; ===== function loc_02300298 =====
+P4_ForwardSystemServiceC:
 loc_02300298:
 	ldr r12,[pool_023002A0]	; 02300298
 	bx r12	; 0230029C
 pool_023002A0:
 loc_023002A0:
-	.word 0x037FC169	; 023002A0
+	.word P2_Entry_037FC168 + 1	; 023002A0
 
 ; ===== function loc_023002A4 =====
+P4_ForwardSystemServiceD:
 loc_023002A4:
 	ldr r12,[pool_023002AC]	; 023002A4
 	bx r12	; 023002A8
 pool_023002AC:
 loc_023002AC:
-	.word 0x037FBFD1	; 023002AC
+	.word loc_037FBFD0 + 1	; 023002AC
 
 ; ===== function loc_023002B0 =====
+P4_ForwardSystemServiceE:
 loc_023002B0:
 	ldr r12,[pool_023002B8]	; 023002B0
 	bx r12	; 023002B4
 pool_023002B8:
 loc_023002B8:
-	.word 0x037FC07D	; 023002B8
+	.word P2_Entry_037FC07C + 1	; 023002B8
 
 ; ===== function loc_023002BC =====
+P4_ForwardSystemServiceF:
 loc_023002BC:
 	ldr r12,[pool_023002C4]	; 023002BC
 	bx r12	; 023002C0
 pool_023002C4:
 loc_023002C4:
-	.word 0x037FC071	; 023002C4
+	.word P2_Entry_037FC070 + 1	; 023002C4
 
 ; ===== function loc_023002C8 =====
+P4_ForwardSystemServiceG:
 loc_023002C8:
 	ldr r12,[pool_023002D0]	; 023002C8
 	bx r12	; 023002CC
 pool_023002D0:
 loc_023002D0:
-	.word 0x037FC0F5	; 023002D0
+	.word P2_Entry_037FC0F4 + 1	; 023002D0
 
 ; ===== function loc_023002D4 =====
+P4_ForwardSystemServiceH:
 loc_023002D4:
 	ldr r12,[pool_023002DC]	; 023002D4
 	bx r12	; 023002D8
 pool_023002DC:
 loc_023002DC:
-	.word 0x037FCCC1	; 023002DC
+	.word loc_037FCCC0 + 1	; 023002DC
 
 ; ===== function loc_023002E0 =====
+P4_ForwardSystemServiceI:
 loc_023002E0:
 	ldr r12,[pool_023002E8]	; 023002E0
 	bx r12	; 023002E4
 pool_023002E8:
 loc_023002E8:
-	.word 0x037FC1E5	; 023002E8
+	.word P2_Entry_037FC1E4 + 1	; 023002E8
 
-; ===== function loc_023002EC =====
+; ===== function P4_InitializeRuntimeContext =====
+; Clears P4 runtime storage, prepares its context, then activates the service.
+; 清空 P4 运行时存储，准备上下文后启用该服务。
+.func P4_InitializeRuntimeContext
+loc_023002EC:
 	stmdb sp!,{lr}	; 023002EC
 	sub sp,sp,#0x44	; 023002F0
+; 按此版本的零区起点和字节数清零，SWI 参数换算为 32 位字数。
+; Clear this version's zero area; convert its byte size to the SWI word count.
 	ldr r3,[pool_023003A8]	; 023002F4
 	cmp r3,#0x0	; 023002F8
 	beq loc_02300320	; 023002FC
@@ -126,7 +146,7 @@ loc_023002E8:
 	ldr r2,[pool_023003B0]	; 02300310
 	and r2,r2,r3, lsr #0x2	; 02300314
 	orr r2,r2,#0x1000000	; 02300318
-	bl loc_023003C0	; 0230031C
+	bl P4_ForwardP2CpuFastSet	; 0230031C
 loc_02300320:
 	ldr r0,[pool_023003B4]	; 02300320
 	str r0,[sp,#0x4]	; 02300324
@@ -156,18 +176,19 @@ loc_02300320:
 	str r0,[sp,#0x40]	; 02300384
 	add r0,sp,#0x4	; 02300388
 	add r1,sp,#0x38	; 0230038C
-	bl loc_023003CC	; 02300390
+	bl P4_ForwardServiceBackendInitializer	; 02300390
 	mov r0,#0x40000000	; 02300394
-	bl loc_023003D8	; 02300398
+	bl P4_ForwardP2OrSharedEventFlags	; 02300398
 	add sp,sp,#0x44	; 0230039C
 	ldmia sp!,{lr}	; 023003A0
 	bx lr	; 023003A4
+.endfunc
 pool_023003A8:
 loc_023003A8:
-	.word 0x00002424	; 023003A8
+	.word P4_BssBytes	; 023003A8
 pool_023003AC:
 loc_023003AC:
-	.word 0x023108AC	; 023003AC
+	.word P4_BssStart	; 023003AC
 pool_023003B0:
 loc_023003B0:
 	.word 0x001FFFFF	; 023003B0
@@ -181,29 +202,37 @@ pool_023003BC:
 loc_023003BC:
 	.word 0x023108AC	; 023003BC
 
+; Cross-component veneer for ARM7 BIOS CpuFastSet (Thumb target). / 面向 ARM7 BIOS CpuFastSet 的跨组件跳板（Thumb 目标）。
+P4_ForwardP2CpuFastSet:
 ; ===== function loc_023003C0 =====
 loc_023003C0:
 	ldr r12,[pool_023003C8]	; 023003C0
 	bx r12	; 023003C4
 pool_023003C8:
 loc_023003C8:
-	.word 0x03802289	; 023003C8
+	.word P2_SwiCpuFastSet + 1	; 0x03802289
 
 ; ===== function loc_023003CC =====
+; Forwards the prepared configuration to the P4 service backend initializer.
+; 将准备好的配置转发给 P4 服务后端初始化器。
+P4_ForwardServiceBackendInitializer:
 loc_023003CC:
 	ldr r12,[pool_023003D4]	; 023003CC
 	bx r12	; 023003D0
 pool_023003D4:
 loc_023003D4:
-	.word 0x023008BD	; 023003D4
+	.word loc_023008BC + 1	; 023003D4
 
 ; ===== function loc_023003D8 =====
+; Cross-component veneer for P2 shared-event notification.
+; 面向 P2 共享事件通知的跨组件跳板。
+P4_ForwardP2OrSharedEventFlags:
 loc_023003D8:
 	ldr r12,[pool_023003E0]	; 023003D8
 	bx r12	; 023003DC
 pool_023003E0:
 loc_023003E0:
-	.word 0x037FAD09	; 023003E0
+	.word P2_OrSharedEventFlags + 1	; 023003E0
 .thumb
 
 ; ===== function loc_023003E4 =====
@@ -235,7 +264,7 @@ loc_02300408:
 	bx r12	; 0230040C
 pool_02300410:
 loc_02300410:
-	.word 0x037F80F1	; 02300410
+	.word P2_Runtime_037F80F0 + 1	; 02300410
 .thumb
 
 ; ===== function loc_02300414 =====
@@ -250,10 +279,13 @@ loc_02300418:
 	bx r12	; 0230041C
 pool_02300420:
 loc_02300420:
-	.word 0x037F816D	; 02300420
+	.word P2_Runtime_037F816C + 1	; 02300420
 .thumb
 
-; ===== function loc_02300424 =====
+; ===== function P4_ClassifyByteArrayAverage =====
+; Averages a caller-supplied byte array, then maps the average into one of four threshold bands.
+; 对调用方提供的字节数组求平均值，再映射到四个阈值档位之一。
+.func P4_ClassifyByteArrayAverage
 loc_02300424:
 	push {r4,lr}	; 02300424
 	mov r3,#0x0	; 02300426
@@ -292,6 +324,7 @@ loc_0230045C:
 	pop {r4}	; 0230045C
 	pop {r3}	; 0230045E
 	bx r3	; 02300460
+.endfunc
 	.byte 0xC0, 0x46	; 02300464
 
 ; ===== function loc_02300464 =====
@@ -305,7 +338,7 @@ loc_02300468:
 	ldr pc,[pool_0230046C]	; 02300468
 pool_0230046C:
 loc_0230046C:
-	.word 0x03802720	; 0230046C
+	.word loc_03802720	; 0230046C
 .thumb
 
 ; ===== function loc_02300470 =====
@@ -453,7 +486,7 @@ loc_02300558:
 	ldr pc,[pool_0230055C]	; 02300558
 pool_0230055C:
 loc_0230055C:
-	.word 0x03802514	; 0230055C
+	.word loc_03802514	; 0230055C
 .thumb
 
 ; ===== function loc_02300560 =====
@@ -467,7 +500,7 @@ loc_02300564:
 	ldr pc,[pool_02300568]	; 02300564
 pool_02300568:
 loc_02300568:
-	.word 0x03802514	; 02300568
+	.word loc_03802514	; 02300568
 .thumb
 
 ; ===== function loc_0230056C =====
@@ -649,7 +682,7 @@ loc_023006AC:
 	ldr pc,[pool_023006B0]	; 023006AC
 pool_023006B0:
 loc_023006B0:
-	.word 0x037FCE04	; 023006B0
+	.word loc_037FCE04	; 023006B0
 .thumb
 
 ; ===== function loc_023006B4 =====
@@ -664,7 +697,7 @@ loc_023006B8:
 	bx r12	; 023006BC
 pool_023006C0:
 loc_023006C0:
-	.word 0x037FCD31	; 023006C0
+	.word P2_Entry_037FCD30 + 1	; 023006C0
 .thumb
 
 ; ===== function loc_023006C4 =====
@@ -678,7 +711,7 @@ loc_023006C8:
 	ldr pc,[pool_023006CC]	; 023006C8
 pool_023006CC:
 loc_023006CC:
-	.word 0x037FCE04	; 023006CC
+	.word loc_037FCE04	; 023006CC
 .thumb
 
 ; ===== function loc_023006D0 =====
@@ -692,7 +725,7 @@ loc_023006D4:
 	ldr pc,[pool_023006D8]	; 023006D4
 pool_023006D8:
 loc_023006D8:
-	.word 0x037FCE04	; 023006D8
+	.word loc_037FCE04	; 023006D8
 .thumb
 
 ; ===== function loc_023006DC =====
@@ -767,7 +800,7 @@ loc_0230074C:
 	bx r3	; 02300752
 pool_02300754:
 loc_02300754:
-	.word 0x02312C6C	; 02300754
+	.word P4_BssStart + 0x23C0	; 02300754
 
 ; ===== function loc_02300758 =====
 loc_02300758:
@@ -823,7 +856,7 @@ loc_023007B0:
 	bx r3	; 023007B6
 pool_023007B8:
 loc_023007B8:
-	.word 0x02312C6C	; 023007B8
+	.word P4_BssStart + 0x23C0	; 023007B8
 
 ; ===== function loc_023007BC =====
 loc_023007BC:
@@ -879,7 +912,7 @@ loc_0230081C:
 	.word 0x023117D0	; 0230081C
 pool_02300820:
 loc_02300820:
-	.word 0x02312C6C	; 02300820
+	.word P4_BssStart + 0x23C0	; 02300820
 
 ; ===== function loc_02300824 =====
 loc_02300824:
@@ -893,7 +926,7 @@ loc_02300828:
 	bx r12	; 0230082C
 pool_02300830:
 loc_02300830:
-	.word 0x037FBE11	; 02300830
+	.word loc_037FBE10 + 1	; 02300830
 .thumb
 
 ; ===== function loc_02300834 =====
@@ -948,7 +981,7 @@ loc_02300888:
 	bx r12	; 0230088C
 pool_02300890:
 loc_02300890:
-	.word 0x037FBD95	; 02300890
+	.word loc_037FBD94 + 1	; 02300890
 .thumb
 
 ; ===== function loc_02300894 =====
@@ -963,7 +996,7 @@ loc_02300898:
 	bx r12	; 0230089C
 pool_023008A0:
 loc_023008A0:
-	.word 0x037FCF61	; 023008A0
+	.word P2_Entry_037FCF60 + 1	; 023008A0
 .thumb
 
 ; ===== function loc_023008A4 =====
@@ -978,7 +1011,7 @@ loc_023008A8:
 	bx r12	; 023008AC
 pool_023008B0:
 loc_023008B0:
-	.word 0x037FCCC1	; 023008B0
+	.word loc_037FCCC0 + 1	; 023008B0
 .thumb
 
 ; ===== function loc_023008B4 =====
@@ -1074,7 +1107,7 @@ loc_02300948:
 	bx r3	; 02300972
 pool_02300974:
 loc_02300974:
-	.word 0x02312C6C	; 02300974
+	.word P4_BssStart + 0x23C0	; 02300974
 pool_02300978:
 loc_02300978:
 	.word 0x0231176C	; 02300978
@@ -1142,7 +1175,7 @@ loc_023009C4:
 	bx r12	; 023009C8
 pool_023009CC:
 loc_023009CC:
-	.word 0x037FBE71	; 023009CC
+	.word loc_037FBE70 + 1	; 023009CC
 .thumb
 
 ; ===== function loc_023009D0 =====
@@ -1157,7 +1190,7 @@ loc_023009D4:
 	bx r12	; 023009D8
 pool_023009DC:
 loc_023009DC:
-	.word 0x037FBF99	; 023009DC
+	.word P2_Entry_037FBF98 + 1	; 023009DC
 .thumb
 
 ; ===== function loc_023009E0 =====
@@ -1172,7 +1205,7 @@ loc_023009E4:
 	bx r12	; 023009E8
 pool_023009EC:
 loc_023009EC:
-	.word 0x037FBAD9	; 023009EC
+	.word loc_037FBAD8 + 1	; 023009EC
 .thumb
 
 ; ===== function loc_023009F0 =====
@@ -1187,7 +1220,7 @@ loc_023009F4:
 	bx r12	; 023009F8
 pool_023009FC:
 loc_023009FC:
-	.word 0x037FB9ED	; 023009FC
+	.word loc_037FB9EC + 1	; 023009FC
 .thumb
 
 ; ===== function loc_02300A00 =====
@@ -1202,7 +1235,7 @@ loc_02300A04:
 	bx r12	; 02300A08
 pool_02300A0C:
 loc_02300A0C:
-	.word 0x037FF939	; 02300A0C
+	.word loc_037FF938 + 1	; 02300A0C
 .thumb
 
 ; ===== function loc_02300A10 =====
@@ -1217,7 +1250,7 @@ loc_02300A14:
 	bx r12	; 02300A18
 pool_02300A1C:
 loc_02300A1C:
-	.word 0x037FFAA1	; 02300A1C
+	.word loc_037FFAA0 + 1	; 02300A1C
 .thumb
 
 ; ===== function loc_02300A20 =====
@@ -1485,7 +1518,7 @@ loc_02300C20:
 	.word 0x00001518	; 02300C20
 pool_02300C24:
 loc_02300C24:
-	.word 0x02312CC0	; 02300C24
+	.word P4_BssStart + 0x2414	; 02300C24
 pool_02300C28:
 loc_02300C28:
 	.word 0x02312CC4	; 02300C28
@@ -1510,7 +1543,7 @@ loc_02300C3C:
 	ldr pc,[pool_02300C40]	; 02300C3C
 pool_02300C40:
 loc_02300C40:
-	.word 0x037FCE1C	; 02300C40
+	.word P2_Entry_037FCE1C	; 02300C40
 .thumb
 
 ; ===== function loc_02300C44 =====
@@ -1524,7 +1557,7 @@ loc_02300C48:
 	ldr pc,[pool_02300C4C]	; 02300C48
 pool_02300C4C:
 loc_02300C4C:
-	.word 0x037FCE04	; 02300C4C
+	.word loc_037FCE04	; 02300C4C
 .thumb
 
 ; ===== function loc_02300C50 =====
@@ -1538,7 +1571,7 @@ loc_02300C54:
 	ldr pc,[pool_02300C58]	; 02300C54
 pool_02300C58:
 loc_02300C58:
-	.word 0x037FCEC8	; 02300C58
+	.word P2_Entry_037FCEC8	; 02300C58
 .thumb
 
 ; ===== function loc_02300C5C =====
@@ -1638,7 +1671,7 @@ loc_02300D0C:
 	.word 0x00001518	; 02300D0C
 pool_02300D10:
 loc_02300D10:
-	.word 0x02312CB8	; 02300D10
+	.word P4_BssStart + 0x240C	; 02300D10
 pool_02300D14:
 loc_02300D14:
 	.word 0x00007FFE	; 02300D14
@@ -1668,7 +1701,7 @@ loc_02300D18:
 	str r3,[r1,#0x0]	; 02300D46
 	add r0,r6,r2	; 02300D48
 	mov r1,#0x10	; 02300D4A
-	bl loc_02300424	; 02300D4C
+	bl P4_ClassifyByteArrayAverage	; 02300D4C
 	add r1,r4,#0x0	; 02300D50
 	add r1,#0xb8	; 02300D52
 	strh r0,[r1,#0x0]	; 02300D54
@@ -1973,16 +2006,16 @@ loc_02300F9C:
 	.word 0x00001518	; 02300F9C
 pool_02300FA0:
 loc_02300FA0:
-	.word 0x048080F8	; 02300FA0
+	.word REG_WIFI_US_COUNT0	; 02300FA0
 pool_02300FA4:
 loc_02300FA4:
-	.word 0x048080FA	; 02300FA4
+	.word REG_WIFI_US_COUNT1	; 02300FA4
 pool_02300FA8:
 loc_02300FA8:
 	.word 0x00000184	; 02300FA8
 pool_02300FAC:
 loc_02300FAC:
-	.word 0x02312C9C	; 02300FAC
+	.word P4_BssStart + 0x23F0	; 02300FAC
 
 ; ===== function loc_02300FB0 =====
 loc_02300FB0:
@@ -1995,7 +2028,7 @@ loc_02300FB4:
 	ldr pc,[pool_02300FB8]	; 02300FB4
 pool_02300FB8:
 loc_02300FB8:
-	.word 0x037FCBF0	; 02300FB8
+	.word loc_037FCBF0	; 02300FB8
 .thumb
 
 ; ===== function loc_02300FBC =====
@@ -2009,7 +2042,7 @@ loc_02300FC0:
 	ldr pc,[pool_02300FC4]	; 02300FC0
 pool_02300FC4:
 loc_02300FC4:
-	.word 0x037FCC04	; 02300FC4
+	.word loc_037FCC04	; 02300FC4
 .thumb
 
 ; ===== function loc_02300FC8 =====
@@ -2024,7 +2057,7 @@ loc_02300FCC:
 	bx r12	; 02300FD0
 pool_02300FD4:
 loc_02300FD4:
-	.word 0x037FC5A1	; 02300FD4
+	.word loc_037FC5A0 + 1	; 02300FD4
 .thumb
 
 ; ===== function loc_02300FD8 =====
@@ -2038,7 +2071,7 @@ loc_02300FDC:
 	ldr pc,[pool_02300FE0]	; 02300FDC
 pool_02300FE0:
 loc_02300FE0:
-	.word 0x037FCC04	; 02300FE0
+	.word loc_037FCC04	; 02300FE0
 .thumb
 	push {r4,lr}	; 02300FE4
 	bl loc_023008B4	; 02300FE6
@@ -2101,7 +2134,7 @@ loc_02301048:
 	bx r12	; 0230104C
 pool_02301050:
 loc_02301050:
-	.word 0x037FC259	; 02301050
+	.word P2_Entry_037FC258 + 1	; 02301050
 .thumb
 
 ; ===== function loc_02301054 =====
@@ -2130,7 +2163,7 @@ loc_02301054:
 	str r3,[r1,#0x0]	; 02301084
 	add r0,r4,r2	; 02301086
 	mov r1,#0x10	; 02301088
-	bl loc_02300424	; 0230108A
+	bl P4_ClassifyByteArrayAverage	; 0230108A
 	add r1,r5,#0x0	; 0230108E
 	add r1,#0xb8	; 02301090
 	strh r0,[r1,#0x0]	; 02301092
@@ -2424,7 +2457,7 @@ loc_023012A8:
 	ldr pc,[pool_023012AC]	; 023012A8
 pool_023012AC:
 loc_023012AC:
-	.word 0x037FCBF0	; 023012AC
+	.word loc_037FCBF0	; 023012AC
 .thumb
 
 ; ===== function loc_023012B0 =====
@@ -2438,7 +2471,7 @@ loc_023012B4:
 	ldr pc,[pool_023012B8]	; 023012B4
 pool_023012B8:
 loc_023012B8:
-	.word 0x03802514	; 023012B8
+	.word loc_03802514	; 023012B8
 .thumb
 
 ; ===== function loc_023012BC =====
@@ -2452,7 +2485,7 @@ loc_023012C0:
 	ldr pc,[pool_023012C4]	; 023012C0
 pool_023012C4:
 loc_023012C4:
-	.word 0x03802514	; 023012C4
+	.word loc_03802514	; 023012C4
 .thumb
 
 ; ===== function loc_023012C8 =====
@@ -2467,7 +2500,7 @@ loc_023012CC:
 	bx r12	; 023012D0
 pool_023012D4:
 loc_023012D4:
-	.word 0x037FC64D	; 023012D4
+	.word loc_037FC64C + 1	; 023012D4
 .thumb
 
 ; ===== function loc_023012D8 =====
@@ -2481,7 +2514,7 @@ loc_023012DC:
 	ldr pc,[pool_023012E0]	; 023012DC
 pool_023012E0:
 loc_023012E0:
-	.word 0x037FCC04	; 023012E0
+	.word loc_037FCC04	; 023012E0
 .thumb
 
 ; ===== function loc_023012E4 =====
@@ -2496,7 +2529,7 @@ loc_023012E8:
 	bx r12	; 023012EC
 pool_023012F0:
 loc_023012F0:
-	.word 0x037F8135	; 023012F0
+	.word P2_Runtime_037F8134 + 1	; 023012F0
 .thumb
 
 ; ===== function loc_023012F4 =====
@@ -2521,7 +2554,7 @@ loc_0230130C:
 	ldr r0,[pool_02301378]	; 02301316
 	add r0,r4,r0	; 02301318
 	mov r1,#0x10	; 0230131A
-	bl loc_02300424	; 0230131C
+	bl P4_ClassifyByteArrayAverage	; 0230131C
 	b loc_0230136E	; 02301320
 loc_02301322:
 	mov r7,#0x0	; 02301322
@@ -2564,7 +2597,7 @@ loc_02301350:
 	str r3,[r1,#0x0]	; 02301364
 	add r0,r4,r2	; 02301366
 	mov r1,#0x10	; 02301368
-	bl loc_02300424	; 0230136A
+	bl P4_ClassifyByteArrayAverage	; 0230136A
 loc_0230136E:
 	add sp,#0x4	; 0230136E
 	pop {r4,r5,r6,r7}	; 02301370
@@ -2798,10 +2831,10 @@ loc_02301534:
 	.word 0x0000FFFF	; 02301534
 pool_02301538:
 loc_02301538:
-	.word 0x02312CB0	; 02301538
+	.word P4_BssStart + 0x2404	; 02301538
 pool_0230153C:
 loc_0230153C:
-	.word 0x02312CA8	; 0230153C
+	.word P4_BssStart + 0x23FC	; 0230153C
 
 ; ===== function loc_02301540 =====
 loc_02301540:
@@ -2814,7 +2847,7 @@ loc_02301544:
 	ldr pc,[pool_02301548]	; 02301544
 pool_02301548:
 loc_02301548:
-	.word 0x037FCBF0	; 02301548
+	.word loc_037FCBF0	; 02301548
 .thumb
 
 ; ===== function loc_0230154C =====
@@ -2828,7 +2861,7 @@ loc_02301550:
 	ldr pc,[pool_02301554]	; 02301550
 pool_02301554:
 loc_02301554:
-	.word 0x037FCC04	; 02301554
+	.word loc_037FCC04	; 02301554
 .thumb
 
 ; ===== function loc_02301558 =====
@@ -2937,7 +2970,7 @@ loc_02301624:
 	.word 0x00001518	; 02301624
 pool_02301628:
 loc_02301628:
-	.word 0x02312CA0	; 02301628
+	.word P4_BssStart + 0x23F4	; 02301628
 pool_0230162C:
 loc_0230162C:
 	.word 0x0000150C	; 0230162C
@@ -3002,7 +3035,7 @@ loc_0230168C:
 	ldr pc,[pool_02301690]	; 0230168C
 pool_02301690:
 loc_02301690:
-	.word 0x037FCBF0	; 02301690
+	.word loc_037FCBF0	; 02301690
 .thumb
 
 ; ===== function loc_02301694 =====
@@ -3017,7 +3050,7 @@ loc_02301698:
 	bx r12	; 0230169C
 pool_023016A0:
 loc_023016A0:
-	.word 0x037FC20D	; 023016A0
+	.word P2_Entry_037FC20C + 1	; 023016A0
 .thumb
 
 ; ===== function loc_023016A4 =====
@@ -3031,7 +3064,7 @@ loc_023016A8:
 	ldr pc,[pool_023016AC]	; 023016A8
 pool_023016AC:
 loc_023016AC:
-	.word 0x037FCC04	; 023016AC
+	.word loc_037FCC04	; 023016AC
 .thumb
 
 ; ===== function loc_023016B0 =====
@@ -3063,14 +3096,28 @@ loc_023016B0:
 	cmp r1,#0x0	; 023016E4
 	blt loc_02301794	; 023016E6
 	add r1,r1,r1	; 023016E8
+P4_SwitchIndexPC_023016E8:
 	add r1,pc	; 023016EA
-	ldrh r1,[r1,#0x8]	; 023016EC
+	ldrh r1,[r1,#(P4_SwitchTable_023016E8 - (P4_SwitchIndexPC_023016E8 + 4))]	; 023016EC
 	lsl r1,r1,#0x10	; 023016EE
 	asr r1,r1,#0x10	; 023016F0
+P4_SwitchTargetPC_023016E8:
 	add r1,pc	; 023016F2
 	bx r1	; 023016F4
-	.byte 0x37, 0x00, 0x3F, 0x00, 0x47, 0x00, 0x4F, 0x00, 0x57, 0x00, 0x9F, 0x00, 0x9F, 0x00, 0x5F, 0x00	; 02301706
-	.byte 0x67, 0x00, 0x6F, 0x00	; 0230170A
+; 表项是相对 ADD 所读 PC 的有符号偏移，保留 ARM/Thumb 状态位。
+; Signed offsets from the ADD's PC, including the ARM/Thumb state bit.
+P4_SwitchTable_023016E8:
+	.halfword (loc_0230172C + 1) - (P4_SwitchTargetPC_023016E8 + 4)
+	.halfword (loc_02301734 + 1) - (P4_SwitchTargetPC_023016E8 + 4)
+	.halfword (loc_0230173C + 1) - (P4_SwitchTargetPC_023016E8 + 4)
+	.halfword (loc_02301744 + 1) - (P4_SwitchTargetPC_023016E8 + 4)
+	.halfword (loc_0230174C + 1) - (P4_SwitchTargetPC_023016E8 + 4)
+	.halfword (loc_02301794 + 1) - (P4_SwitchTargetPC_023016E8 + 4)
+	.halfword (loc_02301794 + 1) - (P4_SwitchTargetPC_023016E8 + 4)
+	.halfword (loc_02301754 + 1) - (P4_SwitchTargetPC_023016E8 + 4)
+	.halfword (loc_0230175C + 1) - (P4_SwitchTargetPC_023016E8 + 4)
+	.halfword (loc_02301764 + 1) - (P4_SwitchTargetPC_023016E8 + 4)
+P4_SwitchTable_023016E8End:
 loc_0230170A:
 	ldr r1,[pool_023017B0]	; 0230170A
 	cmp r0,r1	; 0230170C
@@ -3278,7 +3325,7 @@ loc_02301874:
 	bx r12	; 02301878
 pool_0230187C:
 loc_0230187C:
-	.word 0x038029F9	; 0230187C
+	.word loc_038029F8 + 1	; 0230187C
 .thumb
 loc_02301880:
 	push {r4,lr}	; 02301880
@@ -3358,7 +3405,7 @@ loc_02301904:
 	.word 0x00000308	; 02301904
 pool_02301908:
 loc_02301908:
-	.word 0x02301881	; 02301908
+	.word loc_02301880 + 1	; 02301908
 
 ; ===== function loc_0230190C =====
 loc_0230190C:
@@ -3371,7 +3418,7 @@ loc_02301914:
 	.word 0x00000307	; 02301914
 pool_02301918:
 loc_02301918:
-	.word 0x02301881	; 02301918
+	.word loc_02301880 + 1	; 02301918
 
 ; ===== function loc_0230191C =====
 loc_0230191C:
@@ -3384,7 +3431,7 @@ loc_02301924:
 	.word 0x00000306	; 02301924
 pool_02301928:
 loc_02301928:
-	.word 0x02301881	; 02301928
+	.word loc_02301880 + 1	; 02301928
 
 ; ===== function loc_0230192C =====
 loc_0230192C:
@@ -3397,7 +3444,7 @@ loc_02301934:
 	.word 0x00000305	; 02301934
 pool_02301938:
 loc_02301938:
-	.word 0x02301881	; 02301938
+	.word loc_02301880 + 1	; 02301938
 
 ; ===== function loc_0230193C =====
 loc_0230193C:
@@ -3410,7 +3457,7 @@ loc_02301944:
 	.word 0x00000304	; 02301944
 pool_02301948:
 loc_02301948:
-	.word 0x02301881	; 02301948
+	.word loc_02301880 + 1	; 02301948
 
 ; ===== function loc_0230194C =====
 loc_0230194C:
@@ -3423,7 +3470,7 @@ loc_02301954:
 	.word 0x00000303	; 02301954
 pool_02301958:
 loc_02301958:
-	.word 0x02301881	; 02301958
+	.word loc_02301880 + 1	; 02301958
 
 ; ===== function loc_0230195C =====
 loc_0230195C:
@@ -3436,7 +3483,7 @@ loc_02301964:
 	.word 0x00000302	; 02301964
 pool_02301968:
 loc_02301968:
-	.word 0x02301881	; 02301968
+	.word loc_02301880 + 1	; 02301968
 
 ; ===== function loc_0230196C =====
 loc_0230196C:
@@ -3449,7 +3496,7 @@ loc_02301974:
 	.word 0x00000301	; 02301974
 pool_02301978:
 loc_02301978:
-	.word 0x02301881	; 02301978
+	.word loc_02301880 + 1	; 02301978
 
 ; ===== function loc_0230197C =====
 loc_0230197C:
@@ -3462,7 +3509,7 @@ loc_02301984:
 	.word 0x00000284	; 02301984
 pool_02301988:
 loc_02301988:
-	.word 0x02301881	; 02301988
+	.word loc_02301880 + 1	; 02301988
 
 ; ===== function loc_0230198C =====
 loc_0230198C:
@@ -3475,7 +3522,7 @@ loc_02301994:
 	.word 0x00000283	; 02301994
 pool_02301998:
 loc_02301998:
-	.word 0x02301881	; 02301998
+	.word loc_02301880 + 1	; 02301998
 
 ; ===== function loc_0230199C =====
 loc_0230199C:
@@ -3488,7 +3535,7 @@ loc_023019A4:
 	.word 0x00000281	; 023019A4
 pool_023019A8:
 loc_023019A8:
-	.word 0x02301881	; 023019A8
+	.word loc_02301880 + 1	; 023019A8
 
 ; ===== function loc_023019AC =====
 loc_023019AC:
@@ -3547,7 +3594,7 @@ loc_02301A0C:
 	ldr pc,[pool_02301A10]	; 02301A0C
 pool_02301A10:
 loc_02301A10:
-	.word 0x03802514	; 02301A10
+	.word loc_03802514	; 02301A10
 .thumb
 
 ; ===== function loc_02301A14 =====
@@ -3561,7 +3608,7 @@ loc_02301A18:
 	ldr pc,[pool_02301A1C]	; 02301A18
 pool_02301A1C:
 loc_02301A1C:
-	.word 0x037FCE1C	; 02301A1C
+	.word P2_Entry_037FCE1C	; 02301A1C
 .thumb
 
 ; ===== function loc_02301A20 =====
@@ -3831,7 +3878,7 @@ loc_02301BFC:
 	ldr pc,[pool_02301C00]	; 02301BFC
 pool_02301C00:
 loc_02301C00:
-	.word 0x037FCE1C	; 02301C00
+	.word P2_Entry_037FCE1C	; 02301C00
 .thumb
 
 ; ===== function loc_02301C04 =====
@@ -3908,7 +3955,7 @@ loc_02301C88:
 	ldr pc,[pool_02301C8C]	; 02301C88
 pool_02301C8C:
 loc_02301C8C:
-	.word 0x03802514	; 02301C8C
+	.word loc_03802514	; 02301C8C
 .thumb
 
 ; ===== function loc_02301C90 =====
@@ -3922,7 +3969,7 @@ loc_02301C94:
 	ldr pc,[pool_02301C98]	; 02301C94
 pool_02301C98:
 loc_02301C98:
-	.word 0x037FCE1C	; 02301C98
+	.word P2_Entry_037FCE1C	; 02301C98
 .thumb
 
 ; ===== function loc_02301C9C =====
@@ -3936,7 +3983,7 @@ loc_02301CA0:
 	ldr pc,[pool_02301CA4]	; 02301CA0
 pool_02301CA4:
 loc_02301CA4:
-	.word 0x037FCE1C	; 02301CA4
+	.word P2_Entry_037FCE1C	; 02301CA4
 .thumb
 
 ; ===== function loc_02301CA8 =====
@@ -3989,7 +4036,7 @@ loc_02301CF8:
 	ldr pc,[pool_02301CFC]	; 02301CF8
 pool_02301CFC:
 loc_02301CFC:
-	.word 0x037FCE1C	; 02301CFC
+	.word P2_Entry_037FCE1C	; 02301CFC
 .thumb
 
 ; ===== function loc_02301D00 =====
@@ -4042,7 +4089,7 @@ loc_02301D50:
 	ldr pc,[pool_02301D54]	; 02301D50
 pool_02301D54:
 loc_02301D54:
-	.word 0x037FCE1C	; 02301D54
+	.word P2_Entry_037FCE1C	; 02301D54
 .thumb
 
 ; ===== function loc_02301D58 =====
@@ -4095,7 +4142,7 @@ loc_02301DA8:
 	ldr pc,[pool_02301DAC]	; 02301DA8
 pool_02301DAC:
 loc_02301DAC:
-	.word 0x037FCE1C	; 02301DAC
+	.word P2_Entry_037FCE1C	; 02301DAC
 .thumb
 
 ; ===== function loc_02301DB0 =====
@@ -4148,7 +4195,7 @@ loc_02301E00:
 	ldr pc,[pool_02301E04]	; 02301E00
 pool_02301E04:
 loc_02301E04:
-	.word 0x037FCE1C	; 02301E04
+	.word P2_Entry_037FCE1C	; 02301E04
 .thumb
 
 ; ===== function loc_02301E08 =====
@@ -4223,7 +4270,7 @@ loc_02301E88:
 	ldr pc,[pool_02301E8C]	; 02301E88
 pool_02301E8C:
 loc_02301E8C:
-	.word 0x037FCE1C	; 02301E8C
+	.word P2_Entry_037FCE1C	; 02301E8C
 .thumb
 
 ; ===== function loc_02301E90 =====
@@ -4237,7 +4284,7 @@ loc_02301E94:
 	ldr pc,[pool_02301E98]	; 02301E94
 pool_02301E98:
 loc_02301E98:
-	.word 0x037FCE1C	; 02301E98
+	.word P2_Entry_037FCE1C	; 02301E98
 .thumb
 
 ; ===== function loc_02301E9C =====
@@ -4251,7 +4298,7 @@ loc_02301EA0:
 	ldr pc,[pool_02301EA4]	; 02301EA0
 pool_02301EA4:
 loc_02301EA4:
-	.word 0x037FCE1C	; 02301EA4
+	.word P2_Entry_037FCE1C	; 02301EA4
 .thumb
 
 ; ===== function loc_02301EA8 =====
@@ -4381,7 +4428,7 @@ loc_02301F94:
 	bx r12	; 02301F98
 pool_02301F9C:
 loc_02301F9C:
-	.word 0x03802121	; 02301F9C
+	.word loc_03802120 + 1	; 02301F9C
 .thumb
 
 ; ===== function loc_02301FA0 =====
@@ -4913,7 +4960,7 @@ loc_023023A0:
 	ldr pc,[pool_023023A4]	; 023023A0
 pool_023023A4:
 loc_023023A4:
-	.word 0x037FCE04	; 023023A4
+	.word loc_037FCE04	; 023023A4
 .thumb
 
 ; ===== function loc_023023A8 =====
@@ -4927,7 +4974,7 @@ loc_023023AC:
 	ldr pc,[pool_023023B0]	; 023023AC
 pool_023023B0:
 loc_023023B0:
-	.word 0x037FCE04	; 023023B0
+	.word loc_037FCE04	; 023023B0
 .thumb
 
 ; ===== function loc_023023B4 =====
@@ -5264,7 +5311,7 @@ loc_02302608:
 	strb r0,[r1,#0x0]	; 02302654
 	add r0,sp,#0x14	; 02302656
 	mov r1,#0x1	; 02302658
-	bl loc_02300424	; 0230265A
+	bl P4_ClassifyByteArrayAverage	; 0230265A
 	strh r0,[r4,#0x12]	; 0230265E
 	ldrh r0,[r6,#0x14]	; 02302660
 	strh r0,[r4,#0x14]	; 02302662
@@ -5367,7 +5414,7 @@ loc_02302708:
 	ldr pc,[pool_0230270C]	; 02302708
 pool_0230270C:
 loc_0230270C:
-	.word 0x037FCE04	; 0230270C
+	.word loc_037FCE04	; 0230270C
 .thumb
 
 ; ===== function loc_02302710 =====
@@ -5381,7 +5428,7 @@ loc_02302714:
 	ldr pc,[pool_02302718]	; 02302714
 pool_02302718:
 loc_02302718:
-	.word 0x037FCEB0	; 02302718
+	.word loc_037FCEB0	; 02302718
 .thumb
 
 ; ===== function loc_0230271C =====
@@ -5396,7 +5443,7 @@ loc_02302720:
 	bx r12	; 02302724
 pool_02302728:
 loc_02302728:
-	.word 0x037FCD95	; 02302728
+	.word P2_Entry_037FCD94 + 1	; 02302728
 .thumb
 
 ; ===== function loc_0230272C =====
@@ -5907,7 +5954,7 @@ loc_02302AF4:
 	ldr pc,[pool_02302AF8]	; 02302AF4
 pool_02302AF8:
 loc_02302AF8:
-	.word 0x037FCEC8	; 02302AF8
+	.word P2_Entry_037FCEC8	; 02302AF8
 .thumb
 
 ; ===== function loc_02302AFC =====
@@ -5921,7 +5968,7 @@ loc_02302B00:
 	ldr pc,[pool_02302B04]	; 02302B00
 pool_02302B04:
 loc_02302B04:
-	.word 0x037FCE04	; 02302B04
+	.word loc_037FCE04	; 02302B04
 .thumb
 
 ; ===== function loc_02302B08 =====
@@ -6874,7 +6921,7 @@ loc_02303220:
 	ldr pc,[pool_02303224]	; 02303220
 pool_02303224:
 loc_02303224:
-	.word 0x037FCEB0	; 02303224
+	.word loc_037FCEB0	; 02303224
 .thumb
 
 ; ===== function loc_02303228 =====
@@ -6995,7 +7042,7 @@ loc_02303300:
 	ldr pc,[pool_02303304]	; 02303300
 pool_02303304:
 loc_02303304:
-	.word 0x037FCE1C	; 02303304
+	.word P2_Entry_037FCE1C	; 02303304
 .thumb
 
 ; ===== function loc_02303308 =====
@@ -7038,7 +7085,7 @@ loc_02303348:
 	.byte 0xC0, 0x46	; 02303350
 pool_02303350:
 loc_02303350:
-	.word 0x02312CCC	; 02303350
+	.word P4_BssStart + 0x2420	; 02303350
 pool_02303354:
 loc_02303354:
 	.word 0x00001518	; 02303354
@@ -7084,7 +7131,7 @@ loc_02303390:
 	bx r12	; 02303394
 pool_02303398:
 loc_02303398:
-	.word 0x037FCA25	; 02303398
+	.word P2_Entry_037FCA24 + 1	; 02303398
 .thumb
 
 ; ===== function loc_0230339C =====
@@ -7132,7 +7179,7 @@ loc_023033E8:
 	.word 0x00001518	; 023033E8
 pool_023033EC:
 loc_023033EC:
-	.word 0x04000006	; 023033EC
+	.word REG_VCOUNT	; 023033EC
 pool_023033F0:
 loc_023033F0:
 	.word 0x00000104	; 023033F0
@@ -7261,7 +7308,7 @@ loc_023034D0:
 	.word 0x00001518	; 023034D0
 pool_023034D4:
 loc_023034D4:
-	.word 0x0380FFF0	; 023034D4
+	.word FirmwareWlAdjustedTimeSlot	; 023034D4
 pool_023034D8:
 loc_023034D8:
 	.word 0x02303685	; 023034D8
@@ -7351,7 +7398,7 @@ loc_02303570:
 	.word 0x0000012C	; 02303570
 pool_02303574:
 loc_02303574:
-	.word 0x04000006	; 02303574
+	.word REG_VCOUNT	; 02303574
 pool_02303578:
 loc_02303578:
 	.word 0x000001F4	; 02303578
@@ -7455,13 +7502,13 @@ loc_02303624:
 	.word 0x00001518	; 02303624
 pool_02303628:
 loc_02303628:
-	.word 0x048080F8	; 02303628
+	.word REG_WIFI_US_COUNT0	; 02303628
 pool_0230362C:
 loc_0230362C:
-	.word 0x048080FA	; 0230362C
+	.word REG_WIFI_US_COUNT1	; 0230362C
 pool_02303630:
 loc_02303630:
-	.word 0x04000006	; 02303630
+	.word REG_VCOUNT	; 02303630
 pool_02303634:
 loc_02303634:
 	.word 0x003FFFC0	; 02303634
@@ -7477,6 +7524,9 @@ loc_02303640:
 
 ; ===== function loc_02303644 =====
 loc_02303644:
+; 对 Wi-Fi 微秒计数作 VCOUNT 校正，截为 16 位后写入共享槽。
+; Adjust the Wi-Fi microsecond count using VCOUNT, storing its low 16-bit result.
+.func P4_UpdateScanlineAdjustedWifiTime
 	push {r4,lr}	; 02303644
 	ldr r0,[pool_02303674]	; 02303646
 	ldrh r0,[r0,#0x0]	; 02303648
@@ -7501,19 +7551,20 @@ loc_0230365A:
 	pop {r4}	; 0230366C
 	pop {r3}	; 0230366E
 	bx r3	; 02303670
+.endfunc
 	.byte 0xC0, 0x46	; 02303674
 pool_02303674:
 loc_02303674:
-	.word 0x04000006	; 02303674
+	.word REG_VCOUNT	; 02303674
 pool_02303678:
 loc_02303678:
-	.word 0x048080F8	; 02303678
+	.word REG_WIFI_US_COUNT0	; 02303678
 pool_0230367C:
 loc_0230367C:
-	.word 0x048080FA	; 0230367C
+	.word REG_WIFI_US_COUNT1	; 0230367C
 pool_02303680:
 loc_02303680:
-	.word 0x0380FFF0	; 02303680
+	.word FirmwareWlAdjustedTimeSlot	; 02303680
 
 ; ===== function loc_02303684 =====
 	push {lr}	; 02303684
@@ -7640,7 +7691,7 @@ loc_02303754:
 	bx r12	; 02303758
 pool_0230375C:
 loc_0230375C:
-	.word 0x037FCB1D	; 0230375C
+	.word loc_037FCB1C + 1	; 0230375C
 .thumb
 
 ; ===== function loc_02303760 =====
@@ -7808,7 +7859,7 @@ loc_02303880:
 	ldr pc,[pool_02303884]	; 02303880
 pool_02303884:
 loc_02303884:
-	.word 0x037FCBF0	; 02303884
+	.word loc_037FCBF0	; 02303884
 .thumb
 
 ; ===== function loc_02303888 =====
@@ -7822,7 +7873,7 @@ loc_0230388C:
 	ldr pc,[pool_02303890]	; 0230388C
 pool_02303890:
 loc_02303890:
-	.word 0x037FCC04	; 02303890
+	.word loc_037FCC04	; 02303890
 .thumb
 
 ; ===== function loc_02303894 =====
@@ -7836,7 +7887,7 @@ loc_02303898:
 	ldr pc,[pool_0230389C]	; 02303898
 pool_0230389C:
 loc_0230389C:
-	.word 0x037FCBF0	; 0230389C
+	.word loc_037FCBF0	; 0230389C
 .thumb
 
 ; ===== function loc_023038A0 =====
@@ -7850,7 +7901,7 @@ loc_023038A4:
 	ldr pc,[pool_023038A8]	; 023038A4
 pool_023038A8:
 loc_023038A8:
-	.word 0x037FCC04	; 023038A8
+	.word loc_037FCC04	; 023038A8
 .thumb
 
 ; ===== function loc_023038AC =====
@@ -7925,7 +7976,7 @@ loc_02303928:
 	.word 0x00000388	; 02303928
 pool_0230392C:
 loc_0230392C:
-	.word 0x04000006	; 0230392C
+	.word REG_VCOUNT	; 0230392C
 pool_02303930:
 loc_02303930:
 	.word 0x00000104	; 02303930
@@ -7947,7 +7998,7 @@ loc_02303940:
 	ldr pc,[pool_02303944]	; 02303940
 pool_02303944:
 loc_02303944:
-	.word 0x03802514	; 02303944
+	.word loc_03802514	; 02303944
 .thumb
 
 ; ===== function loc_02303948 =====
@@ -7961,7 +8012,7 @@ loc_0230394C:
 	ldr pc,[pool_02303950]	; 0230394C
 pool_02303950:
 loc_02303950:
-	.word 0x03802514	; 02303950
+	.word loc_03802514	; 02303950
 .thumb
 
 ; ===== function loc_02303954 =====
@@ -8503,7 +8554,7 @@ loc_02303CF4:
 	bx r12	; 02303CF8
 pool_02303CFC:
 loc_02303CFC:
-	.word 0x037FBF3D	; 02303CFC
+	.word P2_Entry_037FBF3C + 1	; 02303CFC
 .thumb
 
 ; ===== function loc_02303D00 =====
@@ -8518,7 +8569,7 @@ loc_02303D04:
 	bx r12	; 02303D08
 pool_02303D0C:
 loc_02303D0C:
-	.word 0x037FBEF5	; 02303D0C
+	.word P2_Entry_037FBEF4 + 1	; 02303D0C
 .thumb
 
 ; ===== function loc_02303D10 =====
@@ -9314,7 +9365,7 @@ loc_0230429C:
 	.word 0x00000190	; 0230429C
 pool_023042A0:
 loc_023042A0:
-	.word 0x048080F8	; 023042A0
+	.word REG_WIFI_US_COUNT0	; 023042A0
 pool_023042A4:
 loc_023042A4:
 	.word 0x00008000	; 023042A4
@@ -9499,7 +9550,7 @@ loc_023043D8:
 	ldr pc,[pool_023043DC]	; 023043D8
 pool_023043DC:
 loc_023043DC:
-	.word 0x037FCE04	; 023043DC
+	.word loc_037FCE04	; 023043DC
 .thumb
 
 ; ===== function loc_023043E0 =====
@@ -9608,7 +9659,7 @@ loc_023044A0:
 	ldr pc,[pool_023044A4]	; 023044A0
 pool_023044A4:
 loc_023044A4:
-	.word 0x037FCE1C	; 023044A4
+	.word P2_Entry_037FCE1C	; 023044A4
 .thumb
 
 ; ===== function loc_023044A8 =====
@@ -9692,7 +9743,7 @@ loc_02304530:
 	ldr pc,[pool_02304534]	; 02304530
 pool_02304534:
 loc_02304534:
-	.word 0x037FCE04	; 02304534
+	.word loc_037FCE04	; 02304534
 .thumb
 
 ; ===== function loc_02304538 =====
@@ -9707,7 +9758,7 @@ loc_0230453C:
 	bx r12	; 02304540
 pool_02304544:
 loc_02304544:
-	.word 0x037FC779	; 02304544
+	.word loc_037FC778 + 1	; 02304544
 .thumb
 
 ; ===== function loc_02304548 =====
@@ -9793,19 +9844,19 @@ loc_023045DC:
 	bx lr	; 023045EE
 pool_023045F0:
 loc_023045F0:
-	.word 0x04808124	; 023045F0
+	.word REG_WIFI_CONFIG_124	; 023045F0
 pool_023045F4:
 loc_023045F4:
 	.word 0x000007D0	; 023045F4
 pool_023045F8:
 loc_023045F8:
-	.word 0x04808128	; 023045F8
+	.word REG_WIFI_CONFIG_128	; 023045F8
 pool_023045FC:
 loc_023045FC:
 	.word 0x00000202	; 023045FC
 pool_02304600:
 loc_02304600:
-	.word 0x04808150	; 02304600
+	.word REG_WIFI_CONFIG_150	; 02304600
 
 ; ===== function loc_02304604 =====
 loc_02304604:
@@ -9992,7 +10043,7 @@ loc_02304750:
 	ldr pc,[pool_02304754]	; 02304750
 pool_02304754:
 loc_02304754:
-	.word 0x037FCE1C	; 02304754
+	.word P2_Entry_037FCE1C	; 02304754
 .thumb
 
 ; ===== function loc_02304758 =====
@@ -10159,7 +10210,7 @@ loc_02304894:
 	ldr pc,[pool_02304898]	; 02304894
 pool_02304898:
 loc_02304898:
-	.word 0x037FCBF0	; 02304898
+	.word loc_037FCBF0	; 02304898
 .thumb
 
 ; ===== function loc_0230489C =====
@@ -10173,7 +10224,7 @@ loc_023048A0:
 	ldr pc,[pool_023048A4]	; 023048A0
 pool_023048A4:
 loc_023048A4:
-	.word 0x037FCC04	; 023048A4
+	.word loc_037FCC04	; 023048A4
 .thumb
 	mov r1,#0x1	; 023048A8
 	ldr r3,[pool_023048B0]	; 023048AA
@@ -10181,10 +10232,13 @@ loc_023048A4:
 	.byte 0xC0, 0x46	; 023048B0
 pool_023048B0:
 loc_023048B0:
-	.word 0x02302B2D	; 023048B0
+	.word loc_02302B2C + 1	; 023048B0
 
 ; ===== function loc_023048B4 =====
 loc_023048B4:
+; 保存参数中的无线工作区指针，初始化状态并开启 Wi-Fi 总线。
+; Stores the supplied wireless work pointer, initializes state and enables the Wi-Fi bus.
+.func P4_InitializeWirelessWork
 	push {r4,r5,lr}	; 023048B4
 	sub sp,#0x14	; 023048B6
 	add r4,r0,#0x0	; 023048B8
@@ -10318,9 +10372,10 @@ loc_023049BA:
 	pop {r4,r5}	; 023049EA
 	pop {r3}	; 023049EC
 	bx r3	; 023049EE
+.endfunc
 pool_023049F0:
 loc_023049F0:
-	.word 0x0380FFF4	; 023049F0
+	.word FirmwareWlWorkPointerSlot	; 023049F0
 pool_023049F4:
 loc_023049F4:
 	.word 0x00000678	; 023049F4
@@ -10335,10 +10390,10 @@ loc_02304A00:
 	.word 0x000002D4	; 02304A00
 pool_02304A04:
 loc_02304A04:
-	.word 0x04000304	; 02304A04
+	.word REG_POWERCNT_ARM7	; 02304A04
 pool_02304A08:
 loc_02304A08:
-	.word 0x04000206	; 02304A08
+	.word REG_WIFIWAITCNT_ARM7	; 02304A08
 pool_02304A0C:
 loc_02304A0C:
 	.word 0x00000618	; 02304A0C
@@ -10372,7 +10427,7 @@ loc_02304A2C:
 	ldr pc,[pool_02304A30]	; 02304A2C
 pool_02304A30:
 loc_02304A30:
-	.word 0x037FCE64	; 02304A30
+	.word P2_Entry_037FCE64	; 02304A30
 .thumb
 
 ; ===== function loc_02304A34 =====
@@ -10386,7 +10441,7 @@ loc_02304A38:
 	ldr pc,[pool_02304A3C]	; 02304A38
 pool_02304A3C:
 loc_02304A3C:
-	.word 0x037FB6B4	; 02304A3C
+	.word loc_037FB6B4	; 02304A3C
 .thumb
 
 ; ===== function loc_02304A40 =====
@@ -10400,7 +10455,7 @@ loc_02304A44:
 	ldr pc,[pool_02304A48]	; 02304A44
 pool_02304A48:
 loc_02304A48:
-	.word 0x03802720	; 02304A48
+	.word loc_03802720	; 02304A48
 	.byte 0x00, 0xB5, 0x81, 0xB0, 0x00, 0xF0, 0x9C, 0xFD, 0x01, 0xF0, 0xAA, 0xFE, 0x00, 0xF0, 0x92, 0xFF	; 02304A5C
 	.byte 0x00, 0xF0, 0x5A, 0xF9, 0x00, 0xF0, 0x0E, 0xF9, 0x09, 0x48, 0x02, 0x68, 0x09, 0x48, 0x10, 0x58	; 02304A6C
 	.byte 0x09, 0x49, 0x51, 0x5A, 0x02, 0xF0, 0x64, 0xFC, 0x04, 0xF0, 0x50, 0xFD, 0x04, 0xF0, 0xBE, 0xFE	; 02304A7C
@@ -10429,7 +10484,7 @@ loc_02304AB6:
 	bx r3	; 02304ABA
 pool_02304ABC:
 loc_02304ABC:
-	.word 0x0380FFF4	; 02304ABC
+	.word FirmwareWlWorkPointerSlot	; 02304ABC
 pool_02304AC0:
 loc_02304AC0:
 	.word 0x000001C4	; 02304AC0
@@ -10454,7 +10509,7 @@ loc_02304AC0:
 	bx r3	; 02304AEA
 pool_02304AEC:
 loc_02304AEC:
-	.word 0x0380FFF4	; 02304AEC
+	.word FirmwareWlWorkPointerSlot	; 02304AEC
 pool_02304AF0:
 loc_02304AF0:
 	.word 0x000002CC	; 02304AF0
@@ -10499,7 +10554,7 @@ loc_02304B2C:
 	bx r3	; 02304B3A
 pool_02304B3C:
 loc_02304B3C:
-	.word 0x0380FFF4	; 02304B3C
+	.word FirmwareWlWorkPointerSlot	; 02304B3C
 pool_02304B40:
 loc_02304B40:
 	.word 0x01000010	; 02304B40
@@ -10519,7 +10574,7 @@ loc_02304B4C:
 	bx r12	; 02304B50
 pool_02304B54:
 loc_02304B54:
-	.word 0x037FB571	; 02304B54
+	.word loc_037FB570 + 1	; 02304B54
 .thumb
 
 ; ===== function loc_02304B58 =====
@@ -10534,7 +10589,7 @@ loc_02304B5C:
 	bx r12	; 02304B60
 pool_02304B64:
 loc_02304B64:
-	.word 0x037FB59D	; 02304B64
+	.word loc_037FB59C + 1	; 02304B64
 .thumb
 
 ; ===== function loc_02304B68 =====
@@ -10604,7 +10659,7 @@ loc_02304BDA:
 	.byte 0xC0, 0x46	; 02304BE4
 pool_02304BE4:
 loc_02304BE4:
-	.word 0x0380FFF4	; 02304BE4
+	.word FirmwareWlWorkPointerSlot	; 02304BE4
 pool_02304BE8:
 loc_02304BE8:
 	.word 0x01000010	; 02304BE8
@@ -10668,7 +10723,7 @@ loc_02304C40:
 	.byte 0xC0, 0x46	; 02304C60
 pool_02304C60:
 loc_02304C60:
-	.word 0x0380FFF4	; 02304C60
+	.word FirmwareWlWorkPointerSlot	; 02304C60
 pool_02304C64:
 loc_02304C64:
 	.word 0x0000FFFF	; 02304C64
@@ -10691,7 +10746,7 @@ loc_02304C74:
 	bx r12	; 02304C78
 pool_02304C7C:
 loc_02304C7C:
-	.word 0x038029F5	; 02304C7C
+	.word loc_038029F4 + 1	; 02304C7C
 .thumb
 
 ; ===== function loc_02304C80 =====
@@ -10741,13 +10796,13 @@ loc_02304CA6:
 	.byte 0xC0, 0x46	; 02304CD4
 pool_02304CD4:
 loc_02304CD4:
-	.word 0x0380FFF4	; 02304CD4
+	.word FirmwareWlWorkPointerSlot	; 02304CD4
 pool_02304CD8:
 loc_02304CD8:
 	.word 0x0000FFFF	; 02304CD8
 pool_02304CDC:
 loc_02304CDC:
-	.word 0x0231031C	; 02304CDC
+	.word P4_Data_0231031C	; 02304CDC
 
 ; ===== function loc_02304CE0 =====
 loc_02304CE0:
@@ -10815,7 +10870,7 @@ loc_02304D14:
 	bx r3	; 02304D62
 pool_02304D64:
 loc_02304D64:
-	.word 0x0380FFF4	; 02304D64
+	.word FirmwareWlWorkPointerSlot	; 02304D64
 pool_02304D68:
 loc_02304D68:
 	.word 0x00000140	; 02304D68
@@ -10916,7 +10971,7 @@ loc_02304DB2:
 	.byte 0xC0, 0x46	; 02304E38
 pool_02304E38:
 loc_02304E38:
-	.word 0x0380FFF4	; 02304E38
+	.word FirmwareWlWorkPointerSlot	; 02304E38
 pool_02304E3C:
 loc_02304E3C:
 	.word 0x00000140	; 02304E3C
@@ -11221,7 +11276,7 @@ loc_0230503C:
 	.byte 0xC0, 0x46	; 02305044
 pool_02305044:
 loc_02305044:
-	.word 0x0380FFF4	; 02305044
+	.word FirmwareWlWorkPointerSlot	; 02305044
 pool_02305048:
 loc_02305048:
 	.word 0x00000140	; 02305048
@@ -11284,7 +11339,7 @@ loc_023050A6:
 	.byte 0xC0, 0x46	; 023050B0
 pool_023050B0:
 loc_023050B0:
-	.word 0x0380FFF4	; 023050B0
+	.word FirmwareWlWorkPointerSlot	; 023050B0
 pool_023050B4:
 loc_023050B4:
 	.word 0x00000140	; 023050B4
@@ -11340,7 +11395,7 @@ loc_02305114:
 	bx r3	; 0230511A
 pool_0230511C:
 loc_0230511C:
-	.word 0x0380FFF4	; 0230511C
+	.word FirmwareWlWorkPointerSlot	; 0230511C
 pool_02305120:
 loc_02305120:
 	.word 0x000003AC	; 02305120
@@ -11380,7 +11435,7 @@ loc_0230515C:
 	.word 0x01000000	; 0230515C
 pool_02305160:
 loc_02305160:
-	.word 0x0380FFF4	; 02305160
+	.word FirmwareWlWorkPointerSlot	; 02305160
 pool_02305164:
 loc_02305164:
 	.word 0x000003AC	; 02305164
@@ -11474,7 +11529,7 @@ loc_02305214:
 	.byte 0xC0, 0x46	; 0230521C
 pool_0230521C:
 loc_0230521C:
-	.word 0x0380FFF4	; 0230521C
+	.word FirmwareWlWorkPointerSlot	; 0230521C
 pool_02305220:
 loc_02305220:
 	.word 0x000003E4	; 02305220
@@ -11489,7 +11544,7 @@ loc_0230522C:
 	.word 0x000003B4	; 0230522C
 pool_02305230:
 loc_02305230:
-	.word 0x04808004	; 02305230
+	.word REG_WIFI_MODE_RST	; 02305230
 
 ; ===== function loc_02305234 =====
 loc_02305234:
@@ -11516,7 +11571,7 @@ loc_0230525A:
 	bx r3	; 0230525E
 pool_02305260:
 loc_02305260:
-	.word 0x0380FFF4	; 02305260
+	.word FirmwareWlWorkPointerSlot	; 02305260
 pool_02305264:
 loc_02305264:
 	.word 0x000003B4	; 02305264
@@ -11544,7 +11599,7 @@ loc_02305284:
 	.byte 0xC0, 0x46	; 02305288
 pool_02305288:
 loc_02305288:
-	.word 0x04808004	; 02305288
+	.word REG_WIFI_MODE_RST	; 02305288
 pool_0230528C:
 loc_0230528C:
 	.word 0x04808214	; 0230528C
@@ -11596,7 +11651,7 @@ loc_023052D8:
 	.word 0x00001D46	; 023052D8
 pool_023052DC:
 loc_023052DC:
-	.word 0x0380FFF4	; 023052DC
+	.word FirmwareWlWorkPointerSlot	; 023052DC
 pool_023052E0:
 loc_023052E0:
 	.word 0x000003B2	; 023052E0
@@ -11645,7 +11700,7 @@ loc_023052E4:
 	bx r3	; 02305332
 pool_02305334:
 loc_02305334:
-	.word 0x023103D8	; 02305334
+	.word P4_Data_023103D8	; 02305334
 pool_02305338:
 loc_02305338:
 	.word 0x00000FFF	; 02305338
@@ -11672,7 +11727,7 @@ loc_0230533C:
 	bx r3	; 0230535E
 pool_02305360:
 loc_02305360:
-	.word 0x0380FFF4	; 02305360
+	.word FirmwareWlWorkPointerSlot	; 02305360
 pool_02305364:
 loc_02305364:
 	.word 0x000005AA	; 02305364
@@ -11693,7 +11748,7 @@ loc_02305370:
 	.byte 0xC0, 0x46	; 0230537C
 pool_0230537C:
 loc_0230537C:
-	.word 0x0380FFF4	; 0230537C
+	.word FirmwareWlWorkPointerSlot	; 0230537C
 pool_02305380:
 loc_02305380:
 	.word 0x000005AC	; 02305380
@@ -11721,7 +11776,7 @@ loc_023053A4:
 	.word 0x0000FFF8	; 023053A4
 pool_023053A8:
 loc_023053A8:
-	.word 0x0380FFF4	; 023053A8
+	.word FirmwareWlWorkPointerSlot	; 023053A8
 pool_023053AC:
 loc_023053AC:
 	.word 0x000005A8	; 023053AC
@@ -11833,7 +11888,7 @@ loc_02305458:
 	bx r3	; 0230545E
 pool_02305460:
 loc_02305460:
-	.word 0x02305465	; 02305460
+	.word loc_02305464 + 1	; 02305460
 
 ; ===== function loc_02305464 =====
 loc_02305464:
@@ -11890,7 +11945,7 @@ loc_023054B4:
 	.byte 0xC0, 0x46	; 023054C8
 pool_023054C8:
 loc_023054C8:
-	.word 0x0380FFF4	; 023054C8
+	.word FirmwareWlWorkPointerSlot	; 023054C8
 pool_023054CC:
 loc_023054CC:
 	.word 0x000002D0	; 023054CC
@@ -11905,7 +11960,7 @@ loc_023054D8:
 	.word 0x000002D4	; 023054D8
 pool_023054DC:
 loc_023054DC:
-	.word 0x04808068	; 023054DC
+	.word REG_WIFI_TXBUF_WR_ADDR	; 023054DC
 pool_023054E0:
 loc_023054E0:
 	.word 0x04808070	; 023054E0
@@ -11981,7 +12036,7 @@ loc_02305556:
 	bx r3	; 02305562
 pool_02305564:
 loc_02305564:
-	.word 0x0380FFF4	; 02305564
+	.word FirmwareWlWorkPointerSlot	; 02305564
 pool_02305568:
 loc_02305568:
 	.word 0x000002D0	; 02305568
@@ -11996,7 +12051,7 @@ loc_02305574:
 	.word 0x01000000	; 02305574
 pool_02305578:
 loc_02305578:
-	.word 0x04808058	; 02305578
+	.word REG_WIFI_RXBUF_RD_ADDR	; 02305578
 pool_0230557C:
 loc_0230557C:
 	.word 0x04808060	; 0230557C
@@ -12020,13 +12075,13 @@ loc_0230558C:
 	bx r3	; 02305596
 pool_02305598:
 loc_02305598:
-	.word 0x0380FFF4	; 02305598
+	.word FirmwareWlWorkPointerSlot	; 02305598
 pool_0230559C:
 loc_0230559C:
 	.word 0x000005EC	; 0230559C
 pool_023055A0:
 loc_023055A0:
-	.word 0x037FC5A1	; 023055A0
+	.word loc_037FC5A0 + 1	; 023055A0
 
 ; ===== function loc_023055A4 =====
 loc_023055A4:
@@ -12061,7 +12116,7 @@ loc_023055DC:
 	.word 0x000003E8	; 023055DC
 pool_023055E0:
 loc_023055E0:
-	.word 0x0380FFF4	; 023055E0
+	.word FirmwareWlWorkPointerSlot	; 023055E0
 pool_023055E4:
 loc_023055E4:
 	.word 0x000005EC	; 023055E4
@@ -12077,7 +12132,7 @@ loc_023055EC:
 	ldr pc,[pool_023055F0]	; 023055EC
 pool_023055F0:
 loc_023055F0:
-	.word 0x03802720	; 023055F0
+	.word loc_03802720	; 023055F0
 .thumb
 
 ; ===== function loc_023055F4 =====
@@ -12104,7 +12159,7 @@ loc_023055F4:
 	bx r3	; 0230561E
 pool_02305620:
 loc_02305620:
-	.word 0x0380FFF4	; 02305620
+	.word FirmwareWlWorkPointerSlot	; 02305620
 pool_02305624:
 loc_02305624:
 	.word 0x000005EC	; 02305624
@@ -12154,7 +12209,7 @@ loc_0230567E:
 	bx r3	; 02305682
 pool_02305684:
 loc_02305684:
-	.word 0x0380FFF4	; 02305684
+	.word FirmwareWlWorkPointerSlot	; 02305684
 pool_02305688:
 loc_02305688:
 	.word 0x000003A4	; 02305688
@@ -12175,13 +12230,13 @@ loc_02305694:
 	bx r3	; 0230569E
 pool_023056A0:
 loc_023056A0:
-	.word 0x0380FFF4	; 023056A0
+	.word FirmwareWlWorkPointerSlot	; 023056A0
 pool_023056A4:
 loc_023056A4:
 	.word 0x000005C0	; 023056A4
 pool_023056A8:
 loc_023056A8:
-	.word 0x037FC5A1	; 023056A8
+	.word loc_037FC5A0 + 1	; 023056A8
 
 ; ===== function loc_023056AC =====
 loc_023056AC:
@@ -12218,7 +12273,7 @@ loc_023056AC:
 	bx r3	; 023056EE
 pool_023056F0:
 loc_023056F0:
-	.word 0x0380FFF4	; 023056F0
+	.word FirmwareWlWorkPointerSlot	; 023056F0
 pool_023056F4:
 loc_023056F4:
 	.word 0x000005C0	; 023056F4
@@ -12238,7 +12293,7 @@ loc_02305700:
 	bx r12	; 02305704
 pool_02305708:
 loc_02305708:
-	.word 0x037FC3AD	; 02305708
+	.word loc_037FC3AC + 1	; 02305708
 .thumb
 
 ; ===== function loc_0230570C =====
@@ -12253,7 +12308,7 @@ loc_02305710:
 	bx r12	; 02305714
 pool_02305718:
 loc_02305718:
-	.word 0x037FC5FD	; 02305718
+	.word loc_037FC5FC + 1	; 02305718
 .thumb
 
 ; ===== function loc_0230571C =====
@@ -12293,7 +12348,7 @@ loc_02305758:
 	.word 0x000003E8	; 02305758
 pool_0230575C:
 loc_0230575C:
-	.word 0x0380FFF4	; 0230575C
+	.word FirmwareWlWorkPointerSlot	; 0230575C
 pool_02305760:
 loc_02305760:
 	.word 0x000005EC	; 02305760
@@ -12312,7 +12367,7 @@ loc_0230576C:
 	ldr pc,[pool_02305770]	; 0230576C
 pool_02305770:
 loc_02305770:
-	.word 0x03802720	; 02305770
+	.word loc_03802720	; 02305770
 .thumb
 
 ; ===== function loc_02305774 =====
@@ -12347,7 +12402,7 @@ loc_023057A8:
 	.word 0x000082EA	; 023057A8
 pool_023057AC:
 loc_023057AC:
-	.word 0x0380FFF4	; 023057AC
+	.word FirmwareWlWorkPointerSlot	; 023057AC
 pool_023057B0:
 loc_023057B0:
 	.word 0x000005EC	; 023057B0
@@ -12366,7 +12421,7 @@ loc_023057BC:
 	ldr pc,[pool_023057C0]	; 023057BC
 pool_023057C0:
 loc_023057C0:
-	.word 0x03802514	; 023057C0
+	.word loc_03802514	; 023057C0
 .thumb
 	mov r1,#0x0	; 023057C4
 	str r1,[r0,#0x0]	; 023057C6
@@ -12406,7 +12461,7 @@ loc_02305802:
 	bx r3	; 02305806
 pool_02305808:
 loc_02305808:
-	.word 0x0380FFF4	; 02305808
+	.word FirmwareWlWorkPointerSlot	; 02305808
 pool_0230580C:
 loc_0230580C:
 	.word 0x000005C0	; 0230580C
@@ -12429,7 +12484,7 @@ loc_0230581C:
 	bx r12	; 02305820
 pool_02305824:
 loc_02305824:
-	.word 0x037FC781	; 02305824
+	.word loc_037FC780 + 1	; 02305824
 .thumb
 
 ; ===== function loc_02305828 =====
@@ -12555,13 +12610,13 @@ loc_0230590C:
 	.word 0x04808000	; 0230590C
 pool_02305910:
 loc_02305910:
-	.word 0x0380FFF4	; 02305910
+	.word FirmwareWlWorkPointerSlot	; 02305910
 pool_02305914:
 loc_02305914:
 	.word 0x000005B2	; 02305914
 pool_02305918:
 loc_02305918:
-	.word 0x04808184	; 02305918
+	.word REG_WIFI_RF_CNT	; 02305918
 pool_0230591C:
 loc_0230591C:
 	.word 0x000005B4	; 0230591C
@@ -12592,7 +12647,7 @@ loc_02305938:
 	ldr pc,[pool_0230593C]	; 02305938
 pool_0230593C:
 loc_0230593C:
-	.word 0x03802514	; 0230593C
+	.word loc_03802514	; 0230593C
 .thumb
 
 ; ===== function loc_02305940 =====
@@ -12629,7 +12684,7 @@ loc_02305978:
 	.word 0x00000100	; 02305978
 pool_0230597C:
 loc_0230597C:
-	.word 0x04808160	; 0230597C
+	.word REG_WIFI_BB_MODE	; 0230597C
 
 ; ===== function loc_02305980 =====
 loc_02305980:
@@ -12652,7 +12707,7 @@ loc_02305988:
 	.byte 0xC0, 0x46	; 023059A0
 pool_023059A0:
 loc_023059A0:
-	.word 0x02310468	; 023059A0
+	.word P4_Data_02310468	; 023059A0
 pool_023059A4:
 loc_023059A4:
 	.word 0x04808000	; 023059A4
@@ -12704,7 +12759,7 @@ loc_023059A8:
 	bx r3	; 02305A06
 pool_02305A08:
 loc_02305A08:
-	.word 0x0380FFF4	; 02305A08
+	.word FirmwareWlWorkPointerSlot	; 02305A08
 pool_02305A0C:
 loc_02305A0C:
 	.word 0x000005B0	; 02305A0C
@@ -12729,7 +12784,7 @@ loc_02305A20:
 	ldr pc,[pool_02305A24]	; 02305A20
 pool_02305A24:
 loc_02305A24:
-	.word 0x037FCE04	; 02305A24
+	.word loc_037FCE04	; 02305A24
 	.byte 0xF0, 0xB5, 0x81, 0xB0, 0x64, 0x25, 0x00, 0x26, 0x00, 0x96, 0x34, 0x1C, 0x80, 0x27, 0x28, 0x1C	; 02305A38
 	.byte 0x01, 0x21, 0x00, 0xAA, 0x0A, 0xF0, 0xAC, 0xFB, 0x01, 0x2C, 0x02, 0xD1, 0x00, 0x98, 0x38, 0x40	; 02305A48
 	.byte 0x00, 0x90, 0x00, 0x98, 0x00, 0x06, 0x00, 0x0E, 0x31, 0x1C, 0xFF, 0xF7, 0x47, 0xFC, 0x06, 0x1C	; 02305A58
@@ -12760,13 +12815,13 @@ loc_02305A82:
 	bx lr	; 02305A8A
 pool_02305A8C:
 loc_02305A8C:
-	.word 0x04808180	; 02305A8C
+	.word REG_WIFI_RF_BUSY	; 02305A8C
 pool_02305A90:
 loc_02305A90:
-	.word 0x0480817E	; 02305A90
+	.word REG_WIFI_RF_DATA1	; 02305A90
 pool_02305A94:
 loc_02305A94:
-	.word 0x0480817C	; 02305A94
+	.word REG_WIFI_RF_DATA2	; 02305A94
 
 ; ===== function loc_02305A98 =====
 loc_02305A98:
@@ -12827,13 +12882,13 @@ loc_02305AF4:
 	.word 0x00002710	; 02305AF4
 pool_02305AF8:
 loc_02305AF8:
-	.word 0x0480815A	; 02305AF8
+	.word REG_WIFI_BB_WRITE	; 02305AF8
 pool_02305AFC:
 loc_02305AFC:
 	.word 0x00005000	; 02305AFC
 pool_02305B00:
 loc_02305B00:
-	.word 0x04808158	; 02305B00
+	.word REG_WIFI_BB_CNT	; 02305B00
 
 ; ===== function loc_02305B04 =====
 loc_02305B04:
@@ -12861,16 +12916,16 @@ loc_02305B1C:
 	.byte 0xC0, 0x46	; 02305B2C
 pool_02305B2C:
 loc_02305B2C:
-	.word 0x0480815E	; 02305B2C
+	.word REG_WIFI_BB_BUSY	; 02305B2C
 pool_02305B30:
 loc_02305B30:
 	.word 0x00006000	; 02305B30
 pool_02305B34:
 loc_02305B34:
-	.word 0x04808158	; 02305B34
+	.word REG_WIFI_BB_CNT	; 02305B34
 pool_02305B38:
 loc_02305B38:
-	.word 0x0480815C	; 02305B38
+	.word REG_WIFI_BB_READ	; 02305B38
 
 ; ===== function loc_02305B3C =====
 loc_02305B3C:
@@ -12908,13 +12963,23 @@ loc_02305B3C:
 	cmp r0,#0x4	; 02305B7E
 	bhi loc_02305B9E	; 02305B80
 	add r0,r0,r0	; 02305B82
+P4_SwitchIndexPC_02305B82:
 	add r0,pc	; 02305B84
-	ldrh r0,[r0,#0x8]	; 02305B86
+	ldrh r0,[r0,#(P4_SwitchTable_02305B82 - (P4_SwitchIndexPC_02305B82 + 4))]	; 02305B86
 	lsl r0,r0,#0x10	; 02305B88
 	asr r0,r0,#0x10	; 02305B8A
+P4_SwitchTargetPC_02305B82:
 	add r0,pc	; 02305B8C
 	bx r0	; 02305B8E
-	.byte 0x0F, 0x00, 0x0B, 0x00, 0x0F, 0x00, 0x0F, 0x00, 0x0F, 0x00	; 02305B9A
+; 表项是相对 ADD 所读 PC 的有符号偏移，保留 ARM/Thumb 状态位。
+; Signed offsets from the ADD's PC, including the ARM/Thumb state bit.
+P4_SwitchTable_02305B82:
+	.halfword (loc_02305B9E + 1) - (P4_SwitchTargetPC_02305B82 + 4)
+	.halfword (loc_02305B9A + 1) - (P4_SwitchTargetPC_02305B82 + 4)
+	.halfword (loc_02305B9E + 1) - (P4_SwitchTargetPC_02305B82 + 4)
+	.halfword (loc_02305B9E + 1) - (P4_SwitchTargetPC_02305B82 + 4)
+	.halfword (loc_02305B9E + 1) - (P4_SwitchTargetPC_02305B82 + 4)
+P4_SwitchTable_02305B82End:
 loc_02305B9A:
 	bl loc_0230CA34	; 02305B9A
 loc_02305B9E:
@@ -12931,7 +12996,7 @@ loc_02305B9E:
 	.byte 0xC0, 0x46	; 02305BB8
 pool_02305BB8:
 loc_02305BB8:
-	.word 0x0380FFF4	; 02305BB8
+	.word FirmwareWlWorkPointerSlot	; 02305BB8
 pool_02305BBC:
 loc_02305BBC:
 	.word 0x000003A0	; 02305BBC
@@ -12940,22 +13005,22 @@ loc_02305BC0:
 	.word 0x00000316	; 02305BC0
 pool_02305BC4:
 loc_02305BC4:
-	.word 0x04808012	; 02305BC4
+	.word REG_WIFI_IE	; 02305BC4
 pool_02305BC8:
 loc_02305BC8:
-	.word 0x04808004	; 02305BC8
+	.word REG_WIFI_MODE_RST	; 02305BC8
 pool_02305BCC:
 loc_02305BCC:
-	.word 0x048080EA	; 02305BCC
+	.word REG_WIFI_US_COMPARECNT	; 02305BCC
 pool_02305BD0:
 loc_02305BD0:
-	.word 0x048080E8	; 02305BD0
+	.word REG_WIFI_US_COUNTCNT	; 02305BD0
 pool_02305BD4:
 loc_02305BD4:
-	.word 0x04808008	; 02305BD4
+	.word REG_WIFI_TXSTATCNT	; 02305BD4
 pool_02305BD8:
 loc_02305BD8:
-	.word 0x0480800A	; 02305BD8
+	.word REG_WIFI_UNKNOWN_00A	; 02305BD8
 pool_02305BDC:
 loc_02305BDC:
 	.word 0x00000314	; 02305BDC
@@ -12964,10 +13029,10 @@ loc_02305BE0:
 	.word 0x0000FFFF	; 02305BE0
 pool_02305BE4:
 loc_02305BE4:
-	.word 0x048080AC	; 02305BE4
+	.word REG_WIFI_TXREQ_RESET	; 02305BE4
 pool_02305BE8:
 loc_02305BE8:
-	.word 0x048080B4	; 02305BE8
+	.word REG_WIFI_TXBUF_RESET	; 02305BE8
 
 ; ===== function loc_02305BEC =====
 loc_02305BEC:
@@ -13053,13 +13118,23 @@ loc_02305C3E:
 	b loc_02305EFE	; 02305C92
 loc_02305C94:
 	add r0,r0,r0	; 02305C94
+P4_SwitchIndexPC_02305C94:
 	add r0,pc	; 02305C96
-	ldrh r0,[r0,#0x8]	; 02305C98
+	ldrh r0,[r0,#(P4_SwitchTable_02305C94 - (P4_SwitchIndexPC_02305C94 + 4))]	; 02305C98
 	lsl r0,r0,#0x10	; 02305C9A
 	asr r0,r0,#0x10	; 02305C9C
+P4_SwitchTargetPC_02305C94:
 	add r0,pc	; 02305C9E
 	bx r0	; 02305CA0
-	.byte 0x0B, 0x00, 0x59, 0x00, 0x21, 0x01, 0xC5, 0x01, 0x39, 0x02	; 02305CAC
+; 表项是相对 ADD 所读 PC 的有符号偏移，保留 ARM/Thumb 状态位。
+; Signed offsets from the ADD's PC, including the ARM/Thumb state bit.
+P4_SwitchTable_02305C94:
+	.halfword (loc_02305CAC + 1) - (P4_SwitchTargetPC_02305C94 + 4)
+	.halfword (loc_02305CFA + 1) - (P4_SwitchTargetPC_02305C94 + 4)
+	.halfword (loc_02305DC2 + 1) - (P4_SwitchTargetPC_02305C94 + 4)
+	.halfword (loc_02305E66 + 1) - (P4_SwitchTargetPC_02305C94 + 4)
+	.halfword (loc_02305EDA + 1) - (P4_SwitchTargetPC_02305C94 + 4)
+P4_SwitchTable_02305C94End:
 loc_02305CAC:
 	ldr r2,[pool_02305F60]	; 02305CAC
 	ldr r0,[pool_02305F80]	; 02305CAE
@@ -13402,10 +13477,10 @@ loc_02305F38:
 	bx r3	; 02305F3E
 pool_02305F40:
 loc_02305F40:
-	.word 0x04808044	; 02305F40
+	.word REG_WIFI_RANDOM	; 02305F40
 pool_02305F44:
 loc_02305F44:
-	.word 0x0380FFF4	; 02305F44
+	.word FirmwareWlWorkPointerSlot	; 02305F44
 pool_02305F48:
 loc_02305F48:
 	.word 0x00000378	; 02305F48
@@ -13423,43 +13498,43 @@ loc_02305F58:
 	.word 0x00008000	; 02305F58
 pool_02305F5C:
 loc_02305F5C:
-	.word 0x04808032	; 02305F5C
+	.word REG_WIFI_WEP_CNT	; 02305F5C
 pool_02305F60:
 loc_02305F60:
 	.word 0x0000FFFF	; 02305F60
 pool_02305F64:
 loc_02305F64:
-	.word 0x04808134	; 02305F64
+	.word REG_WIFI_POST_BEACON	; 02305F64
 pool_02305F68:
 loc_02305F68:
-	.word 0x0480802A	; 02305F68
+	.word REG_WIFI_AID_FULL	; 02305F68
 pool_02305F6C:
 loc_02305F6C:
-	.word 0x04808028	; 02305F6C
+	.word REG_WIFI_AID_LOW	; 02305F6C
 pool_02305F70:
 loc_02305F70:
-	.word 0x048080E8	; 02305F70
+	.word REG_WIFI_US_COUNTCNT	; 02305F70
 pool_02305F74:
 loc_02305F74:
-	.word 0x04808038	; 02305F74
+	.word REG_WIFI_POWER_TX	; 02305F74
 pool_02305F78:
 loc_02305F78:
-	.word 0x04808030	; 02305F78
+	.word REG_WIFI_RXCNT	; 02305F78
 pool_02305F7C:
 loc_02305F7C:
 	.word 0x00000314	; 02305F7C
 pool_02305F80:
 loc_02305F80:
-	.word 0x04808010	; 02305F80
+	.word REG_WIFI_IF	; 02305F80
 pool_02305F84:
 loc_02305F84:
-	.word 0x04808012	; 02305F84
+	.word REG_WIFI_IE	; 02305F84
 pool_02305F88:
 loc_02305F88:
 	.word 0x00001FFF	; 02305F88
 pool_02305F8C:
 loc_02305F8C:
-	.word 0x048081AE	; 02305F8C
+	.word REG_WIFI_RXSTAT_OVF_IE	; 02305F8C
 pool_02305F90:
 loc_02305F90:
 	.word 0x0000061C	; 02305F90
@@ -13468,22 +13543,22 @@ loc_02305F94:
 	.word 0x00000400	; 02305F94
 pool_02305F98:
 loc_02305F98:
-	.word 0x048081AA	; 02305F98
+	.word REG_WIFI_RXSTAT_INC_IE	; 02305F98
 pool_02305F9C:
 loc_02305F9C:
-	.word 0x048080D0	; 02305F9C
+	.word REG_WIFI_RXFILTER	; 02305F9C
 pool_02305FA0:
 loc_02305FA0:
-	.word 0x048080E0	; 02305FA0
+	.word REG_WIFI_RXFILTER2	; 02305FA0
 pool_02305FA4:
 loc_02305FA4:
-	.word 0x04808008	; 02305FA4
+	.word REG_WIFI_TXSTATCNT	; 02305FA4
 pool_02305FA8:
 loc_02305FA8:
-	.word 0x0480800A	; 02305FA8
+	.word REG_WIFI_UNKNOWN_00A	; 02305FA8
 pool_02305FAC:
 loc_02305FAC:
-	.word 0x04808004	; 02305FAC
+	.word REG_WIFI_MODE_RST	; 02305FAC
 pool_02305FB0:
 loc_02305FB0:
 	.word 0x00000FFF	; 02305FB0
@@ -13498,37 +13573,37 @@ loc_02305FBC:
 	.word 0x0000E000	; 02305FBC
 pool_02305FC0:
 loc_02305FC0:
-	.word 0x048080F8	; 02305FC0
+	.word REG_WIFI_US_COUNT0	; 02305FC0
 pool_02305FC4:
 loc_02305FC4:
-	.word 0x048080FA	; 02305FC4
+	.word REG_WIFI_US_COUNT1	; 02305FC4
 pool_02305FC8:
 loc_02305FC8:
-	.word 0x048080FC	; 02305FC8
+	.word REG_WIFI_US_COUNT2	; 02305FC8
 pool_02305FCC:
 loc_02305FCC:
-	.word 0x048080FE	; 02305FCC
+	.word REG_WIFI_US_COUNT3	; 02305FCC
 pool_02305FD0:
 loc_02305FD0:
 	.word 0x0000036A	; 02305FD0
 pool_02305FD4:
 loc_02305FD4:
-	.word 0x048080F6	; 02305FD4
+	.word REG_WIFI_US_COMPARE3	; 02305FD4
 pool_02305FD8:
 loc_02305FD8:
-	.word 0x048080F4	; 02305FD8
+	.word REG_WIFI_US_COMPARE2	; 02305FD8
 pool_02305FDC:
 loc_02305FDC:
-	.word 0x048080F2	; 02305FDC
+	.word REG_WIFI_US_COMPARE1	; 02305FDC
 pool_02305FE0:
 loc_02305FE0:
-	.word 0x048080F0	; 02305FE0
+	.word REG_WIFI_US_COMPARE0	; 02305FE0
 pool_02305FE4:
 loc_02305FE4:
-	.word 0x048080EA	; 02305FE4
+	.word REG_WIFI_US_COMPARECNT	; 02305FE4
 pool_02305FE8:
 loc_02305FE8:
-	.word 0x048080AE	; 02305FE8
+	.word REG_WIFI_TXREQ_SET	; 02305FE8
 pool_02305FEC:
 loc_02305FEC:
 	.word 0x0000E03F	; 02305FEC
@@ -13549,7 +13624,7 @@ loc_02306000:
 	.word 0x00000401	; 02306000
 pool_02306004:
 loc_02306004:
-	.word 0x04808048	; 02306004
+	.word REG_WIFI_UNKNOWN_048	; 02306004
 pool_02306008:
 loc_02306008:
 	.word 0x00000FA0	; 02306008
@@ -13568,7 +13643,7 @@ loc_02306014:
 	ldr pc,[pool_02306018]	; 02306014
 pool_02306018:
 loc_02306018:
-	.word 0x038022BC	; 02306018
+	.word loc_038022BC	; 02306018
 .thumb
 
 ; ===== function loc_0230601C =====
@@ -13582,7 +13657,7 @@ loc_02306020:
 	ldr pc,[pool_02306024]	; 02306020
 pool_02306024:
 loc_02306024:
-	.word 0x038024C4	; 02306024
+	.word loc_038024C4	; 02306024
 .thumb
 
 ; ===== function loc_02306028 =====
@@ -13614,7 +13689,7 @@ loc_0230604E:
 	.byte 0xC0, 0x46	; 02306054
 pool_02306054:
 loc_02306054:
-	.word 0x0380FFF4	; 02306054
+	.word FirmwareWlWorkPointerSlot	; 02306054
 pool_02306058:
 loc_02306058:
 	.word 0x000002F4	; 02306058
@@ -13690,7 +13765,7 @@ loc_023060D0:
 	bx r3	; 023060DA
 pool_023060DC:
 loc_023060DC:
-	.word 0x023104C0	; 023060DC
+	.word P4_Data_023104C0	; 023060DC
 pool_023060E0:
 loc_023060E0:
 	.word 0x00008000	; 023060E0
@@ -13763,7 +13838,7 @@ loc_02306154:
 	bx r3	; 0230615A
 pool_0230615C:
 loc_0230615C:
-	.word 0x0380FFF4	; 0230615C
+	.word FirmwareWlWorkPointerSlot	; 0230615C
 pool_02306160:
 loc_02306160:
 	.word 0x0000031A	; 02306160
@@ -14050,61 +14125,61 @@ loc_0230616C:
 	.byte 0xC0, 0x46	; 0230638C
 pool_0230638C:
 loc_0230638C:
-	.word 0x0380FFF4	; 0230638C
+	.word FirmwareWlWorkPointerSlot	; 0230638C
 pool_02306390:
 loc_02306390:
 	.word 0x000004F4	; 02306390
 pool_02306394:
 loc_02306394:
-	.word 0x048081B0	; 02306394
+	.word REG_WIFI_RXSTAT	; 02306394
 pool_02306398:
 loc_02306398:
-	.word 0x048081B2	; 02306398
+	.word REG_WIFI_RXSTAT + 0x2	; 02306398
 pool_0230639C:
 loc_0230639C:
-	.word 0x048081B4	; 0230639C
+	.word REG_WIFI_RXSTAT + 0x4	; 0230639C
 pool_023063A0:
 loc_023063A0:
-	.word 0x048081B6	; 023063A0
+	.word REG_WIFI_RXSTAT + 0x6	; 023063A0
 pool_023063A4:
 loc_023063A4:
-	.word 0x048081B8	; 023063A4
+	.word REG_WIFI_RXSTAT + 0x8	; 023063A4
 pool_023063A8:
 loc_023063A8:
-	.word 0x048081BA	; 023063A8
+	.word REG_WIFI_RXSTAT + 0xA	; 023063A8
 pool_023063AC:
 loc_023063AC:
-	.word 0x048081BC	; 023063AC
+	.word REG_WIFI_RXSTAT + 0xC	; 023063AC
 pool_023063B0:
 loc_023063B0:
-	.word 0x048081BE	; 023063B0
+	.word REG_WIFI_RXSTAT + 0xE	; 023063B0
 pool_023063B4:
 loc_023063B4:
-	.word 0x048081C0	; 023063B4
+	.word REG_WIFI_TX_ERR_COUNT	; 023063B4
 pool_023063B8:
 loc_023063B8:
-	.word 0x048081D0	; 023063B8
+	.word REG_WIFI_CMD_STAT	; 023063B8
 pool_023063BC:
 loc_023063BC:
-	.word 0x048081D2	; 023063BC
+	.word REG_WIFI_CMD_STAT + 0x2	; 023063BC
 pool_023063C0:
 loc_023063C0:
-	.word 0x048081D4	; 023063C0
+	.word REG_WIFI_CMD_STAT + 0x4	; 023063C0
 pool_023063C4:
 loc_023063C4:
-	.word 0x048081D6	; 023063C4
+	.word REG_WIFI_CMD_STAT + 0x6	; 023063C4
 pool_023063C8:
 loc_023063C8:
-	.word 0x048081D8	; 023063C8
+	.word REG_WIFI_CMD_STAT + 0x8	; 023063C8
 pool_023063CC:
 loc_023063CC:
-	.word 0x048081DA	; 023063CC
+	.word REG_WIFI_CMD_STAT + 0xA	; 023063CC
 pool_023063D0:
 loc_023063D0:
-	.word 0x048081DC	; 023063D0
+	.word REG_WIFI_CMD_STAT + 0xC	; 023063D0
 pool_023063D4:
 loc_023063D4:
-	.word 0x048081DE	; 023063D4
+	.word REG_WIFI_CMD_STAT + 0xE	; 023063D4
 	.byte 0x00, 0xB5, 0x81, 0xB0, 0xFF, 0xF7, 0xC6, 0xFE, 0x00, 0x20, 0x00, 0x90, 0x00, 0x98, 0x05, 0x49	; 023063E8
 	.byte 0x0A, 0x68, 0x05, 0x49, 0x51, 0x18, 0xB4, 0x22, 0x00, 0xF0, 0x08, 0xF8, 0x01, 0xB0, 0x08, 0xBC	; 023063F8
 	.byte 0x18, 0x47, 0xC0, 0x46, 0xF4, 0xFF, 0x80, 0x03, 0xF4, 0x04, 0x00, 0x00, 0x78, 0x47, 0xC0, 0x46	; 02306408
@@ -14214,7 +14289,7 @@ loc_023064BE:
 	bx r3	; 023064C2
 pool_023064C4:
 loc_023064C4:
-	.word 0x0380FFF4	; 023064C4
+	.word FirmwareWlWorkPointerSlot	; 023064C4
 pool_023064C8:
 loc_023064C8:
 	.word 0x00000310	; 023064C8
@@ -14281,7 +14356,7 @@ loc_02306534:
 	.byte 0xC0, 0x46	; 0230653C
 pool_0230653C:
 loc_0230653C:
-	.word 0x0380FFF4	; 0230653C
+	.word FirmwareWlWorkPointerSlot	; 0230653C
 pool_02306540:
 loc_02306540:
 	.word 0x00000366	; 02306540
@@ -14293,13 +14368,13 @@ loc_02306548:
 	.word 0x04808214	; 02306548
 pool_0230654C:
 loc_0230654C:
-	.word 0x0480819C	; 0230654C
+	.word REG_WIFI_RF_PINS	; 0230654C
 pool_02306550:
 loc_02306550:
-	.word 0x04808028	; 02306550
+	.word REG_WIFI_AID_LOW	; 02306550
 pool_02306554:
 loc_02306554:
-	.word 0x0480802A	; 02306554
+	.word REG_WIFI_AID_FULL	; 02306554
 pool_02306558:
 loc_02306558:
 	.word 0x00000384	; 02306558
@@ -14326,7 +14401,7 @@ loc_0230655C:
 	.byte 0xC0, 0x46	; 02306580
 pool_02306580:
 loc_02306580:
-	.word 0x0380FFF4	; 02306580
+	.word FirmwareWlWorkPointerSlot	; 02306580
 pool_02306584:
 loc_02306584:
 	.word 0x00000366	; 02306584
@@ -14335,10 +14410,10 @@ loc_02306588:
 	.word 0x00000486	; 02306588
 pool_0230658C:
 loc_0230658C:
-	.word 0x0480802A	; 0230658C
+	.word REG_WIFI_AID_FULL	; 0230658C
 pool_02306590:
 loc_02306590:
-	.word 0x04808028	; 02306590
+	.word REG_WIFI_AID_LOW	; 02306590
 	.byte 0xF0, 0xB5, 0x81, 0xB0, 0x05, 0x1C, 0x0F, 0x1C, 0x80, 0x2D, 0x01, 0xD9, 0x04, 0x20, 0x2E, 0xE0	; 023065A4
 	.byte 0x00, 0x2D, 0x23, 0xD0, 0x18, 0x48, 0x01, 0x68, 0x18, 0x48, 0x0A, 0x5A, 0x01, 0x20, 0x02, 0x40	; 023065B4
 	.byte 0x00, 0x2A, 0x15, 0xD0, 0x16, 0x48, 0x0C, 0x58, 0x20, 0x1C, 0xFF, 0x21, 0xFE, 0xF7, 0x0A, 0xFF	; 023065C4
@@ -14370,13 +14445,13 @@ loc_02306670:
 	.byte 0xC0, 0x46	; 02306688
 pool_02306688:
 loc_02306688:
-	.word 0x0380FFF4	; 02306688
+	.word FirmwareWlWorkPointerSlot	; 02306688
 pool_0230668C:
 loc_0230668C:
 	.word 0x000003A2	; 0230668C
 pool_02306690:
 loc_02306690:
-	.word 0x04808038	; 02306690
+	.word REG_WIFI_POWER_TX	; 02306690
 
 ; ===== function loc_02306694 =====
 loc_02306694:
@@ -14403,7 +14478,7 @@ loc_023066B8:
 	.byte 0xC0, 0x46	; 023066BC
 pool_023066BC:
 loc_023066BC:
-	.word 0x0380FFF4	; 023066BC
+	.word FirmwareWlWorkPointerSlot	; 023066BC
 pool_023066C0:
 loc_023066C0:
 	.word 0x000003A2	; 023066C0
@@ -14412,10 +14487,10 @@ loc_023066C4:
 	.word 0x00000420	; 023066C4
 pool_023066C8:
 loc_023066C8:
-	.word 0x04808038	; 023066C8
+	.word REG_WIFI_POWER_TX	; 023066C8
 pool_023066CC:
 loc_023066CC:
-	.word 0x04808048	; 023066CC
+	.word REG_WIFI_UNKNOWN_048	; 023066CC
 
 ; ===== function loc_023066D0 =====
 loc_023066D0:
@@ -14467,7 +14542,7 @@ loc_02306720:
 	.word 0x0000FFFF	; 02306720
 pool_02306724:
 loc_02306724:
-	.word 0x0380FFF4	; 02306724
+	.word FirmwareWlWorkPointerSlot	; 02306724
 pool_02306728:
 loc_02306728:
 	.word 0x000002FC	; 02306728
@@ -14492,7 +14567,7 @@ loc_0230673C:
 	ldr pc,[pool_02306740]	; 0230673C
 pool_02306740:
 loc_02306740:
-	.word 0x03802720	; 02306740
+	.word loc_03802720	; 02306740
 .thumb
 
 ; ===== function loc_02306744 =====
@@ -14539,13 +14614,13 @@ loc_02306796:
 	bx r3	; 0230679A
 pool_0230679C:
 loc_0230679C:
-	.word 0x04808036	; 0230679C
+	.word REG_WIFI_POWER_US	; 0230679C
 pool_023067A0:
 loc_023067A0:
-	.word 0x04808168	; 023067A0
+	.word REG_WIFI_BB_POWER	; 023067A0
 pool_023067A4:
 loc_023067A4:
-	.word 0x0380FFF4	; 023067A4
+	.word FirmwareWlWorkPointerSlot	; 023067A4
 pool_023067A8:
 loc_023067A8:
 	.word 0x000005B0	; 023067A8
@@ -14585,7 +14660,7 @@ loc_023067C6:
 	.byte 0xC0, 0x46	; 023067EC
 pool_023067EC:
 loc_023067EC:
-	.word 0x0380FFF4	; 023067EC
+	.word FirmwareWlWorkPointerSlot	; 023067EC
 pool_023067F0:
 loc_023067F0:
 	.word 0x000005B0	; 023067F0
@@ -14597,10 +14672,10 @@ loc_023067F8:
 	.word 0x0000800D	; 023067F8
 pool_023067FC:
 loc_023067FC:
-	.word 0x04808168	; 023067FC
+	.word REG_WIFI_BB_POWER	; 023067FC
 pool_02306800:
 loc_02306800:
-	.word 0x04808036	; 02306800
+	.word REG_WIFI_POWER_US	; 02306800
 
 ; ===== function loc_02306804 =====
 loc_02306804:
@@ -14610,7 +14685,7 @@ loc_02306804:
 	bx lr	; 0230680A
 pool_0230680C:
 loc_0230680C:
-	.word 0x04808040	; 0230680C
+	.word REG_WIFI_POWERFORCE	; 0230680C
 
 ; ===== function loc_02306810 =====
 loc_02306810:
@@ -14638,13 +14713,13 @@ loc_02306810:
 	.byte 0xC0, 0x46	; 0230683C
 pool_0230683C:
 loc_0230683C:
-	.word 0x0380FFF4	; 0230683C
+	.word FirmwareWlWorkPointerSlot	; 0230683C
 pool_02306840:
 loc_02306840:
 	.word 0x00000316	; 02306840
 pool_02306844:
 loc_02306844:
-	.word 0x0480803C	; 02306844
+	.word REG_WIFI_POWERSTATE	; 02306844
 
 ; ===== function loc_02306848 =====
 loc_02306848:
@@ -14695,7 +14770,7 @@ loc_02306896:
 	bx r3	; 0230689E
 pool_023068A0:
 loc_023068A0:
-	.word 0x0380FFF4	; 023068A0
+	.word FirmwareWlWorkPointerSlot	; 023068A0
 pool_023068A4:
 loc_023068A4:
 	.word 0x00000316	; 023068A4
@@ -14704,7 +14779,7 @@ loc_023068A8:
 	.word 0x000002F2	; 023068A8
 pool_023068AC:
 loc_023068AC:
-	.word 0x04808006	; 023068AC
+	.word REG_WIFI_MODE_WEP	; 023068AC
 pool_023068B0:
 loc_023068B0:
 	.word 0x00000300	; 023068B0
@@ -14757,13 +14832,13 @@ loc_02306904:
 	.word 0x00006161	; 02306904
 pool_02306908:
 loc_02306908:
-	.word 0x048080BC	; 02306908
+	.word REG_WIFI_PREAMBLE	; 02306908
 pool_0230690C:
 loc_0230690C:
 	.word 0x00006060	; 0230690C
 pool_02306910:
 loc_02306910:
-	.word 0x04808140	; 02306910
+	.word REG_WIFI_CONFIG_140	; 02306910
 
 ; ===== function loc_02306914 =====
 loc_02306914:
@@ -14786,7 +14861,7 @@ loc_02306914:
 	bx r3	; 02306936
 pool_02306938:
 loc_02306938:
-	.word 0x0380FFF4	; 02306938
+	.word FirmwareWlWorkPointerSlot	; 02306938
 pool_0230693C:
 loc_0230693C:
 	.word 0x0000035C	; 0230693C
@@ -14823,13 +14898,24 @@ loc_02306962:
 	b loc_02306AAA	; 02306972
 loc_02306974:
 	add r1,r1,r1	; 02306974
+P4_SwitchIndexPC_02306974:
 	add r1,pc	; 02306976
-	ldrh r1,[r1,#0x8]	; 02306978
+	ldrh r1,[r1,#(P4_SwitchTable_02306974 - (P4_SwitchIndexPC_02306974 + 4))]	; 02306978
 	lsl r1,r1,#0x10	; 0230697A
 	asr r1,r1,#0x10	; 0230697C
+P4_SwitchTargetPC_02306974:
 	add r1,pc	; 0230697E
 	bx r1	; 02306980
-	.byte 0x29, 0x01, 0x29, 0x01, 0x0D, 0x00, 0xA1, 0x00, 0x29, 0x01, 0x0D, 0x00	; 0230698E
+; 表项是相对 ADD 所读 PC 的有符号偏移，保留 ARM/Thumb 状态位。
+; Signed offsets from the ADD's PC, including the ARM/Thumb state bit.
+P4_SwitchTable_02306974:
+	.halfword (loc_02306AAA + 1) - (P4_SwitchTargetPC_02306974 + 4)
+	.halfword (loc_02306AAA + 1) - (P4_SwitchTargetPC_02306974 + 4)
+	.halfword (loc_0230698E + 1) - (P4_SwitchTargetPC_02306974 + 4)
+	.halfword (loc_02306A22 + 1) - (P4_SwitchTargetPC_02306974 + 4)
+	.halfword (loc_02306AAA + 1) - (P4_SwitchTargetPC_02306974 + 4)
+	.halfword (loc_0230698E + 1) - (P4_SwitchTargetPC_02306974 + 4)
+P4_SwitchTable_02306974End:
 loc_0230698E:
 	mov r0,#0x0	; 0230698E
 	str r0,[sp,#0x8]	; 02306990
@@ -14973,7 +15059,7 @@ loc_02306AAC:
 	bx r3	; 02306AB2
 pool_02306AB4:
 loc_02306AB4:
-	.word 0x0380FFF4	; 02306AB4
+	.word FirmwareWlWorkPointerSlot	; 02306AB4
 pool_02306AB8:
 loc_02306AB8:
 	.word 0x000002F0	; 02306AB8
@@ -15122,10 +15208,10 @@ loc_02306BE0:
 	.word 0x02310374	; 02306BE0
 pool_02306BE4:
 loc_02306BE4:
-	.word 0x04808044	; 02306BE4
+	.word REG_WIFI_RANDOM	; 02306BE4
 pool_02306BE8:
 loc_02306BE8:
-	.word 0x0380FFF4	; 02306BE8
+	.word FirmwareWlWorkPointerSlot	; 02306BE8
 pool_02306BEC:
 loc_02306BEC:
 	.word 0x00000316	; 02306BEC
@@ -15150,13 +15236,13 @@ loc_02306BFC:
 	bx lr	; 02306C0A
 pool_02306C0C:
 loc_02306C0C:
-	.word 0x0380FFF4	; 02306C0C
+	.word FirmwareWlWorkPointerSlot	; 02306C0C
 pool_02306C10:
 loc_02306C10:
 	.word 0x00000370	; 02306C10
 pool_02306C14:
 loc_02306C14:
-	.word 0x0480808E	; 02306C14
+	.word REG_WIFI_LISTENINT	; 02306C14
 
 ; ===== function loc_02306C18 =====
 loc_02306C18:
@@ -15191,13 +15277,13 @@ loc_02306C48:
 	.word 0x000003E8	; 02306C48
 pool_02306C4C:
 loc_02306C4C:
-	.word 0x0380FFF4	; 02306C4C
+	.word FirmwareWlWorkPointerSlot	; 02306C4C
 pool_02306C50:
 loc_02306C50:
 	.word 0x0000036A	; 02306C50
 pool_02306C54:
 loc_02306C54:
-	.word 0x0480808C	; 02306C54
+	.word REG_WIFI_BEACONINT	; 02306C54
 pool_02306C58:
 loc_02306C58:
 	.word 0x000002FC	; 02306C58
@@ -15247,7 +15333,7 @@ loc_02306D98:
 	bx lr	; 02306DB6
 pool_02306DB8:
 loc_02306DB8:
-	.word 0x0380FFF4	; 02306DB8
+	.word FirmwareWlWorkPointerSlot	; 02306DB8
 pool_02306DBC:
 loc_02306DBC:
 	.word 0x000002FE	; 02306DBC
@@ -15333,7 +15419,7 @@ loc_02306E44:
 	bx r3	; 02306E4A
 pool_02306E4C:
 loc_02306E4C:
-	.word 0x0380FFF4	; 02306E4C
+	.word FirmwareWlWorkPointerSlot	; 02306E4C
 pool_02306E50:
 loc_02306E50:
 	.word 0x000002FE	; 02306E50
@@ -15342,7 +15428,7 @@ loc_02306E54:
 	.word 0x000002F2	; 02306E54
 pool_02306E58:
 loc_02306E58:
-	.word 0x04808290	; 02306E58
+	.word REG_WIFI_UNKNOWN_290	; 02306E58
 
 ; ===== function loc_02306E5C =====
 loc_02306E5C:
@@ -15384,13 +15470,13 @@ loc_02306E98:
 	bx r3	; 02306E9E
 pool_02306EA0:
 loc_02306EA0:
-	.word 0x0380FFF4	; 02306EA0
+	.word FirmwareWlWorkPointerSlot	; 02306EA0
 pool_02306EA4:
 loc_02306EA4:
 	.word 0x000002FE	; 02306EA4
 pool_02306EA8:
 loc_02306EA8:
-	.word 0x04808290	; 02306EA8
+	.word REG_WIFI_UNKNOWN_290	; 02306EA8
 
 ; ===== function loc_02306EAC =====
 loc_02306EAC:
@@ -15435,7 +15521,7 @@ loc_02306EE4:
 	bx lr	; 02306EEE
 pool_02306EF0:
 loc_02306EF0:
-	.word 0x0380FFF4	; 02306EF0
+	.word FirmwareWlWorkPointerSlot	; 02306EF0
 pool_02306EF4:
 loc_02306EF4:
 	.word 0x000002F6	; 02306EF4
@@ -15522,7 +15608,7 @@ loc_02306F7E:
 	.byte 0xC0, 0x46	; 02306F88
 pool_02306F88:
 loc_02306F88:
-	.word 0x0380FFF4	; 02306F88
+	.word FirmwareWlWorkPointerSlot	; 02306F88
 pool_02306F8C:
 loc_02306F8C:
 	.word 0x000002FE	; 02306F8C
@@ -15540,7 +15626,7 @@ loc_02306F9C:
 	.word 0x00000464	; 02306F9C
 pool_02306FA0:
 loc_02306FA0:
-	.word 0x048080BC	; 02306FA0
+	.word REG_WIFI_PREAMBLE	; 02306FA0
 
 ; ===== function loc_02306FA4 =====
 loc_02306FA4:
@@ -15561,7 +15647,7 @@ loc_02306FAE:
 	bx lr	; 02306FBE
 pool_02306FC0:
 loc_02306FC0:
-	.word 0x0380FFF4	; 02306FC0
+	.word FirmwareWlWorkPointerSlot	; 02306FC0
 pool_02306FC4:
 loc_02306FC4:
 	.word 0x0000033C	; 02306FC4
@@ -15631,13 +15717,13 @@ loc_02307036:
 	.byte 0xC0, 0x46	; 02307040
 pool_02307040:
 loc_02307040:
-	.word 0x0380FFF4	; 02307040
+	.word FirmwareWlWorkPointerSlot	; 02307040
 pool_02307044:
 loc_02307044:
 	.word 0x00000300	; 02307044
 pool_02307048:
 loc_02307048:
-	.word 0x04808134	; 02307048
+	.word REG_WIFI_POST_BEACON	; 02307048
 pool_0230704C:
 loc_0230704C:
 	.word 0x0000045C	; 0230704C
@@ -15675,7 +15761,7 @@ loc_02307078:
 	.byte 0xC0, 0x46	; 02307080
 pool_02307080:
 loc_02307080:
-	.word 0x0380FFF4	; 02307080
+	.word FirmwareWlWorkPointerSlot	; 02307080
 pool_02307084:
 loc_02307084:
 	.word 0x0000037C	; 02307084
@@ -15706,7 +15792,7 @@ loc_02307094:
 	bx lr	; 023070AE
 pool_023070B0:
 loc_023070B0:
-	.word 0x0380FFF4	; 023070B0
+	.word FirmwareWlWorkPointerSlot	; 023070B0
 pool_023070B4:
 loc_023070B4:
 	.word 0x000002FE	; 023070B4
@@ -15732,7 +15818,7 @@ loc_023070C0:
 	bx lr	; 023070D6
 pool_023070D8:
 loc_023070D8:
-	.word 0x0380FFF4	; 023070D8
+	.word FirmwareWlWorkPointerSlot	; 023070D8
 pool_023070DC:
 loc_023070DC:
 	.word 0x000002FE	; 023070DC
@@ -15793,7 +15879,7 @@ loc_02307134:
 	bx lr	; 0230713E
 pool_02307140:
 loc_02307140:
-	.word 0x0380FFF4	; 02307140
+	.word FirmwareWlWorkPointerSlot	; 02307140
 pool_02307144:
 loc_02307144:
 	.word 0x000002FA	; 02307144
@@ -15878,7 +15964,7 @@ loc_023071CC:
 	.byte 0xC0, 0x46	; 023071D4
 pool_023071D4:
 loc_023071D4:
-	.word 0x0380FFF4	; 023071D4
+	.word FirmwareWlWorkPointerSlot	; 023071D4
 pool_023071D8:
 loc_023071D8:
 	.word 0x000002F8	; 023071D8
@@ -15905,7 +15991,7 @@ loc_023071F4:
 	.word 0x00000464	; 023071F4
 pool_023071F8:
 loc_023071F8:
-	.word 0x04808006	; 023071F8
+	.word REG_WIFI_MODE_WEP	; 023071F8
 pool_023071FC:
 loc_023071FC:
 	.word 0x0000FFC7	; 023071FC
@@ -15931,7 +16017,7 @@ loc_0230721A:
 	bx r3	; 0230721E
 pool_02307220:
 loc_02307220:
-	.word 0x0380FFF4	; 02307220
+	.word FirmwareWlWorkPointerSlot	; 02307220
 pool_02307224:
 loc_02307224:
 	.word 0x000002F4	; 02307224
@@ -15979,7 +16065,7 @@ loc_0230726C:
 	.byte 0xC0, 0x46	; 02307274
 pool_02307274:
 loc_02307274:
-	.word 0x0380FFF4	; 02307274
+	.word FirmwareWlWorkPointerSlot	; 02307274
 pool_02307278:
 loc_02307278:
 	.word 0x000002F2	; 02307278
@@ -15988,7 +16074,7 @@ loc_0230727C:
 	.word 0x00000314	; 0230727C
 pool_02307280:
 loc_02307280:
-	.word 0x04808006	; 02307280
+	.word REG_WIFI_MODE_WEP	; 02307280
 pool_02307284:
 loc_02307284:
 	.word 0x0000FFF8	; 02307284
@@ -16027,7 +16113,7 @@ loc_023072B8:
 	.word 0x00007FFE	; 023072B8
 pool_023072BC:
 loc_023072BC:
-	.word 0x0380FFF4	; 023072BC
+	.word FirmwareWlWorkPointerSlot	; 023072BC
 pool_023072C0:
 loc_023072C0:
 	.word 0x000002F0	; 023072C0
@@ -16052,13 +16138,13 @@ loc_023072D0:
 	bx lr	; 023072DE
 pool_023072E0:
 loc_023072E0:
-	.word 0x0380FFF4	; 023072E0
+	.word FirmwareWlWorkPointerSlot	; 023072E0
 pool_023072E4:
 loc_023072E4:
 	.word 0x000002EE	; 023072E4
 pool_023072E8:
 loc_023072E8:
-	.word 0x0480802C	; 023072E8
+	.word REG_WIFI_TX_RETRYLIMIT	; 023072E8
 
 ; ===== function loc_023072EC =====
 loc_023072EC:
@@ -16096,7 +16182,7 @@ loc_02307326:
 	bx r3	; 0230732A
 pool_0230732C:
 loc_0230732C:
-	.word 0x0380FFF4	; 0230732C
+	.word FirmwareWlWorkPointerSlot	; 0230732C
 pool_02307330:
 loc_02307330:
 	.word 0x000002E8	; 02307330
@@ -16157,7 +16243,7 @@ loc_0230733C:
 	.byte 0xC0, 0x46	; 0230739C
 pool_0230739C:
 loc_0230739C:
-	.word 0x0380FFF4	; 0230739C
+	.word FirmwareWlWorkPointerSlot	; 0230739C
 pool_023073A0:
 loc_023073A0:
 	.word 0x00000398	; 023073A0
@@ -16185,7 +16271,7 @@ loc_023073B8:
 	ldr pc,[pool_023073BC]	; 023073B8
 pool_023073BC:
 loc_023073BC:
-	.word 0x037FCE04	; 023073BC
+	.word loc_037FCE04	; 023073BC
 .thumb
 
 ; ===== function loc_023073C0 =====
@@ -16199,7 +16285,7 @@ loc_023073C4:
 	ldr pc,[pool_023073C8]	; 023073C4
 pool_023073C8:
 loc_023073C8:
-	.word 0x037FCE04	; 023073C8
+	.word loc_037FCE04	; 023073C8
 .thumb
 
 ; ===== function loc_023073CC =====
@@ -16281,7 +16367,7 @@ loc_0230744C:
 	bx r3	; 02307452
 pool_02307454:
 loc_02307454:
-	.word 0x0380FFF4	; 02307454
+	.word FirmwareWlWorkPointerSlot	; 02307454
 pool_02307458:
 loc_02307458:
 	.word 0x000005B0	; 02307458
@@ -16455,28 +16541,28 @@ loc_02307578:
 	.word 0x00004000	; 02307578
 pool_0230757C:
 loc_0230757C:
-	.word 0x04808050	; 0230757C
+	.word REG_WIFI_RXBUF_BEGIN	; 0230757C
 pool_02307580:
 loc_02307580:
 	.word 0x00006000	; 02307580
 pool_02307584:
 loc_02307584:
-	.word 0x04808052	; 02307584
+	.word REG_WIFI_RXBUF_END	; 02307584
 pool_02307588:
 loc_02307588:
 	.word 0x00005000	; 02307588
 pool_0230758C:
 loc_0230758C:
-	.word 0x04808062	; 0230758C
+	.word REG_WIFI_RXBUF_GAP	; 0230758C
 pool_02307590:
 loc_02307590:
-	.word 0x04804000	; 02307590
+	.word WifiRamBase	; 02307590
 pool_02307594:
 loc_02307594:
 	.word 0x04806000	; 02307594
 pool_02307598:
 loc_02307598:
-	.word 0x0380FFF4	; 02307598
+	.word FirmwareWlWorkPointerSlot	; 02307598
 pool_0230759C:
 loc_0230759C:
 	.word 0x00000302	; 0230759C
@@ -16519,7 +16605,7 @@ loc_023075E0:
 	.byte 0xC0, 0x46	; 023075E8
 pool_023075E8:
 loc_023075E8:
-	.word 0x0380FFF4	; 023075E8
+	.word FirmwareWlWorkPointerSlot	; 023075E8
 pool_023075EC:
 loc_023075EC:
 	.word 0x0000014C	; 023075EC
@@ -16587,7 +16673,7 @@ loc_0230764E:
 	.byte 0xC0, 0x46	; 02307658
 pool_02307658:
 loc_02307658:
-	.word 0x04804000	; 02307658
+	.word WifiRamBase	; 02307658
 pool_0230765C:
 loc_0230765C:
 	.word 0x0000FFFF	; 0230765C
@@ -16596,7 +16682,7 @@ loc_02307660:
 	.word 0x00002000	; 02307660
 pool_02307664:
 loc_02307664:
-	.word 0x0380FFF4	; 02307664
+	.word FirmwareWlWorkPointerSlot	; 02307664
 pool_02307668:
 loc_02307668:
 	.word 0x00000302	; 02307668
@@ -16697,13 +16783,13 @@ loc_0230770C:
 	.word 0x00001234	; 0230770C
 pool_02307710:
 loc_02307710:
-	.word 0x023105B0	; 02307710
+	.word P4_Data_023105B0	; 02307710
 pool_02307714:
 loc_02307714:
 	.word 0x04808000	; 02307714
 pool_02307718:
 loc_02307718:
-	.word 0x0380FFF4	; 02307718
+	.word FirmwareWlWorkPointerSlot	; 02307718
 pool_0230771C:
 loc_0230771C:
 	.word 0x00000302	; 0230771C
@@ -16725,7 +16811,7 @@ loc_02307738:
 	.word 0x01000000	; 02307738
 pool_0230773C:
 loc_0230773C:
-	.word 0x023085B9	; 0230773C
+	.word P4_IrqHandler_023085B8 + 1	; 0230773C
 
 ; ===== function loc_02307740 =====
 loc_02307740:
@@ -16739,7 +16825,7 @@ loc_02307744:
 	bx r12	; 02307748
 pool_0230774C:
 loc_0230774C:
-	.word 0x037FB621	; 0230774C
+	.word loc_037FB620 + 1	; 0230774C
 .thumb
 
 ; ===== function loc_02307750 =====
@@ -16807,7 +16893,7 @@ loc_023077C2:
 	bx r3	; 023077C6
 pool_023077C8:
 loc_023077C8:
-	.word 0x0380FFF4	; 023077C8
+	.word FirmwareWlWorkPointerSlot	; 023077C8
 pool_023077CC:
 loc_023077CC:
 	.word 0x000003E4	; 023077CC
@@ -16819,7 +16905,7 @@ loc_023077D4:
 	.word 0x00008000	; 023077D4
 pool_023077D8:
 loc_023077D8:
-	.word 0x04808098	; 023077D8
+	.word REG_WIFI_TXBUF_REPLY2	; 023077D8
 
 ; ===== function loc_023077DC =====
 loc_023077DC:
@@ -16850,7 +16936,7 @@ loc_02307804:
 	bx r3	; 0230780A
 pool_0230780C:
 loc_0230780C:
-	.word 0x0380FFF4	; 0230780C
+	.word FirmwareWlWorkPointerSlot	; 0230780C
 pool_02307810:
 loc_02307810:
 	.word 0x0000048A	; 02307810
@@ -16859,10 +16945,10 @@ loc_02307814:
 	.word 0x0000FFFF	; 02307814
 pool_02307818:
 loc_02307818:
-	.word 0x04808094	; 02307818
+	.word REG_WIFI_TXBUF_REPLY1	; 02307818
 pool_0230781C:
 loc_0230781C:
-	.word 0x04808030	; 0230781C
+	.word REG_WIFI_RXCNT	; 0230781C
 
 ; ===== function loc_02307820 =====
 loc_02307820:
@@ -16882,7 +16968,7 @@ loc_02307834:
 	.word 0x04805F60	; 02307834
 pool_02307838:
 loc_02307838:
-	.word 0x0380FFF4	; 02307838
+	.word FirmwareWlWorkPointerSlot	; 02307838
 pool_0230783C:
 loc_0230783C:
 	.word 0x00000396	; 0230783C
@@ -16923,13 +17009,13 @@ loc_0230787C:
 	.word 0x01000000	; 0230787C
 pool_02307880:
 loc_02307880:
-	.word 0x04808210	; 02307880
+	.word REG_WIFI_TX_SEQNO	; 02307880
 pool_02307884:
 loc_02307884:
 	.word 0x00001000	; 02307884
 pool_02307888:
 loc_02307888:
-	.word 0x04808244	; 02307888
+	.word REG_WIFI_UNKNOWN_244	; 02307888
 
 ; ===== function loc_0230788C =====
 loc_0230788C:
@@ -16982,7 +17068,7 @@ loc_023078D8:
 	.byte 0xC0, 0x46	; 023078E8
 pool_023078E8:
 loc_023078E8:
-	.word 0x0380FFF4	; 023078E8
+	.word FirmwareWlWorkPointerSlot	; 023078E8
 pool_023078EC:
 loc_023078EC:
 	.word 0x00000400	; 023078EC
@@ -17197,10 +17283,10 @@ loc_02307A6C:
 	bx r3	; 02307A72
 pool_02307A74:
 loc_02307A74:
-	.word 0x04808010	; 02307A74
+	.word REG_WIFI_IF	; 02307A74
 pool_02307A78:
 loc_02307A78:
-	.word 0x0380FFF4	; 02307A78
+	.word FirmwareWlWorkPointerSlot	; 02307A78
 pool_02307A7C:
 loc_02307A7C:
 	.word 0x0000061C	; 02307A7C
@@ -17212,19 +17298,19 @@ loc_02307A84:
 	.word 0x0000FFFF	; 02307A84
 pool_02307A88:
 loc_02307A88:
-	.word 0x0480819C	; 02307A88
+	.word REG_WIFI_RF_PINS	; 02307A88
 pool_02307A8C:
 loc_02307A8C:
-	.word 0x04808268	; 02307A8C
+	.word REG_WIFI_RXTX_ADDR	; 02307A8C
 pool_02307A90:
 loc_02307A90:
-	.word 0x04808050	; 02307A90
+	.word REG_WIFI_RXBUF_BEGIN	; 02307A90
 pool_02307A94:
 loc_02307A94:
 	.word 0x00000FFF	; 02307A94
 pool_02307A98:
 loc_02307A98:
-	.word 0x04808054	; 02307A98
+	.word REG_WIFI_RXBUF_WRCSR	; 02307A98
 pool_02307A9C:
 loc_02307A9C:
 	.word 0x04804000	; 02307A9C
@@ -17236,7 +17322,7 @@ loc_02307AA4:
 	.word 0x00000228	; 02307AA4
 pool_02307AA8:
 loc_02307AA8:
-	.word 0x048080F8	; 02307AA8
+	.word REG_WIFI_US_COUNT0	; 02307AA8
 pool_02307AAC:
 loc_02307AAC:
 	.word 0x00010000	; 02307AAC
@@ -17254,19 +17340,19 @@ loc_02307ABC:
 	.word 0x00000486	; 02307ABC
 pool_02307AC0:
 loc_02307AC0:
-	.word 0x04808098	; 02307AC0
+	.word REG_WIFI_TXBUF_REPLY2	; 02307AC0
 pool_02307AC4:
 loc_02307AC4:
-	.word 0x048080B4	; 02307AC4
+	.word REG_WIFI_TXBUF_RESET	; 02307AC4
 pool_02307AC8:
 loc_02307AC8:
 	.word 0x000003BA	; 02307AC8
 pool_02307ACC:
 loc_02307ACC:
-	.word 0x04808244	; 02307ACC
+	.word REG_WIFI_UNKNOWN_244	; 02307ACC
 pool_02307AD0:
 loc_02307AD0:
-	.word 0x04808228	; 02307AD0
+	.word REG_WIFI_UNKNOWN_228	; 02307AD0
 
 ; ===== function loc_02307AD4 =====
 loc_02307AD4:
@@ -17321,19 +17407,19 @@ loc_02307B2C:
 	.byte 0xC0, 0x46	; 02307B34
 pool_02307B34:
 loc_02307B34:
-	.word 0x04808010	; 02307B34
+	.word REG_WIFI_IF	; 02307B34
 pool_02307B38:
 loc_02307B38:
-	.word 0x0380FFF4	; 02307B38
+	.word FirmwareWlWorkPointerSlot	; 02307B38
 pool_02307B3C:
 loc_02307B3C:
 	.word 0x0000061C	; 02307B3C
 pool_02307B40:
 loc_02307B40:
-	.word 0x04808214	; 02307B40
+	.word REG_WIFI_RF_STATUS	; 02307B40
 pool_02307B44:
 loc_02307B44:
-	.word 0x04808268	; 02307B44
+	.word REG_WIFI_RXTX_ADDR	; 02307B44
 pool_02307B48:
 loc_02307B48:
 	.word 0x0000043C	; 02307B48
@@ -17345,7 +17431,7 @@ loc_02307B50:
 	.word 0x00000414	; 02307B50
 pool_02307B54:
 loc_02307B54:
-	.word 0x04808244	; 02307B54
+	.word REG_WIFI_UNKNOWN_244	; 02307B54
 
 ; ===== function loc_02307B58 =====
 loc_02307B58:
@@ -17424,7 +17510,7 @@ loc_02307BDC:
 	.byte 0xC0, 0x46	; 02307BE4
 pool_02307BE4:
 loc_02307BE4:
-	.word 0x0380FFF4	; 02307BE4
+	.word FirmwareWlWorkPointerSlot	; 02307BE4
 pool_02307BE8:
 loc_02307BE8:
 	.word 0x000003E4	; 02307BE8
@@ -17433,16 +17519,16 @@ loc_02307BEC:
 	.word 0x00001000	; 02307BEC
 pool_02307BF0:
 loc_02307BF0:
-	.word 0x04808010	; 02307BF0
+	.word REG_WIFI_IF	; 02307BF0
 pool_02307BF4:
 loc_02307BF4:
 	.word 0x0000061C	; 02307BF4
 pool_02307BF8:
 loc_02307BF8:
-	.word 0x048080B6	; 02307BF8
+	.word REG_WIFI_TXBUSY	; 02307BF8
 pool_02307BFC:
 loc_02307BFC:
-	.word 0x04808214	; 02307BFC
+	.word REG_WIFI_RF_STATUS	; 02307BFC
 pool_02307C00:
 loc_02307C00:
 	.word 0x02307841	; 02307C00
@@ -17682,22 +17768,22 @@ loc_02307DAA:
 	.byte 0xC0, 0x46	; 02307DB4
 pool_02307DB4:
 loc_02307DB4:
-	.word 0x04808010	; 02307DB4
+	.word REG_WIFI_IF	; 02307DB4
 pool_02307DB8:
 loc_02307DB8:
-	.word 0x0380FFF4	; 02307DB8
+	.word FirmwareWlWorkPointerSlot	; 02307DB8
 pool_02307DBC:
 loc_02307DBC:
 	.word 0x0000049C	; 02307DBC
 pool_02307DC0:
 loc_02307DC0:
-	.word 0x04808054	; 02307DC0
+	.word REG_WIFI_RXBUF_WRCSR	; 02307DC0
 pool_02307DC4:
 loc_02307DC4:
-	.word 0x048080F8	; 02307DC4
+	.word REG_WIFI_US_COUNT0	; 02307DC4
 pool_02307DC8:
 loc_02307DC8:
-	.word 0x048080FA	; 02307DC8
+	.word REG_WIFI_US_COUNT1	; 02307DC8
 pool_02307DCC:
 loc_02307DCC:
 	.word 0x04804000	; 02307DCC
@@ -17739,7 +17825,7 @@ loc_02307DFC:
 	.word 0x00000560	; 02307DFC
 pool_02307E00:
 loc_02307E00:
-	.word 0x0480805A	; 02307E00
+	.word REG_WIFI_RXBUF_READCSR	; 02307E00
 
 ; ===== function loc_02307E04 =====
 loc_02307E04:
@@ -17944,19 +18030,19 @@ loc_02307F74:
 	bx r3	; 02307F7A
 pool_02307F7C:
 loc_02307F7C:
-	.word 0x0380FFF4	; 02307F7C
+	.word FirmwareWlWorkPointerSlot	; 02307F7C
 pool_02307F80:
 loc_02307F80:
 	.word 0x000003E4	; 02307F80
 pool_02307F84:
 loc_02307F84:
-	.word 0x04808010	; 02307F84
+	.word REG_WIFI_IF	; 02307F84
 pool_02307F88:
 loc_02307F88:
 	.word 0x00000310	; 02307F88
 pool_02307F8C:
 loc_02307F8C:
-	.word 0x048080B8	; 02307F8C
+	.word REG_WIFI_TXSTAT	; 02307F8C
 pool_02307F90:
 loc_02307F90:
 	.word 0x00000F00	; 02307F90
@@ -17974,31 +18060,31 @@ loc_02307FA0:
 	.word 0x00000510	; 02307FA0
 pool_02307FA4:
 loc_02307FA4:
-	.word 0x048080AC	; 02307FA4
+	.word REG_WIFI_TXREQ_RESET	; 02307FA4
 pool_02307FA8:
 loc_02307FA8:
 	.word 0x000002FE	; 02307FA8
 pool_02307FAC:
 loc_02307FAC:
-	.word 0x0480819C	; 02307FAC
+	.word REG_WIFI_RF_PINS	; 02307FAC
 pool_02307FB0:
 loc_02307FB0:
-	.word 0x04808290	; 02307FB0
+	.word REG_WIFI_UNKNOWN_290	; 02307FB0
 pool_02307FB4:
 loc_02307FB4:
 	.word 0x0000061C	; 02307FB4
 pool_02307FB8:
 loc_02307FB8:
-	.word 0x048080B0	; 02307FB8
+	.word REG_WIFI_TXREQ_READ	; 02307FB8
 pool_02307FBC:
 loc_02307FBC:
 	.word 0x00000420	; 02307FBC
 pool_02307FC0:
 loc_02307FC0:
-	.word 0x048080B4	; 02307FC0
+	.word REG_WIFI_TXBUF_RESET	; 02307FC0
 pool_02307FC4:
 loc_02307FC4:
-	.word 0x04808048	; 02307FC4
+	.word REG_WIFI_UNKNOWN_048	; 02307FC4
 pool_02307FC8:
 loc_02307FC8:
 	.word 0x00001000	; 02307FC8
@@ -18010,7 +18096,7 @@ loc_02307FD0:
 	.word 0x00000490	; 02307FD0
 pool_02307FD4:
 loc_02307FD4:
-	.word 0x048080AE	; 02307FD4
+	.word REG_WIFI_TXREQ_SET	; 02307FD4
 
 ; ===== function loc_02307FD8 =====
 loc_02307FD8:
@@ -18157,13 +18243,13 @@ loc_023080E0:
 	bx r3	; 023080E6
 pool_023080E8:
 loc_023080E8:
-	.word 0x04808010	; 023080E8
+	.word REG_WIFI_IF	; 023080E8
 pool_023080EC:
 loc_023080EC:
-	.word 0x048081A8	; 023080EC
+	.word REG_WIFI_RXSTAT_INC_IF	; 023080EC
 pool_023080F0:
 loc_023080F0:
-	.word 0x0380FFF4	; 023080F0
+	.word FirmwareWlWorkPointerSlot	; 023080F0
 pool_023080F4:
 loc_023080F4:
 	.word 0x0000061C	; 023080F4
@@ -18175,13 +18261,13 @@ loc_023080FC:
 	.word 0x000003E4	; 023080FC
 pool_02308100:
 loc_02308100:
-	.word 0x048080B0	; 02308100
+	.word REG_WIFI_TXREQ_READ	; 02308100
 pool_02308104:
 loc_02308104:
-	.word 0x0480819C	; 02308104
+	.word REG_WIFI_RF_PINS	; 02308104
 pool_02308108:
 loc_02308108:
-	.word 0x04808032	; 02308108
+	.word REG_WIFI_WEP_CNT	; 02308108
 pool_0230810C:
 loc_0230810C:
 	.word 0x00008000	; 0230810C
@@ -18193,28 +18279,28 @@ loc_02308114:
 	.word 0x000003B6	; 02308114
 pool_02308118:
 loc_02308118:
-	.word 0x04808054	; 02308118
+	.word REG_WIFI_RXBUF_WRCSR	; 02308118
 pool_0230811C:
 loc_0230811C:
-	.word 0x04808052	; 0230811C
+	.word REG_WIFI_RXBUF_END	; 0230811C
 pool_02308120:
 loc_02308120:
 	.word 0x00004000	; 02308120
 pool_02308124:
 loc_02308124:
-	.word 0x04808050	; 02308124
+	.word REG_WIFI_RXBUF_BEGIN	; 02308124
 pool_02308128:
 loc_02308128:
-	.word 0x0480805A	; 02308128
+	.word REG_WIFI_RXBUF_READCSR	; 02308128
 pool_0230812C:
 loc_0230812C:
-	.word 0x04808056	; 0230812C
+	.word REG_WIFI_RXBUF_WR_ADDR	; 0230812C
 pool_02308130:
 loc_02308130:
 	.word 0x00008001	; 02308130
 pool_02308134:
 loc_02308134:
-	.word 0x04808030	; 02308134
+	.word REG_WIFI_RXCNT	; 02308134
 pool_02308138:
 loc_02308138:
 	.word 0x00000496	; 02308138
@@ -18230,7 +18316,7 @@ loc_02308140:
 	ldr pc,[pool_02308144]	; 02308140
 pool_02308144:
 loc_02308144:
-	.word 0x03802514	; 02308144
+	.word loc_03802514	; 02308144
 .thumb
 
 ; ===== function loc_02308148 =====
@@ -18244,7 +18330,7 @@ loc_0230814C:
 	ldr pc,[pool_02308150]	; 0230814C
 pool_02308150:
 loc_02308150:
-	.word 0x03802514	; 02308150
+	.word loc_03802514	; 02308150
 .thumb
 
 ; ===== function loc_02308154 =====
@@ -18343,19 +18429,19 @@ loc_023081FA:
 	.byte 0xC0, 0x46	; 02308204
 pool_02308204:
 loc_02308204:
-	.word 0x04808010	; 02308204
+	.word REG_WIFI_IF	; 02308204
 pool_02308208:
 loc_02308208:
-	.word 0x0380FFF4	; 02308208
+	.word FirmwareWlWorkPointerSlot	; 02308208
 pool_0230820C:
 loc_0230820C:
 	.word 0x000002FE	; 0230820C
 pool_02308210:
 loc_02308210:
-	.word 0x0480819C	; 02308210
+	.word REG_WIFI_RF_PINS	; 02308210
 pool_02308214:
 loc_02308214:
-	.word 0x04808290	; 02308214
+	.word REG_WIFI_UNKNOWN_290	; 02308214
 pool_02308218:
 loc_02308218:
 	.word 0x0000061C	; 02308218
@@ -18398,10 +18484,10 @@ loc_02308250:
 	.word 0x0000FFFF	; 02308250
 pool_02308254:
 loc_02308254:
-	.word 0x048081AC	; 02308254
+	.word REG_WIFI_RXSTAT_OVF_IF	; 02308254
 pool_02308258:
 loc_02308258:
-	.word 0x04808010	; 02308258
+	.word REG_WIFI_IF	; 02308258
 
 ; ===== function loc_0230825C =====
 loc_0230825C:
@@ -18423,10 +18509,10 @@ loc_02308278:
 	.word 0x0000FFFF	; 02308278
 pool_0230827C:
 loc_0230827C:
-	.word 0x048081AC	; 0230827C
+	.word REG_WIFI_RXSTAT_OVF_IF	; 0230827C
 pool_02308280:
 loc_02308280:
-	.word 0x04808010	; 02308280
+	.word REG_WIFI_IF	; 02308280
 
 ; ===== function loc_02308284 =====
 loc_02308284:
@@ -18439,7 +18525,7 @@ loc_0230828C:
 	.word 0x00000800	; 0230828C
 pool_02308290:
 loc_02308290:
-	.word 0x04808010	; 02308290
+	.word REG_WIFI_IF	; 02308290
 
 ; ===== function loc_02308294 =====
 loc_02308294:
@@ -18482,13 +18568,13 @@ loc_023082D4:
 	.word 0x00002000	; 023082D4
 pool_023082D8:
 loc_023082D8:
-	.word 0x04808010	; 023082D8
+	.word REG_WIFI_IF	; 023082D8
 pool_023082DC:
 loc_023082DC:
-	.word 0x048080AC	; 023082DC
+	.word REG_WIFI_TXREQ_RESET	; 023082DC
 pool_023082E0:
 loc_023082E0:
-	.word 0x0380FFF4	; 023082E0
+	.word FirmwareWlWorkPointerSlot	; 023082E0
 pool_023082E4:
 loc_023082E4:
 	.word 0x00000316	; 023082E4
@@ -18500,7 +18586,7 @@ loc_023082EC:
 	.word 0x00000310	; 023082EC
 pool_023082F0:
 loc_023082F0:
-	.word 0x04808048	; 023082F0
+	.word REG_WIFI_UNKNOWN_048	; 023082F0
 
 ; ===== function loc_023082F4 =====
 loc_023082F4:
@@ -18768,7 +18854,7 @@ loc_023084DA:
 	.byte 0xC0, 0x46	; 023084E4
 pool_023084E4:
 loc_023084E4:
-	.word 0x0380FFF4	; 023084E4
+	.word FirmwareWlWorkPointerSlot	; 023084E4
 pool_023084E8:
 loc_023084E8:
 	.word 0x00000308	; 023084E8
@@ -18780,19 +18866,19 @@ loc_023084F0:
 	.word 0x00004000	; 023084F0
 pool_023084F4:
 loc_023084F4:
-	.word 0x04808010	; 023084F4
+	.word REG_WIFI_IF	; 023084F4
 pool_023084F8:
 loc_023084F8:
 	.word 0x00000464	; 023084F8
 pool_023084FC:
 loc_023084FC:
-	.word 0x0380FFF0	; 023084FC
+	.word FirmwareWlAdjustedTimeSlot	; 023084FC
 pool_02308500:
 loc_02308500:
 	.word 0x00000300	; 02308500
 pool_02308504:
 loc_02308504:
-	.word 0x04808134	; 02308504
+	.word REG_WIFI_POST_BEACON	; 02308504
 pool_02308508:
 loc_02308508:
 	.word 0x000004EA	; 02308508
@@ -18804,7 +18890,7 @@ loc_02308510:
 	.word 0x000004EC	; 02308510
 pool_02308514:
 loc_02308514:
-	.word 0x048080B6	; 02308514
+	.word REG_WIFI_TXBUSY	; 02308514
 pool_02308518:
 loc_02308518:
 	.word 0x00000470	; 02308518
@@ -18813,19 +18899,19 @@ loc_0230851C:
 	.word 0x0000FFFF	; 0230851C
 pool_02308520:
 loc_02308520:
-	.word 0x04808038	; 02308520
+	.word REG_WIFI_POWER_TX	; 02308520
 pool_02308524:
 loc_02308524:
-	.word 0x04808118	; 02308524
+	.word REG_WIFI_CMD_COUNT	; 02308524
 pool_02308528:
 loc_02308528:
-	.word 0x04808048	; 02308528
+	.word REG_WIFI_UNKNOWN_048	; 02308528
 pool_0230852C:
 loc_0230852C:
 	.word 0x00000494	; 0230852C
 pool_02308530:
 loc_02308530:
-	.word 0x048080AE	; 02308530
+	.word REG_WIFI_TXREQ_SET	; 02308530
 
 ; ===== function loc_02308534 =====
 loc_02308534:
@@ -18887,7 +18973,7 @@ loc_0230858E:
 	bx r3	; 023085A2
 pool_023085A4:
 loc_023085A4:
-	.word 0x0380FFF4	; 023085A4
+	.word FirmwareWlWorkPointerSlot	; 023085A4
 pool_023085A8:
 loc_023085A8:
 	.word 0x00000308	; 023085A8
@@ -18896,12 +18982,13 @@ loc_023085AC:
 	.word 0x00008000	; 023085AC
 pool_023085B0:
 loc_023085B0:
-	.word 0x04808010	; 023085B0
+	.word REG_WIFI_IF	; 023085B0
 pool_023085B4:
 loc_023085B4:
 	.word 0x00000316	; 023085B4
 
 ; ===== function loc_023085B8 =====
+P4_IrqHandler_023085B8:
 	push {r4,r5,r6,r7,lr}	; 023085B8
 	sub sp,#0x4	; 023085BA
 	mov r7,#0x1	; 023085BC
@@ -19015,10 +19102,10 @@ loc_02308682:
 	bx r3	; 02308692
 pool_02308694:
 loc_02308694:
-	.word 0x04808010	; 02308694
+	.word REG_WIFI_IF	; 02308694
 pool_02308698:
 loc_02308698:
-	.word 0x04808012	; 02308698
+	.word REG_WIFI_IE	; 02308698
 pool_0230869C:
 loc_0230869C:
 	.word 0x00008000	; 0230869C
@@ -19036,7 +19123,7 @@ loc_023086AC:
 	.word 0x00001000	; 023086AC
 pool_023086B0:
 loc_023086B0:
-	.word 0x0380FFF8	; 023086B0
+	.word Bios7IrqFlagsAddress	; 023086B0
 pool_023086B4:
 loc_023086B4:
 	.word 0x01000000	; 023086B4
@@ -19085,7 +19172,7 @@ loc_02308700:
 	.byte 0xC0, 0x46	; 02308708
 pool_02308708:
 loc_02308708:
-	.word 0x0380FFF4	; 02308708
+	.word FirmwareWlWorkPointerSlot	; 02308708
 pool_0230870C:
 loc_0230870C:
 	.word 0x0000014C	; 0230870C
@@ -19155,16 +19242,16 @@ loc_02308784:
 	.byte 0xC0, 0x46	; 0230878C
 pool_0230878C:
 loc_0230878C:
-	.word 0x04808088	; 0230878C
+	.word REG_WIFI_LISTENCOUNT	; 0230878C
 pool_02308790:
 loc_02308790:
-	.word 0x0380FFF4	; 02308790
+	.word FirmwareWlWorkPointerSlot	; 02308790
 pool_02308794:
 loc_02308794:
 	.word 0x00000178	; 02308794
 pool_02308798:
 loc_02308798:
-	.word 0x048080AE	; 02308798
+	.word REG_WIFI_TXREQ_SET	; 02308798
 pool_0230879C:
 loc_0230879C:
 	.word 0x000004EA	; 0230879C
@@ -19263,7 +19350,7 @@ loc_02308834:
 	.byte 0xC0, 0x46	; 0230884C
 pool_0230884C:
 loc_0230884C:
-	.word 0x0380FFF4	; 0230884C
+	.word FirmwareWlWorkPointerSlot	; 0230884C
 pool_02308850:
 loc_02308850:
 	.word 0x000003E4	; 02308850
@@ -19412,14 +19499,34 @@ loc_0230894E:
 	b loc_02308A76	; 02308956
 loc_02308958:
 	add r0,r1,r1	; 02308958
+P4_SwitchIndexPC_02308958:
 	add r0,pc	; 0230895A
-	ldrh r0,[r0,#0x8]	; 0230895C
+	ldrh r0,[r0,#(P4_SwitchTable_02308958 - (P4_SwitchIndexPC_02308958 + 4))]	; 0230895C
 	lsl r0,r0,#0x10	; 0230895E
 	asr r0,r0,#0x10	; 02308960
+P4_SwitchTargetPC_02308958:
 	add r0,pc	; 02308962
 	bx r0	; 02308964
-	.byte 0x57, 0x00, 0x49, 0x00, 0x11, 0x01, 0x11, 0x01, 0x11, 0x01, 0x7F, 0x00, 0x11, 0x01, 0x11, 0x01	; 02308976
-	.byte 0x21, 0x00, 0x11, 0x01, 0x11, 0x01, 0x11, 0x01, 0xBB, 0x00, 0xF1, 0x00, 0xA7, 0x00, 0xA7, 0x00	; 02308986
+; 表项是相对 ADD 所读 PC 的有符号偏移，保留 ARM/Thumb 状态位。
+; Signed offsets from the ADD's PC, including the ARM/Thumb state bit.
+P4_SwitchTable_02308958:
+	.halfword (loc_023089BC + 1) - (P4_SwitchTargetPC_02308958 + 4)
+	.halfword (loc_023089AE + 1) - (P4_SwitchTargetPC_02308958 + 4)
+	.halfword (loc_02308A76 + 1) - (P4_SwitchTargetPC_02308958 + 4)
+	.halfword (loc_02308A76 + 1) - (P4_SwitchTargetPC_02308958 + 4)
+	.halfword (loc_02308A76 + 1) - (P4_SwitchTargetPC_02308958 + 4)
+	.halfword (loc_023089E4 + 1) - (P4_SwitchTargetPC_02308958 + 4)
+	.halfword (loc_02308A76 + 1) - (P4_SwitchTargetPC_02308958 + 4)
+	.halfword (loc_02308A76 + 1) - (P4_SwitchTargetPC_02308958 + 4)
+	.halfword (loc_02308986 + 1) - (P4_SwitchTargetPC_02308958 + 4)
+	.halfword (loc_02308A76 + 1) - (P4_SwitchTargetPC_02308958 + 4)
+	.halfword (loc_02308A76 + 1) - (P4_SwitchTargetPC_02308958 + 4)
+	.halfword (loc_02308A76 + 1) - (P4_SwitchTargetPC_02308958 + 4)
+	.halfword (loc_02308A20 + 1) - (P4_SwitchTargetPC_02308958 + 4)
+	.halfword (loc_02308A56 + 1) - (P4_SwitchTargetPC_02308958 + 4)
+	.halfword (loc_02308A0C + 1) - (P4_SwitchTargetPC_02308958 + 4)
+	.halfword (loc_02308A0C + 1) - (P4_SwitchTargetPC_02308958 + 4)
+P4_SwitchTable_02308958End:
 loc_02308986:
 	ldrh r1,[r4,#0x14]	; 02308986
 	mov r0,#0xf	; 02308988
@@ -19584,10 +19691,10 @@ loc_02308ABA:
 	.byte 0xC0, 0x46	; 02308AC4
 pool_02308AC4:
 loc_02308AC4:
-	.word 0x0380FFF4	; 02308AC4
+	.word FirmwareWlWorkPointerSlot	; 02308AC4
 pool_02308AC8:
 loc_02308AC8:
-	.word 0x0480805A	; 02308AC8
+	.word REG_WIFI_RXBUF_READCSR	; 02308AC8
 pool_02308ACC:
 loc_02308ACC:
 	.word 0x0000049C	; 02308ACC
@@ -19644,7 +19751,7 @@ loc_02308B10:
 	.word 0x00000316	; 02308B10
 pool_02308B14:
 loc_02308B14:
-	.word 0x0480803C	; 02308B14
+	.word REG_WIFI_POWERSTATE	; 02308B14
 pool_02308B18:
 loc_02308B18:
 	.word 0x00000564	; 02308B18
@@ -19819,7 +19926,7 @@ loc_02308C54:
 	bx r3	; 02308C5A
 pool_02308C5C:
 loc_02308C5C:
-	.word 0x0380FFF4	; 02308C5C
+	.word FirmwareWlWorkPointerSlot	; 02308C5C
 pool_02308C60:
 loc_02308C60:
 	.word 0x000003E4	; 02308C60
@@ -19840,7 +19947,7 @@ loc_02308C74:
 	.word 0x000003A4	; 02308C74
 pool_02308C78:
 loc_02308C78:
-	.word 0x04808032	; 02308C78
+	.word REG_WIFI_WEP_CNT	; 02308C78
 pool_02308C7C:
 loc_02308C7C:
 	.word 0x000003B6	; 02308C7C
@@ -19860,7 +19967,7 @@ loc_02308C88:
 	bx r12	; 02308C8C
 pool_02308C90:
 loc_02308C90:
-	.word 0x038029FD	; 02308C90
+	.word loc_038029FC + 1	; 02308C90
 .thumb
 
 ; ===== function loc_02308C94 =====
@@ -19890,7 +19997,7 @@ loc_02308CBC:
 	.byte 0xC0, 0x46	; 02308CC4
 pool_02308CC4:
 loc_02308CC4:
-	.word 0x0380FFF4	; 02308CC4
+	.word FirmwareWlWorkPointerSlot	; 02308CC4
 pool_02308CC8:
 loc_02308CC8:
 	.word 0x000003A0	; 02308CC8
@@ -19967,7 +20074,7 @@ loc_02308CF8:
 	bx r3	; 02308D56
 pool_02308D58:
 loc_02308D58:
-	.word 0x0380FFF4	; 02308D58
+	.word FirmwareWlWorkPointerSlot	; 02308D58
 pool_02308D5C:
 loc_02308D5C:
 	.word 0x000002E0	; 02308D5C
@@ -19998,7 +20105,7 @@ loc_02308D78:
 	ldr pc,[pool_02308D7C]	; 02308D78
 pool_02308D7C:
 loc_02308D7C:
-	.word 0x037FCE04	; 02308D7C
+	.word loc_037FCE04	; 02308D7C
 .thumb
 
 ; ===== function loc_02308D80 =====
@@ -20056,7 +20163,7 @@ loc_02308DA8:
 	.byte 0xC0, 0x46	; 02308DE4
 pool_02308DE4:
 loc_02308DE4:
-	.word 0x0380FFF4	; 02308DE4
+	.word FirmwareWlWorkPointerSlot	; 02308DE4
 pool_02308DE8:
 loc_02308DE8:
 	.word 0x000002E0	; 02308DE8
@@ -20096,7 +20203,7 @@ loc_02308E10:
 	ldr pc,[pool_02308E14]	; 02308E10
 pool_02308E14:
 loc_02308E14:
-	.word 0x037FCE04	; 02308E14
+	.word loc_037FCE04	; 02308E14
 .thumb
 
 ; ===== function loc_02308E18 =====
@@ -20157,7 +20264,7 @@ loc_02308E68:
 	bx r3	; 02308E86
 pool_02308E88:
 loc_02308E88:
-	.word 0x0380FFF4	; 02308E88
+	.word FirmwareWlWorkPointerSlot	; 02308E88
 pool_02308E8C:
 loc_02308E8C:
 	.word 0x000002E0	; 02308E8C
@@ -20185,7 +20292,7 @@ loc_02308EA4:
 	ldr pc,[pool_02308EA8]	; 02308EA4
 pool_02308EA8:
 loc_02308EA8:
-	.word 0x037FCE04	; 02308EA8
+	.word loc_037FCE04	; 02308EA8
 .thumb
 
 ; ===== function loc_02308EAC =====
@@ -20199,7 +20306,7 @@ loc_02308EB0:
 	ldr pc,[pool_02308EB4]	; 02308EB0
 pool_02308EB4:
 loc_02308EB4:
-	.word 0x037FCE04	; 02308EB4
+	.word loc_037FCE04	; 02308EB4
 .thumb
 
 ; ===== function loc_02308EB8 =====
@@ -20303,7 +20410,7 @@ loc_02308F70:
 	bx r3	; 02308F76
 pool_02308F78:
 loc_02308F78:
-	.word 0x0380FFF4	; 02308F78
+	.word FirmwareWlWorkPointerSlot	; 02308F78
 pool_02308F7C:
 loc_02308F7C:
 	.word 0x000002E0	; 02308F7C
@@ -20381,7 +20488,7 @@ loc_02308FFA:
 	.byte 0xC0, 0x46	; 02309008
 pool_02309008:
 loc_02309008:
-	.word 0x0380FFF4	; 02309008
+	.word FirmwareWlWorkPointerSlot	; 02309008
 pool_0230900C:
 loc_0230900C:
 	.word 0x00000390	; 0230900C
@@ -20451,7 +20558,7 @@ loc_02309080:
 	bx r3	; 0230908A
 pool_0230908C:
 loc_0230908C:
-	.word 0x0380FFF4	; 0230908C
+	.word FirmwareWlWorkPointerSlot	; 0230908C
 pool_02309090:
 loc_02309090:
 	.word 0x00000390	; 02309090
@@ -20503,7 +20610,7 @@ loc_023090DE:
 	bx r3	; 023090E2
 pool_023090E4:
 loc_023090E4:
-	.word 0x0380FFF4	; 023090E4
+	.word FirmwareWlWorkPointerSlot	; 023090E4
 pool_023090E8:
 loc_023090E8:
 	.word 0x000002E0	; 023090E8
@@ -20582,7 +20689,7 @@ loc_0230916C:
 	.word 0x01000000	; 0230916C
 pool_02309170:
 loc_02309170:
-	.word 0x0380FFF4	; 02309170
+	.word FirmwareWlWorkPointerSlot	; 02309170
 pool_02309174:
 loc_02309174:
 	.word 0x000004F2	; 02309174
@@ -20629,7 +20736,7 @@ loc_023091B4:
 	.byte 0xC0, 0x46	; 023091BC
 pool_023091BC:
 loc_023091BC:
-	.word 0x0380FFF4	; 023091BC
+	.word FirmwareWlWorkPointerSlot	; 023091BC
 pool_023091C0:
 loc_023091C0:
 	.word 0x000004EA	; 023091C0
@@ -20638,10 +20745,10 @@ loc_023091C4:
 	.word 0x000004EE	; 023091C4
 pool_023091C8:
 loc_023091C8:
-	.word 0x048080AC	; 023091C8
+	.word REG_WIFI_TXREQ_RESET	; 023091C8
 pool_023091CC:
 loc_023091CC:
-	.word 0x048080AE	; 023091CC
+	.word REG_WIFI_TXREQ_SET	; 023091CC
 
 ; ===== function loc_023091D0 =====
 loc_023091D0:
@@ -20657,7 +20764,7 @@ loc_023091D0:
 	.byte 0xC0, 0x46	; 023091E4
 pool_023091E4:
 loc_023091E4:
-	.word 0x0380FFF4	; 023091E4
+	.word FirmwareWlWorkPointerSlot	; 023091E4
 pool_023091E8:
 loc_023091E8:
 	.word 0x000002E0	; 023091E8
@@ -20756,7 +20863,7 @@ loc_0230929C:
 	.word 0x01000000	; 0230929C
 pool_023092A0:
 loc_023092A0:
-	.word 0x0380FFF4	; 023092A0
+	.word FirmwareWlWorkPointerSlot	; 023092A0
 pool_023092A4:
 loc_023092A4:
 	.word 0x000004EC	; 023092A4
@@ -20811,7 +20918,7 @@ loc_023092EC:
 	bx r3	; 023092FE
 pool_02309300:
 loc_02309300:
-	.word 0x0380FFF4	; 02309300
+	.word FirmwareWlWorkPointerSlot	; 02309300
 pool_02309304:
 loc_02309304:
 	.word 0x000002E0	; 02309304
@@ -20864,7 +20971,7 @@ loc_02309344:
 	.byte 0xC0, 0x46	; 02309360
 pool_02309360:
 loc_02309360:
-	.word 0x0380FFF4	; 02309360
+	.word FirmwareWlWorkPointerSlot	; 02309360
 pool_02309364:
 loc_02309364:
 	.word 0x000002E0	; 02309364
@@ -20998,7 +21105,7 @@ loc_0230947E:
 	.byte 0xC0, 0x46	; 02309488
 pool_02309488:
 loc_02309488:
-	.word 0x0380FFF4	; 02309488
+	.word FirmwareWlWorkPointerSlot	; 02309488
 pool_0230948C:
 loc_0230948C:
 	.word 0x000004E8	; 0230948C
@@ -21077,7 +21184,7 @@ loc_023094FE:
 	.byte 0xC0, 0x46	; 02309508
 pool_02309508:
 loc_02309508:
-	.word 0x0380FFF4	; 02309508
+	.word FirmwareWlWorkPointerSlot	; 02309508
 pool_0230950C:
 loc_0230950C:
 	.word 0x000004E8	; 0230950C
@@ -21098,7 +21205,7 @@ loc_02309518:
 	bx lr	; 02309522
 pool_02309524:
 loc_02309524:
-	.word 0x0380FFF4	; 02309524
+	.word FirmwareWlWorkPointerSlot	; 02309524
 pool_02309528:
 loc_02309528:
 	.word 0x000003E0	; 02309528
@@ -21137,7 +21244,7 @@ loc_02309560:
 	bx r3	; 02309566
 pool_02309568:
 loc_02309568:
-	.word 0x0380FFF4	; 02309568
+	.word FirmwareWlWorkPointerSlot	; 02309568
 pool_0230956C:
 loc_0230956C:
 	.word 0x000001B8	; 0230956C
@@ -21191,7 +21298,7 @@ loc_023095C4:
 	bx r3	; 023095CA
 pool_023095CC:
 loc_023095CC:
-	.word 0x0380FFF4	; 023095CC
+	.word FirmwareWlWorkPointerSlot	; 023095CC
 pool_023095D0:
 loc_023095D0:
 	.word 0x000001C0	; 023095D0
@@ -21463,7 +21570,7 @@ loc_023097AA:
 	.byte 0xC0, 0x46	; 023097B4
 pool_023097B4:
 loc_023097B4:
-	.word 0x0380FFF4	; 023097B4
+	.word FirmwareWlWorkPointerSlot	; 023097B4
 pool_023097B8:
 loc_023097B8:
 	.word 0x000003E0	; 023097B8
@@ -21532,7 +21639,7 @@ loc_023097F8:
 	bx r3	; 02309816
 pool_02309818:
 loc_02309818:
-	.word 0x0380FFF4	; 02309818
+	.word FirmwareWlWorkPointerSlot	; 02309818
 pool_0230981C:
 loc_0230981C:
 	.word 0x000003BC	; 0230981C
@@ -21548,7 +21655,7 @@ loc_02309824:
 	ldr pc,[pool_02309828]	; 02309824
 pool_02309828:
 loc_02309828:
-	.word 0x037FCE04	; 02309828
+	.word loc_037FCE04	; 02309828
 .thumb
 
 ; ===== function loc_0230982C =====
@@ -21659,7 +21766,7 @@ loc_023098FA:
 	.byte 0xC0, 0x46	; 02309904
 pool_02309904:
 loc_02309904:
-	.word 0x0380FFF4	; 02309904
+	.word FirmwareWlWorkPointerSlot	; 02309904
 pool_02309908:
 loc_02309908:
 	.word 0x0000014C	; 02309908
@@ -21684,7 +21791,7 @@ loc_0230991C:
 	ldr pc,[pool_02309920]	; 0230991C
 pool_02309920:
 loc_02309920:
-	.word 0x03802514	; 02309920
+	.word loc_03802514	; 02309920
 .thumb
 
 ; ===== function loc_02309924 =====
@@ -21698,7 +21805,7 @@ loc_02309928:
 	ldr pc,[pool_0230992C]	; 02309928
 pool_0230992C:
 loc_0230992C:
-	.word 0x037FCE1C	; 0230992C
+	.word P2_Entry_037FCE1C	; 0230992C
 .thumb
 
 ; ===== function loc_02309930 =====
@@ -21736,7 +21843,7 @@ loc_02309968:
 	.byte 0xC0, 0x46	; 02309970
 pool_02309970:
 loc_02309970:
-	.word 0x0380FFF4	; 02309970
+	.word FirmwareWlWorkPointerSlot	; 02309970
 pool_02309974:
 loc_02309974:
 	.word 0x0000014C	; 02309974
@@ -21781,7 +21888,7 @@ loc_023099BE:
 	.byte 0xC0, 0x46	; 023099C8
 pool_023099C8:
 loc_023099C8:
-	.word 0x0380FFF4	; 023099C8
+	.word FirmwareWlWorkPointerSlot	; 023099C8
 pool_023099CC:
 loc_023099CC:
 	.word 0x0000014C	; 023099CC
@@ -21828,7 +21935,7 @@ loc_02309A18:
 	.byte 0xC0, 0x46	; 02309A20
 pool_02309A20:
 loc_02309A20:
-	.word 0x0380FFF4	; 02309A20
+	.word FirmwareWlWorkPointerSlot	; 02309A20
 pool_02309A24:
 loc_02309A24:
 	.word 0x0000014C	; 02309A24
@@ -21909,7 +22016,7 @@ loc_02309AB4:
 	bx r3	; 02309ABA
 pool_02309ABC:
 loc_02309ABC:
-	.word 0x0380FFF4	; 02309ABC
+	.word FirmwareWlWorkPointerSlot	; 02309ABC
 pool_02309AC0:
 loc_02309AC0:
 	.word 0x0000014C	; 02309AC0
@@ -21992,7 +22099,7 @@ loc_02309B54:
 	bx r3	; 02309B5A
 pool_02309B5C:
 loc_02309B5C:
-	.word 0x0380FFF4	; 02309B5C
+	.word FirmwareWlWorkPointerSlot	; 02309B5C
 pool_02309B60:
 loc_02309B60:
 	.word 0x0000014C	; 02309B60
@@ -22042,7 +22149,7 @@ loc_02309BB0:
 	.byte 0xC0, 0x46	; 02309BB8
 pool_02309BB8:
 loc_02309BB8:
-	.word 0x0380FFF4	; 02309BB8
+	.word FirmwareWlWorkPointerSlot	; 02309BB8
 pool_02309BBC:
 loc_02309BBC:
 	.word 0x0000014C	; 02309BBC
@@ -22089,7 +22196,7 @@ loc_02309C08:
 	.byte 0xC0, 0x46	; 02309C10
 pool_02309C10:
 loc_02309C10:
-	.word 0x0380FFF4	; 02309C10
+	.word FirmwareWlWorkPointerSlot	; 02309C10
 pool_02309C14:
 loc_02309C14:
 	.word 0x0000014C	; 02309C14
@@ -22127,7 +22234,7 @@ loc_02309C4E:
 	bx r3	; 02309C52
 pool_02309C54:
 loc_02309C54:
-	.word 0x0380FFF4	; 02309C54
+	.word FirmwareWlWorkPointerSlot	; 02309C54
 pool_02309C58:
 loc_02309C58:
 	.word 0x000003E0	; 02309C58
@@ -22148,13 +22255,13 @@ loc_02309C64:
 	bx r3	; 02309C72
 pool_02309C74:
 loc_02309C74:
-	.word 0x0380FFF4	; 02309C74
+	.word FirmwareWlWorkPointerSlot	; 02309C74
 pool_02309C78:
 loc_02309C78:
 	.word 0x0000037E	; 02309C78
 pool_02309C7C:
 loc_02309C7C:
-	.word 0x02309979	; 02309C7C
+	.word loc_02309978 + 1	; 02309C7C
 	mov r2,#0x83	; 02309C80
 	ldr r0,[pool_02309C94]	; 02309C82
 	ldr r1,[r0,#0x0]	; 02309C84
@@ -22167,13 +22274,13 @@ loc_02309C7C:
 	.byte 0xC0, 0x46	; 02309C94
 pool_02309C94:
 loc_02309C94:
-	.word 0x0380FFF4	; 02309C94
+	.word FirmwareWlWorkPointerSlot	; 02309C94
 pool_02309C98:
 loc_02309C98:
 	.word 0x000003BC	; 02309C98
 pool_02309C9C:
 loc_02309C9C:
-	.word 0x02304B69	; 02309C9C
+	.word loc_02304B68 + 1	; 02309C9C
 
 ; ===== function loc_02309CA0 =====
 	push {r4,r5,lr}	; 02309CA0
@@ -22189,13 +22296,23 @@ loc_02309C9C:
 	b loc_02309E36	; 02309CB4
 loc_02309CB6:
 	add r0,r0,r0	; 02309CB6
+P4_SwitchIndexPC_02309CB6:
 	add r0,pc	; 02309CB8
-	ldrh r0,[r0,#0x8]	; 02309CBA
+	ldrh r0,[r0,#(P4_SwitchTable_02309CB6 - (P4_SwitchIndexPC_02309CB6 + 4))]	; 02309CBA
 	lsl r0,r0,#0x10	; 02309CBC
 	asr r0,r0,#0x10	; 02309CBE
+P4_SwitchTargetPC_02309CB6:
 	add r0,pc	; 02309CC0
 	bx r0	; 02309CC2
-	.byte 0x0B, 0x00, 0x37, 0x00, 0xB9, 0x00, 0xD9, 0x00, 0x2D, 0x01	; 02309CCE
+; 表项是相对 ADD 所读 PC 的有符号偏移，保留 ARM/Thumb 状态位。
+; Signed offsets from the ADD's PC, including the ARM/Thumb state bit.
+P4_SwitchTable_02309CB6:
+	.halfword (loc_02309CCE + 1) - (P4_SwitchTargetPC_02309CB6 + 4)
+	.halfword (loc_02309CFA + 1) - (P4_SwitchTargetPC_02309CB6 + 4)
+	.halfword (loc_02309D7C + 1) - (P4_SwitchTargetPC_02309CB6 + 4)
+	.halfword (loc_02309D9C + 1) - (P4_SwitchTargetPC_02309CB6 + 4)
+	.halfword (loc_02309DF0 + 1) - (P4_SwitchTargetPC_02309CB6 + 4)
+P4_SwitchTable_02309CB6End:
 loc_02309CCE:
 	mov r0,#0x0	; 02309CCE
 	strh r0,[r4,#0x14]	; 02309CD0
@@ -22389,7 +22506,7 @@ loc_02309E44:
 	bx r3	; 02309E4A
 pool_02309E4C:
 loc_02309E4C:
-	.word 0x0380FFF4	; 02309E4C
+	.word FirmwareWlWorkPointerSlot	; 02309E4C
 pool_02309E50:
 loc_02309E50:
 	.word 0x000003BC	; 02309E50
@@ -22404,7 +22521,7 @@ loc_02309E5C:
 	.word 0x000003C4	; 02309E5C
 pool_02309E60:
 loc_02309E60:
-	.word 0x04808040	; 02309E60
+	.word REG_WIFI_POWERFORCE	; 02309E60
 pool_02309E64:
 loc_02309E64:
 	.word 0x00008000	; 02309E64
@@ -22413,7 +22530,7 @@ loc_02309E68:
 	.word 0x02309C81	; 02309E68
 pool_02309E6C:
 loc_02309E6C:
-	.word 0x0480819C	; 02309E6C
+	.word REG_WIFI_RF_PINS	; 02309E6C
 pool_02309E70:
 loc_02309E70:
 	.word 0x000002F2	; 02309E70
@@ -22429,7 +22546,7 @@ loc_02309E78:
 	ldr pc,[pool_02309E7C]	; 02309E78
 pool_02309E7C:
 loc_02309E7C:
-	.word 0x03802720	; 02309E7C
+	.word loc_03802720	; 02309E7C
 .thumb
 	bx lr	; 02309E80
 	.byte 0x00, 0x00	; 02309E84
@@ -22449,7 +22566,7 @@ loc_02309E7C:
 	bx r3	; 02309E9E
 pool_02309EA0:
 loc_02309EA0:
-	.word 0x0380FFF4	; 02309EA0
+	.word FirmwareWlWorkPointerSlot	; 02309EA0
 pool_02309EA4:
 loc_02309EA4:
 	.word 0x000003D8	; 02309EA4
@@ -22458,7 +22575,7 @@ loc_02309EA8:
 	.word 0x000003BC	; 02309EA8
 pool_02309EAC:
 loc_02309EAC:
-	.word 0x02304B69	; 02309EAC
+	.word loc_02304B68 + 1	; 02309EAC
 
 ; ===== function loc_02309EB0 =====
 	push {r4,lr}	; 02309EB0
@@ -22515,7 +22632,7 @@ loc_02309F1A:
 	bx r3	; 02309F1E
 pool_02309F20:
 loc_02309F20:
-	.word 0x0380FFF4	; 02309F20
+	.word FirmwareWlWorkPointerSlot	; 02309F20
 pool_02309F24:
 loc_02309F24:
 	.word 0x000003BC	; 02309F24
@@ -22538,7 +22655,7 @@ loc_02309F28:
 	bx r3	; 02309F46
 pool_02309F48:
 loc_02309F48:
-	.word 0x0380FFF4	; 02309F48
+	.word FirmwareWlWorkPointerSlot	; 02309F48
 pool_02309F4C:
 loc_02309F4C:
 	.word 0x000003D8	; 02309F4C
@@ -22547,7 +22664,7 @@ loc_02309F50:
 	.word 0x000003BC	; 02309F50
 pool_02309F54:
 loc_02309F54:
-	.word 0x02304B69	; 02309F54
+	.word loc_02304B68 + 1	; 02309F54
 
 ; ===== function loc_02309F58 =====
 	push {r4,lr}	; 02309F58
@@ -22612,7 +22729,7 @@ loc_02309FD2:
 	bx r3	; 02309FD6
 pool_02309FD8:
 loc_02309FD8:
-	.word 0x0380FFF4	; 02309FD8
+	.word FirmwareWlWorkPointerSlot	; 02309FD8
 pool_02309FDC:
 loc_02309FDC:
 	.word 0x000003BC	; 02309FDC
@@ -22635,7 +22752,7 @@ loc_02309FE0:
 	.byte 0xC0, 0x46	; 0230A000
 pool_0230A000:
 loc_0230A000:
-	.word 0x0380FFF4	; 0230A000
+	.word FirmwareWlWorkPointerSlot	; 0230A000
 pool_0230A004:
 loc_0230A004:
 	.word 0x000003C0	; 0230A004
@@ -22644,7 +22761,7 @@ loc_0230A008:
 	.word 0x000003BC	; 0230A008
 pool_0230A00C:
 loc_0230A00C:
-	.word 0x02304B69	; 0230A00C
+	.word loc_02304B68 + 1	; 0230A00C
 
 ; ===== function loc_0230A010 =====
 	push {r4,lr}	; 0230A010
@@ -22693,7 +22810,7 @@ loc_0230A062:
 	bx r3	; 0230A066
 pool_0230A068:
 loc_0230A068:
-	.word 0x0380FFF4	; 0230A068
+	.word FirmwareWlWorkPointerSlot	; 0230A068
 pool_0230A06C:
 loc_0230A06C:
 	.word 0x000003BC	; 0230A06C
@@ -22732,13 +22849,13 @@ loc_0230A0A4:
 	bx r3	; 0230A0AA
 pool_0230A0AC:
 loc_0230A0AC:
-	.word 0x0380FFF4	; 0230A0AC
+	.word FirmwareWlWorkPointerSlot	; 0230A0AC
 pool_0230A0B0:
 loc_0230A0B0:
 	.word 0x000003BC	; 0230A0B0
 pool_0230A0B4:
 loc_0230A0B4:
-	.word 0x02304B69	; 0230A0B4
+	.word loc_02304B68 + 1	; 0230A0B4
 
 ; ===== function loc_0230A0B8 =====
 	push {r4,r5,r6,lr}	; 0230A0B8
@@ -22754,13 +22871,24 @@ loc_0230A0B4:
 	b loc_0230A1DE	; 0230A0CC
 loc_0230A0CE:
 	add r0,r0,r0	; 0230A0CE
+P4_SwitchIndexPC_0230A0CE:
 	add r0,pc	; 0230A0D0
-	ldrh r0,[r0,#0x8]	; 0230A0D2
+	ldrh r0,[r0,#(P4_SwitchTable_0230A0CE - (P4_SwitchIndexPC_0230A0CE + 4))]	; 0230A0D2
 	lsl r0,r0,#0x10	; 0230A0D4
 	asr r0,r0,#0x10	; 0230A0D6
+P4_SwitchTargetPC_0230A0CE:
 	add r0,pc	; 0230A0D8
 	bx r0	; 0230A0DA
-	.byte 0x0D, 0x00, 0x59, 0x00, 0xBB, 0x00, 0xBB, 0x00, 0x03, 0x01, 0xED, 0x00	; 0230A0E8
+; 表项是相对 ADD 所读 PC 的有符号偏移，保留 ARM/Thumb 状态位。
+; Signed offsets from the ADD's PC, including the ARM/Thumb state bit.
+P4_SwitchTable_0230A0CE:
+	.halfword (loc_0230A0E8 + 1) - (P4_SwitchTargetPC_0230A0CE + 4)
+	.halfword (loc_0230A134 + 1) - (P4_SwitchTargetPC_0230A0CE + 4)
+	.halfword (loc_0230A196 + 1) - (P4_SwitchTargetPC_0230A0CE + 4)
+	.halfword (loc_0230A196 + 1) - (P4_SwitchTargetPC_0230A0CE + 4)
+	.halfword (loc_0230A1DE + 1) - (P4_SwitchTargetPC_0230A0CE + 4)
+	.halfword (loc_0230A1C8 + 1) - (P4_SwitchTargetPC_0230A0CE + 4)
+P4_SwitchTable_0230A0CEEnd:
 loc_0230A0E8:
 	mov r0,#0x20	; 0230A0E8
 	bl loc_02306468	; 0230A0EA
@@ -22896,7 +23024,7 @@ loc_0230A1EA:
 	bx r3	; 0230A1EE
 pool_0230A1F0:
 loc_0230A1F0:
-	.word 0x0380FFF4	; 0230A1F0
+	.word FirmwareWlWorkPointerSlot	; 0230A1F0
 pool_0230A1F4:
 loc_0230A1F4:
 	.word 0x000003BC	; 0230A1F4
@@ -22921,7 +23049,7 @@ loc_0230A208:
 	ldr pc,[pool_0230A20C]	; 0230A208
 pool_0230A20C:
 loc_0230A20C:
-	.word 0x03802514	; 0230A20C
+	.word loc_03802514	; 0230A20C
 	.byte 0xF0, 0xB5, 0x81, 0xB0, 0x05, 0x1C, 0x0E, 0x1C, 0x12, 0x20, 0x70, 0x80, 0x28, 0x48, 0x01, 0x68	; 0230A220
 	.byte 0x28, 0x48, 0x08, 0x5A, 0x20, 0x28, 0x01, 0xD0, 0x01, 0x20, 0x44, 0xE0, 0x68, 0x8A, 0x03, 0x28	; 0230A230
 	.byte 0x01, 0xD9, 0x05, 0x20, 0x3F, 0xE0, 0xA8, 0x8A, 0x3F, 0x28, 0x01, 0xD9, 0x05, 0x20, 0x3A, 0xE0	; 0230A240
@@ -23135,40 +23263,40 @@ loc_0230ACD4:
 	.byte 0xC0, 0x46	; 0230ACF8
 pool_0230ACF8:
 loc_0230ACF8:
-	.word 0x0380FFF4	; 0230ACF8
+	.word FirmwareWlWorkPointerSlot	; 0230ACF8
 pool_0230ACFC:
 loc_0230ACFC:
 	.word 0x00000316	; 0230ACFC
 pool_0230AD00:
 loc_0230AD00:
-	.word 0x04804000	; 0230AD00
+	.word WifiRamBase	; 0230AD00
 pool_0230AD04:
 loc_0230AD04:
-	.word 0x048080A0	; 0230AD04
+	.word REG_WIFI_TXBUF_LOC1	; 0230AD04
 pool_0230AD08:
 loc_0230AD08:
 	.word 0x00008000	; 0230AD08
 pool_0230AD0C:
 loc_0230AD0C:
-	.word 0x048080AC	; 0230AD0C
+	.word REG_WIFI_TXREQ_RESET	; 0230AD0C
 pool_0230AD10:
 loc_0230AD10:
-	.word 0x04808004	; 0230AD10
+	.word REG_WIFI_MODE_RST	; 0230AD10
 pool_0230AD14:
 loc_0230AD14:
-	.word 0x04808012	; 0230AD14
+	.word REG_WIFI_IE	; 0230AD14
 pool_0230AD18:
 loc_0230AD18:
 	.word 0x0000FFFF	; 0230AD18
 pool_0230AD1C:
 loc_0230AD1C:
-	.word 0x04808010	; 0230AD1C
+	.word REG_WIFI_IF	; 0230AD1C
 pool_0230AD20:
 loc_0230AD20:
-	.word 0x04808194	; 0230AD20
+	.word REG_WIFI_TX_HDR_CNT	; 0230AD20
 pool_0230AD24:
 loc_0230AD24:
-	.word 0x04808040	; 0230AD24
+	.word REG_WIFI_POWERFORCE	; 0230AD24
 	.byte 0x10, 0xB5, 0x82, 0xB0, 0x04, 0x1C, 0xFA, 0xF7, 0x5D, 0xFF, 0xFA, 0xF7, 0x03, 0xFF, 0x06, 0x20	; 0230AD38
 	.byte 0xFA, 0xF7, 0xE4, 0xFE, 0x27, 0x49, 0x0A, 0x68, 0x27, 0x49, 0x50, 0x52, 0x60, 0x8A, 0x04, 0x28	; 0230AD48
 	.byte 0x03, 0xD1, 0x06, 0x20, 0x00, 0x21, 0xFA, 0xF7, 0xA3, 0xFE, 0x00, 0x21, 0x00, 0xA8, 0x01, 0x80	; 0230AD58
@@ -23261,7 +23389,7 @@ loc_0230B1AC:
 	bx r3	; 0230B1C6
 pool_0230B1C8:
 loc_0230B1C8:
-	.word 0x02309575	; 0230B1C8
+	.word loc_02309574 + 1	; 0230B1C8
 
 ; ===== function loc_0230B1CC =====
 	push {r4,lr}	; 0230B1CC
@@ -23466,13 +23594,22 @@ loc_0230B9D0:
 	b loc_0230BCAC	; 0230BA28
 loc_0230BA2A:
 	add r2,r2,r2	; 0230BA2A
+P4_SwitchIndexPC_0230BA2A:
 	add r2,pc	; 0230BA2C
-	ldrh r2,[r2,#0x8]	; 0230BA2E
+	ldrh r2,[r2,#(P4_SwitchTable_0230BA2A - (P4_SwitchIndexPC_0230BA2A + 4))]	; 0230BA2E
 	lsl r2,r2,#0x10	; 0230BA30
 	asr r2,r2,#0x10	; 0230BA32
+P4_SwitchTargetPC_0230BA2A:
 	add r2,pc	; 0230BA34
 	bx r2	; 0230BA36
-	.byte 0x09, 0x00, 0x5B, 0x00, 0x1F, 0x01, 0xDB, 0x01	; 0230BA40
+; 表项是相对 ADD 所读 PC 的有符号偏移，保留 ARM/Thumb 状态位。
+; Signed offsets from the ADD's PC, including the ARM/Thumb state bit.
+P4_SwitchTable_0230BA2A:
+	.halfword (loc_0230BA40 + 1) - (P4_SwitchTargetPC_0230BA2A + 4)
+	.halfword (loc_0230BA92 + 1) - (P4_SwitchTargetPC_0230BA2A + 4)
+	.halfword (loc_0230BB56 + 1) - (P4_SwitchTargetPC_0230BA2A + 4)
+	.halfword (loc_0230BC12 + 1) - (P4_SwitchTargetPC_0230BA2A + 4)
+P4_SwitchTable_0230BA2AEnd:
 loc_0230BA40:
 	ldr r3,[pool_0230BCE0]	; 0230BA40
 	ldr r2,[pool_0230BCE4]	; 0230BA42
@@ -23790,7 +23927,7 @@ loc_0230BCAC:
 	.byte 0xC0, 0x46	; 0230BCB4
 pool_0230BCB4:
 loc_0230BCB4:
-	.word 0x0380FFF4	; 0230BCB4
+	.word FirmwareWlWorkPointerSlot	; 0230BCB4
 pool_0230BCB8:
 loc_0230BCB8:
 	.word 0x000003E4	; 0230BCB8
@@ -23862,28 +23999,28 @@ loc_0230BD10:
 	.word 0x0000B6B8	; 0230BD10
 pool_0230BD14:
 loc_0230BD14:
-	.word 0x04804024	; 0230BD14
+	.word WifiRamBase + 0x24	; 0230BD14
 pool_0230BD18:
 loc_0230BD18:
 	.word 0x00001D46	; 0230BD18
 pool_0230BD1C:
 loc_0230BD1C:
-	.word 0x04804026	; 0230BD1C
+	.word WifiRamBase + 0x26	; 0230BD1C
 pool_0230BD20:
 loc_0230BD20:
-	.word 0x0480416C	; 0230BD20
+	.word WifiRamBase + 0x16C	; 0230BD20
 pool_0230BD24:
 loc_0230BD24:
-	.word 0x0480416E	; 0230BD24
+	.word WifiRamBase + 0x16E	; 0230BD24
 pool_0230BD28:
 loc_0230BD28:
-	.word 0x04804790	; 0230BD28
+	.word WifiRamBase + 0x790	; 0230BD28
 pool_0230BD2C:
 loc_0230BD2C:
-	.word 0x04804792	; 0230BD2C
+	.word WifiRamBase + 0x792	; 0230BD2C
 pool_0230BD30:
 loc_0230BD30:
-	.word 0x048080AE	; 0230BD30
+	.word REG_WIFI_TXREQ_SET	; 0230BD30
 pool_0230BD34:
 loc_0230BD34:
 	.word 0x04804A9C	; 0230BD34
@@ -23907,34 +24044,34 @@ loc_0230BD4C:
 	.word 0x00000428	; 0230BD4C
 pool_0230BD50:
 loc_0230BD50:
-	.word 0x04804230	; 0230BD50
+	.word WifiRamBase + 0x230	; 0230BD50
 pool_0230BD54:
 loc_0230BD54:
-	.word 0x04804232	; 0230BD54
+	.word WifiRamBase + 0x232	; 0230BD54
 pool_0230BD58:
 loc_0230BD58:
-	.word 0x0480432C	; 0230BD58
+	.word WifiRamBase + 0x32C	; 0230BD58
 pool_0230BD5C:
 loc_0230BD5C:
-	.word 0x0480432E	; 0230BD5C
+	.word WifiRamBase + 0x32E	; 0230BD5C
 pool_0230BD60:
 loc_0230BD60:
-	.word 0x04804950	; 0230BD60
+	.word WifiRamBase + 0x950	; 0230BD60
 pool_0230BD64:
 loc_0230BD64:
-	.word 0x04804952	; 0230BD64
+	.word WifiRamBase + 0x952	; 0230BD64
 pool_0230BD68:
 loc_0230BD68:
-	.word 0x04804A98	; 0230BD68
+	.word WifiRamBase + 0xA98	; 0230BD68
 pool_0230BD6C:
 loc_0230BD6C:
-	.word 0x04804A9A	; 0230BD6C
+	.word WifiRamBase + 0xA9A	; 0230BD6C
 pool_0230BD70:
 loc_0230BD70:
-	.word 0x048050BC	; 0230BD70
+	.word WifiRamBase + 0x10BC	; 0230BD70
 pool_0230BD74:
 loc_0230BD74:
-	.word 0x048050BE	; 0230BD74
+	.word WifiRamBase + 0x10BE	; 0230BD74
 pool_0230BD78:
 loc_0230BD78:
 	.word 0x000002F8	; 0230BD78
@@ -23979,34 +24116,34 @@ loc_0230BDAC:
 	.word 0x00000450	; 0230BDAC
 pool_0230BDB0:
 loc_0230BDB0:
-	.word 0x0480422C	; 0230BDB0
+	.word WifiRamBase + 0x22C	; 0230BDB0
 pool_0230BDB4:
 loc_0230BDB4:
-	.word 0x0480422E	; 0230BDB4
+	.word WifiRamBase + 0x22E	; 0230BDB4
 pool_0230BDB8:
 loc_0230BDB8:
-	.word 0x0480445C	; 0230BDB8
+	.word WifiRamBase + 0x45C	; 0230BDB8
 pool_0230BDBC:
 loc_0230BDBC:
-	.word 0x0480445E	; 0230BDBC
+	.word WifiRamBase + 0x45E	; 0230BDBC
 pool_0230BDC0:
 loc_0230BDC0:
-	.word 0x04804484	; 0230BDC0
+	.word WifiRamBase + 0x484	; 0230BDC0
 pool_0230BDC4:
 loc_0230BDC4:
-	.word 0x04804486	; 0230BDC4
+	.word WifiRamBase + 0x486	; 0230BDC4
 pool_0230BDC8:
 loc_0230BDC8:
-	.word 0x048045CC	; 0230BDC8
+	.word WifiRamBase + 0x5CC	; 0230BDC8
 pool_0230BDCC:
 loc_0230BDCC:
-	.word 0x048045CE	; 0230BDCC
+	.word WifiRamBase + 0x5CE	; 0230BDCC
 pool_0230BDD0:
 loc_0230BDD0:
-	.word 0x04804BF0	; 0230BDD0
+	.word WifiRamBase + 0xBF0	; 0230BDD0
 pool_0230BDD4:
 loc_0230BDD4:
-	.word 0x04804BF2	; 0230BDD4
+	.word WifiRamBase + 0xBF2	; 0230BDD4
 pool_0230BDD8:
 loc_0230BDD8:
 	.word 0x00000108	; 0230BDD8
@@ -24025,7 +24162,7 @@ loc_0230BDE4:
 	ldr pc,[pool_0230BDE8]	; 0230BDE4
 pool_0230BDE8:
 loc_0230BDE8:
-	.word 0x037FCE38	; 0230BDE8
+	.word loc_037FCE38	; 0230BDE8
 .thumb
 
 ; ===== function loc_0230BDEC =====
@@ -24039,7 +24176,7 @@ loc_0230BDF0:
 	ldr pc,[pool_0230BDF4]	; 0230BDF0
 pool_0230BDF4:
 loc_0230BDF4:
-	.word 0x037FCE38	; 0230BDF4
+	.word loc_037FCE38	; 0230BDF4
 .thumb
 
 ; ===== function loc_0230BDF8 =====
@@ -24053,7 +24190,7 @@ loc_0230BDFC:
 	ldr pc,[pool_0230BE00]	; 0230BDFC
 pool_0230BE00:
 loc_0230BE00:
-	.word 0x037FCE38	; 0230BE00
+	.word loc_037FCE38	; 0230BE00
 .thumb
 
 ; ===== function loc_0230BE04 =====
@@ -24067,7 +24204,7 @@ loc_0230BE08:
 	ldr pc,[pool_0230BE0C]	; 0230BE08
 pool_0230BE0C:
 loc_0230BE0C:
-	.word 0x037FCE38	; 0230BE0C
+	.word loc_037FCE38	; 0230BE0C
 .thumb
 
 ; ===== function loc_0230BE10 =====
@@ -24172,7 +24309,7 @@ loc_0230BEDA:
 	bx r3	; 0230BEE2
 pool_0230BEE4:
 loc_0230BEE4:
-	.word 0x0380FFF4	; 0230BEE4
+	.word FirmwareWlWorkPointerSlot	; 0230BEE4
 pool_0230BEE8:
 loc_0230BEE8:
 	.word 0x0000039C	; 0230BEE8
@@ -24181,7 +24318,7 @@ loc_0230BEEC:
 	.word 0x00000300	; 0230BEEC
 pool_0230BEF0:
 loc_0230BEF0:
-	.word 0x0380FFF0	; 0230BEF0
+	.word FirmwareWlAdjustedTimeSlot	; 0230BEF0
 pool_0230BEF4:
 loc_0230BEF4:
 	.word 0x00000398	; 0230BEF4
@@ -24212,7 +24349,7 @@ loc_0230BEFC:
 	bx r3	; 0230BF26
 pool_0230BF28:
 loc_0230BF28:
-	.word 0x0380FFF4	; 0230BF28
+	.word FirmwareWlWorkPointerSlot	; 0230BF28
 pool_0230BF2C:
 loc_0230BF2C:
 	.word 0x00000376	; 0230BF2C
@@ -24280,7 +24417,7 @@ loc_0230BFA0:
 	.word 0x02310398	; 0230BFA0
 pool_0230BFA4:
 loc_0230BFA4:
-	.word 0x0380FFF4	; 0230BFA4
+	.word FirmwareWlWorkPointerSlot	; 0230BFA4
 pool_0230BFA8:
 loc_0230BFA8:
 	.word 0x0000035E	; 0230BFA8
@@ -24332,7 +24469,7 @@ loc_0230BFEE:
 	.byte 0xC0, 0x46	; 0230C004
 pool_0230C004:
 loc_0230C004:
-	.word 0x0380FFF4	; 0230C004
+	.word FirmwareWlWorkPointerSlot	; 0230C004
 pool_0230C008:
 loc_0230C008:
 	.word 0x0000031A	; 0230C008
@@ -24368,7 +24505,7 @@ loc_0230C010:
 	bx r3	; 0230C03E
 pool_0230C040:
 loc_0230C040:
-	.word 0x0380FFF4	; 0230C040
+	.word FirmwareWlWorkPointerSlot	; 0230C040
 pool_0230C044:
 loc_0230C044:
 	.word 0x00000414	; 0230C044
@@ -24383,7 +24520,7 @@ loc_0230C050:
 	.word 0x000002E8	; 0230C050
 pool_0230C054:
 loc_0230C054:
-	.word 0x0230643D	; 0230C054
+	.word loc_0230643C + 1	; 0230C054
 
 ; ===== function loc_0230C058 =====
 loc_0230C058:
@@ -24433,7 +24570,7 @@ loc_0230C0AE:
 	bx r3	; 0230C0B2
 pool_0230C0B4:
 loc_0230C0B4:
-	.word 0x0380FFF4	; 0230C0B4
+	.word FirmwareWlWorkPointerSlot	; 0230C0B4
 pool_0230C0B8:
 loc_0230C0B8:
 	.word 0x0000014C	; 0230C0B8
@@ -24455,7 +24592,7 @@ loc_0230C0C8:
 	ldr pc,[pool_0230C0CC]	; 0230C0C8
 pool_0230C0CC:
 loc_0230C0CC:
-	.word 0x037FCE4C	; 0230C0CC
+	.word loc_037FCE4C	; 0230C0CC
 .thumb
 
 ; ===== function loc_0230C0D0 =====
@@ -24521,7 +24658,7 @@ loc_0230C146:
 	bx r3	; 0230C14A
 pool_0230C14C:
 loc_0230C14C:
-	.word 0x0380FFF4	; 0230C14C
+	.word FirmwareWlWorkPointerSlot	; 0230C14C
 pool_0230C150:
 loc_0230C150:
 	.word 0x0000014C	; 0230C150
@@ -24546,7 +24683,7 @@ loc_0230C164:
 	ldr pc,[pool_0230C168]	; 0230C164
 pool_0230C168:
 loc_0230C168:
-	.word 0x037FCE4C	; 0230C168
+	.word loc_037FCE4C	; 0230C168
 .thumb
 
 ; ===== function loc_0230C16C =====
@@ -24625,7 +24762,7 @@ loc_0230C202:
 	bx r3	; 0230C206
 pool_0230C208:
 loc_0230C208:
-	.word 0x0380FFF4	; 0230C208
+	.word FirmwareWlWorkPointerSlot	; 0230C208
 pool_0230C20C:
 loc_0230C20C:
 	.word 0x0000014C	; 0230C20C
@@ -24656,7 +24793,7 @@ loc_0230C228:
 	ldr pc,[pool_0230C22C]	; 0230C228
 pool_0230C22C:
 loc_0230C22C:
-	.word 0x037FCE4C	; 0230C22C
+	.word loc_037FCE4C	; 0230C22C
 .thumb
 
 ; ===== function loc_0230C230 =====
@@ -24713,7 +24850,7 @@ loc_0230C294:
 	.byte 0xC0, 0x46	; 0230C29C
 pool_0230C29C:
 loc_0230C29C:
-	.word 0x0380FFF4	; 0230C29C
+	.word FirmwareWlWorkPointerSlot	; 0230C29C
 pool_0230C2A0:
 loc_0230C2A0:
 	.word 0x0000014C	; 0230C2A0
@@ -24735,7 +24872,7 @@ loc_0230C2B0:
 	ldr pc,[pool_0230C2B4]	; 0230C2B0
 pool_0230C2B4:
 loc_0230C2B4:
-	.word 0x037FCE4C	; 0230C2B4
+	.word loc_037FCE4C	; 0230C2B4
 .thumb
 
 ; ===== function loc_0230C2B8 =====
@@ -24866,7 +25003,7 @@ loc_0230C3B4:
 	bx r3	; 0230C3BA
 pool_0230C3BC:
 loc_0230C3BC:
-	.word 0x0380FFF4	; 0230C3BC
+	.word FirmwareWlWorkPointerSlot	; 0230C3BC
 pool_0230C3C0:
 loc_0230C3C0:
 	.word 0x0000014C	; 0230C3C0
@@ -24897,7 +25034,7 @@ loc_0230C3DC:
 	ldr pc,[pool_0230C3E0]	; 0230C3DC
 pool_0230C3E0:
 loc_0230C3E0:
-	.word 0x037FCE4C	; 0230C3E0
+	.word loc_037FCE4C	; 0230C3E0
 .thumb
 
 ; ===== function loc_0230C3E4 =====
@@ -25035,7 +25172,7 @@ loc_0230C4EA:
 	.byte 0xC0, 0x46	; 0230C4F4
 pool_0230C4F4:
 loc_0230C4F4:
-	.word 0x0380FFF4	; 0230C4F4
+	.word FirmwareWlWorkPointerSlot	; 0230C4F4
 pool_0230C4F8:
 loc_0230C4F8:
 	.word 0x0000014C	; 0230C4F8
@@ -25066,7 +25203,7 @@ loc_0230C514:
 	ldr pc,[pool_0230C518]	; 0230C514
 pool_0230C518:
 loc_0230C518:
-	.word 0x037FCE4C	; 0230C518
+	.word loc_037FCE4C	; 0230C518
 .thumb
 
 ; ===== function loc_0230C51C =====
@@ -25133,7 +25270,7 @@ loc_0230C596:
 	bx r3	; 0230C59A
 pool_0230C59C:
 loc_0230C59C:
-	.word 0x0380FFF4	; 0230C59C
+	.word FirmwareWlWorkPointerSlot	; 0230C59C
 pool_0230C5A0:
 loc_0230C5A0:
 	.word 0x0000014C	; 0230C5A0
@@ -25161,7 +25298,7 @@ loc_0230C5B8:
 	ldr pc,[pool_0230C5BC]	; 0230C5B8
 pool_0230C5BC:
 loc_0230C5BC:
-	.word 0x037FCE4C	; 0230C5BC
+	.word loc_037FCE4C	; 0230C5BC
 .thumb
 
 ; ===== function loc_0230C5C0 =====
@@ -25212,7 +25349,7 @@ loc_0230C616:
 	bx r3	; 0230C61A
 pool_0230C61C:
 loc_0230C61C:
-	.word 0x0380FFF4	; 0230C61C
+	.word FirmwareWlWorkPointerSlot	; 0230C61C
 pool_0230C620:
 loc_0230C620:
 	.word 0x0000014C	; 0230C620
@@ -25234,7 +25371,7 @@ loc_0230C630:
 	ldr pc,[pool_0230C634]	; 0230C630
 pool_0230C634:
 loc_0230C634:
-	.word 0x037FCE4C	; 0230C634
+	.word loc_037FCE4C	; 0230C634
 .thumb
 
 ; ===== function loc_0230C638 =====
@@ -25332,7 +25469,7 @@ loc_0230C6DC:
 	.byte 0xC0, 0x46	; 0230C6F0
 pool_0230C6F0:
 loc_0230C6F0:
-	.word 0x0380FFF4	; 0230C6F0
+	.word FirmwareWlWorkPointerSlot	; 0230C6F0
 pool_0230C6F4:
 loc_0230C6F4:
 	.word 0x00000464	; 0230C6F4
@@ -25350,7 +25487,7 @@ loc_0230C704:
 	.word 0x00000398	; 0230C704
 pool_0230C708:
 loc_0230C708:
-	.word 0x0380FFF0	; 0230C708
+	.word FirmwareWlAdjustedTimeSlot	; 0230C708
 pool_0230C70C:
 loc_0230C70C:
 	.word 0x0000061C	; 0230C70C
@@ -25692,7 +25829,7 @@ loc_0230C9B8:
 	bx r3	; 0230C9CE
 pool_0230C9D0:
 loc_0230C9D0:
-	.word 0x0380FFF4	; 0230C9D0
+	.word FirmwareWlWorkPointerSlot	; 0230C9D0
 pool_0230C9D4:
 loc_0230C9D4:
 	.word 0x00000464	; 0230C9D4
@@ -25728,7 +25865,7 @@ loc_0230C9FC:
 	.word 0x00000390	; 0230C9FC
 pool_0230CA00:
 loc_0230CA00:
-	.word 0x04808084	; 0230CA00
+	.word REG_WIFI_TXBUF_TIM	; 0230CA00
 pool_0230CA04:
 loc_0230CA04:
 	.word 0x00000370	; 0230CA04
@@ -25749,7 +25886,7 @@ loc_0230CA18:
 	.word 0x00000300	; 0230CA18
 pool_0230CA1C:
 loc_0230CA1C:
-	.word 0x0380FFF0	; 0230CA1C
+	.word FirmwareWlAdjustedTimeSlot	; 0230CA1C
 pool_0230CA20:
 loc_0230CA20:
 	.word 0x00000398	; 0230CA20
@@ -25778,13 +25915,13 @@ loc_0230CA34:
 	bx lr	; 0230CA42
 pool_0230CA44:
 loc_0230CA44:
-	.word 0x0380FFF4	; 0230CA44
+	.word FirmwareWlWorkPointerSlot	; 0230CA44
 pool_0230CA48:
 loc_0230CA48:
 	.word 0x0000045C	; 0230CA48
 pool_0230CA4C:
 loc_0230CA4C:
-	.word 0x04808080	; 0230CA4C
+	.word REG_WIFI_TXBUF_BEACON	; 0230CA4C
 
 ; ===== function loc_0230CA50 =====
 loc_0230CA50:
@@ -25806,7 +25943,7 @@ loc_0230CA50:
 	.byte 0xC0, 0x46	; 0230CA70
 pool_0230CA70:
 loc_0230CA70:
-	.word 0x0380FFF4	; 0230CA70
+	.word FirmwareWlWorkPointerSlot	; 0230CA70
 pool_0230CA74:
 loc_0230CA74:
 	.word 0x0000045C	; 0230CA74
@@ -25818,7 +25955,7 @@ loc_0230CA7C:
 	.word 0x00008000	; 0230CA7C
 pool_0230CA80:
 loc_0230CA80:
-	.word 0x04808080	; 0230CA80
+	.word REG_WIFI_TXBUF_BEACON	; 0230CA80
 
 ; ===== function loc_0230CA84 =====
 loc_0230CA84:
@@ -25865,7 +26002,7 @@ loc_0230CACE:
 	bx r3	; 0230CAD2
 pool_0230CAD4:
 loc_0230CAD4:
-	.word 0x0380FFF4	; 0230CAD4
+	.word FirmwareWlWorkPointerSlot	; 0230CAD4
 pool_0230CAD8:
 loc_0230CAD8:
 	.word 0x0000040C	; 0230CAD8
@@ -25880,7 +26017,7 @@ loc_0230CAE4:
 	.word 0x00008000	; 0230CAE4
 pool_0230CAE8:
 loc_0230CAE8:
-	.word 0x048080A8	; 0230CAE8
+	.word REG_WIFI_TXBUF_LOC3	; 0230CAE8
 
 ; ===== function loc_0230CAEC =====
 loc_0230CAEC:
@@ -25930,7 +26067,7 @@ loc_0230CB20:
 	.byte 0xC0, 0x46	; 0230CB48
 pool_0230CB48:
 loc_0230CB48:
-	.word 0x0380FFF4	; 0230CB48
+	.word FirmwareWlWorkPointerSlot	; 0230CB48
 pool_0230CB4C:
 loc_0230CB4C:
 	.word 0x000003A4	; 0230CB4C
@@ -25999,7 +26136,7 @@ loc_0230CBB8:
 	bx r3	; 0230CBBE
 pool_0230CBC0:
 loc_0230CBC0:
-	.word 0x0380FFF4	; 0230CBC0
+	.word FirmwareWlWorkPointerSlot	; 0230CBC0
 pool_0230CBC4:
 loc_0230CBC4:
 	.word 0x00000158	; 0230CBC4
@@ -26057,7 +26194,7 @@ loc_0230CC2E:
 	bx r3	; 0230CC32
 pool_0230CC34:
 loc_0230CC34:
-	.word 0x0380FFF4	; 0230CC34
+	.word FirmwareWlWorkPointerSlot	; 0230CC34
 pool_0230CC38:
 loc_0230CC38:
 	.word 0x00000314	; 0230CC38
@@ -26156,7 +26293,7 @@ loc_0230CD1C:
 	bx r3	; 0230CD22
 pool_0230CD24:
 loc_0230CD24:
-	.word 0x0380FFF4	; 0230CD24
+	.word FirmwareWlWorkPointerSlot	; 0230CD24
 pool_0230CD28:
 loc_0230CD28:
 	.word 0x000002E0	; 0230CD28
@@ -26210,7 +26347,7 @@ loc_0230CD78:
 	.byte 0xC0, 0x46	; 0230CD84
 pool_0230CD84:
 loc_0230CD84:
-	.word 0x0380FFF4	; 0230CD84
+	.word FirmwareWlWorkPointerSlot	; 0230CD84
 pool_0230CD88:
 loc_0230CD88:
 	.word 0x000003E4	; 0230CD88
@@ -26219,10 +26356,10 @@ loc_0230CD8C:
 	.word 0x01000000	; 0230CD8C
 pool_0230CD90:
 loc_0230CD90:
-	.word 0x023108A0	; 0230CD90
+	.word P4_Data_023108A0	; 0230CD90
 pool_0230CD94:
 loc_0230CD94:
-	.word 0x048080B4	; 0230CD94
+	.word REG_WIFI_TXBUF_RESET	; 0230CD94
 pool_0230CD98:
 loc_0230CD98:
 	.word 0x00004000	; 0230CD98
@@ -26263,7 +26400,7 @@ loc_0230CDD2:
 	bx r3	; 0230CDD6
 pool_0230CDD8:
 loc_0230CDD8:
-	.word 0x0380FFF4	; 0230CDD8
+	.word FirmwareWlWorkPointerSlot	; 0230CDD8
 pool_0230CDDC:
 loc_0230CDDC:
 	.word 0x000003E4	; 0230CDDC
@@ -26320,7 +26457,7 @@ loc_0230CE2E:
 	bx r3	; 0230CE42
 pool_0230CE44:
 loc_0230CE44:
-	.word 0x0380FFF4	; 0230CE44
+	.word FirmwareWlWorkPointerSlot	; 0230CE44
 pool_0230CE48:
 loc_0230CE48:
 	.word 0x000003E4	; 0230CE48
@@ -26332,7 +26469,7 @@ loc_0230CE50:
 	.word 0x00000314	; 0230CE50
 pool_0230CE54:
 loc_0230CE54:
-	.word 0x048080B4	; 0230CE54
+	.word REG_WIFI_TXBUF_RESET	; 0230CE54
 
 ; ===== function loc_0230CE58 =====
 loc_0230CE58:
@@ -26361,10 +26498,10 @@ loc_0230CE84:
 	.word 0x01000000	; 0230CE84
 pool_0230CE88:
 loc_0230CE88:
-	.word 0x048080B4	; 0230CE88
+	.word REG_WIFI_TXBUF_RESET	; 0230CE88
 pool_0230CE8C:
 loc_0230CE8C:
-	.word 0x0380FFF4	; 0230CE8C
+	.word FirmwareWlWorkPointerSlot	; 0230CE8C
 pool_0230CE90:
 loc_0230CE90:
 	.word 0x00000420	; 0230CE90
@@ -26393,7 +26530,7 @@ loc_0230CE94:
 	bx r3	; 0230CEBE
 pool_0230CEC0:
 loc_0230CEC0:
-	.word 0x0380FFF4	; 0230CEC0
+	.word FirmwareWlWorkPointerSlot	; 0230CEC0
 pool_0230CEC4:
 loc_0230CEC4:
 	.word 0x000003E4	; 0230CEC4
@@ -26402,7 +26539,7 @@ loc_0230CEC8:
 	.word 0x01000000	; 0230CEC8
 pool_0230CECC:
 loc_0230CECC:
-	.word 0x048080B4	; 0230CECC
+	.word REG_WIFI_TXBUF_RESET	; 0230CECC
 
 ; ===== function loc_0230CED0 =====
 loc_0230CED0:
@@ -26440,7 +26577,7 @@ loc_0230CEFE:
 	bx lr	; 0230CF0A
 pool_0230CF0C:
 loc_0230CF0C:
-	.word 0x0380FFF4	; 0230CF0C
+	.word FirmwareWlWorkPointerSlot	; 0230CF0C
 pool_0230CF10:
 loc_0230CF10:
 	.word 0x00000560	; 0230CF10
@@ -26524,7 +26661,7 @@ loc_0230CFA4:
 	.byte 0xC0, 0x46	; 0230CFAC
 pool_0230CFAC:
 loc_0230CFAC:
-	.word 0x0380FFF4	; 0230CFAC
+	.word FirmwareWlWorkPointerSlot	; 0230CFAC
 pool_0230CFB0:
 loc_0230CFB0:
 	.word 0x00000508	; 0230CFB0
@@ -26539,10 +26676,10 @@ loc_0230CFBC:
 	.word 0x00000414	; 0230CFBC
 pool_0230CFC0:
 loc_0230CFC0:
-	.word 0x048080AC	; 0230CFC0
+	.word REG_WIFI_TXREQ_RESET	; 0230CFC0
 pool_0230CFC4:
 loc_0230CFC4:
-	.word 0x048080AE	; 0230CFC4
+	.word REG_WIFI_TXREQ_SET	; 0230CFC4
 pool_0230CFC8:
 loc_0230CFC8:
 	.word 0x0000016C	; 0230CFC8
@@ -26600,7 +26737,7 @@ loc_0230D016:
 	bx r3	; 0230D026
 pool_0230D028:
 loc_0230D028:
-	.word 0x0380FFF4	; 0230D028
+	.word FirmwareWlWorkPointerSlot	; 0230D028
 pool_0230D02C:
 loc_0230D02C:
 	.word 0x000004F4	; 0230D02C
@@ -26997,7 +27134,7 @@ loc_0230D314:
 	bx r3	; 0230D31A
 pool_0230D31C:
 loc_0230D31C:
-	.word 0x0380FFF4	; 0230D31C
+	.word FirmwareWlWorkPointerSlot	; 0230D31C
 pool_0230D320:
 loc_0230D320:
 	.word 0x000004F4	; 0230D320
@@ -27210,7 +27347,7 @@ loc_0230D492:
 	.byte 0xC0, 0x46	; 0230D49C
 pool_0230D49C:
 loc_0230D49C:
-	.word 0x0380FFF4	; 0230D49C
+	.word FirmwareWlWorkPointerSlot	; 0230D49C
 pool_0230D4A0:
 loc_0230D4A0:
 	.word 0x000004F4	; 0230D4A0
@@ -27368,10 +27505,10 @@ loc_0230D5A8:
 	.word 0x0000FFFF	; 0230D5A8
 pool_0230D5AC:
 loc_0230D5AC:
-	.word 0x04808044	; 0230D5AC
+	.word REG_WIFI_RANDOM	; 0230D5AC
 pool_0230D5B0:
 loc_0230D5B0:
-	.word 0x0380FFF4	; 0230D5B0
+	.word FirmwareWlWorkPointerSlot	; 0230D5B0
 pool_0230D5B4:
 loc_0230D5B4:
 	.word 0x000002FA	; 0230D5B4
@@ -27450,7 +27587,7 @@ loc_0230D63A:
 	bx r3	; 0230D63E
 pool_0230D640:
 loc_0230D640:
-	.word 0x0380FFF4	; 0230D640
+	.word FirmwareWlWorkPointerSlot	; 0230D640
 pool_0230D644:
 loc_0230D644:
 	.word 0x00000178	; 0230D644
@@ -27483,7 +27620,7 @@ loc_0230D668:
 	.word 0x00008000	; 0230D668
 pool_0230D66C:
 loc_0230D66C:
-	.word 0x048080A8	; 0230D66C
+	.word REG_WIFI_TXBUF_LOC3	; 0230D66C
 
 ; ===== function loc_0230D670 =====
 loc_0230D670:
@@ -27705,7 +27842,7 @@ loc_0230D812:
 	.byte 0xC0, 0x46	; 0230D81C
 pool_0230D81C:
 loc_0230D81C:
-	.word 0x0380FFF4	; 0230D81C
+	.word FirmwareWlWorkPointerSlot	; 0230D81C
 pool_0230D820:
 loc_0230D820:
 	.word 0x00000160	; 0230D820
@@ -27790,13 +27927,22 @@ loc_0230D870:
 	cmp r1,#0x3	; 0230D896
 	bhi loc_0230D906	; 0230D898
 	add r1,r1,r1	; 0230D89A
+P4_SwitchIndexPC_0230D89A:
 	add r1,pc	; 0230D89C
-	ldrh r1,[r1,#0x8]	; 0230D89E
+	ldrh r1,[r1,#(P4_SwitchTable_0230D89A - (P4_SwitchIndexPC_0230D89A + 4))]	; 0230D89E
 	lsl r1,r1,#0x10	; 0230D8A0
 	asr r1,r1,#0x10	; 0230D8A2
+P4_SwitchTargetPC_0230D89A:
 	add r1,pc	; 0230D8A4
 	bx r1	; 0230D8A6
-	.byte 0x09, 0x00, 0x1F, 0x00, 0x35, 0x00, 0x4B, 0x00	; 0230D8B0
+; 表项是相对 ADD 所读 PC 的有符号偏移，保留 ARM/Thumb 状态位。
+; Signed offsets from the ADD's PC, including the ARM/Thumb state bit.
+P4_SwitchTable_0230D89A:
+	.halfword (loc_0230D8B0 + 1) - (P4_SwitchTargetPC_0230D89A + 4)
+	.halfword (loc_0230D8C6 + 1) - (P4_SwitchTargetPC_0230D89A + 4)
+	.halfword (loc_0230D8DC + 1) - (P4_SwitchTargetPC_0230D89A + 4)
+	.halfword (loc_0230D8F2 + 1) - (P4_SwitchTargetPC_0230D89A + 4)
+P4_SwitchTable_0230D89AEnd:
 loc_0230D8B0:
 	ldr r2,[pool_0230D958]	; 0230D8B0
 	ldr r1,[pool_0230D95C]	; 0230D8B2
@@ -27877,7 +28023,7 @@ loc_0230D906:
 	.byte 0xC0, 0x46	; 0230D944
 pool_0230D944:
 loc_0230D944:
-	.word 0x0380FFF4	; 0230D944
+	.word FirmwareWlWorkPointerSlot	; 0230D944
 pool_0230D948:
 loc_0230D948:
 	.word 0x00000498	; 0230D948
@@ -27886,7 +28032,7 @@ loc_0230D94C:
 	.word 0x00008000	; 0230D94C
 pool_0230D950:
 loc_0230D950:
-	.word 0x04808030	; 0230D950
+	.word REG_WIFI_RXCNT	; 0230D950
 pool_0230D954:
 loc_0230D954:
 	.word 0x00000314	; 0230D954
@@ -27895,13 +28041,13 @@ loc_0230D958:
 	.word 0x00004794	; 0230D958
 pool_0230D95C:
 loc_0230D95C:
-	.word 0x04808050	; 0230D95C
+	.word REG_WIFI_RXBUF_BEGIN	; 0230D95C
 pool_0230D960:
 loc_0230D960:
 	.word 0x000003CA	; 0230D960
 pool_0230D964:
 loc_0230D964:
-	.word 0x04808056	; 0230D964
+	.word REG_WIFI_RXBUF_WR_ADDR	; 0230D964
 pool_0230D968:
 loc_0230D968:
 	.word 0x000017CC	; 0230D968
@@ -27931,13 +28077,13 @@ loc_0230D988:
 	.word 0x00005F60	; 0230D988
 pool_0230D98C:
 loc_0230D98C:
-	.word 0x04808052	; 0230D98C
+	.word REG_WIFI_RXBUF_END	; 0230D98C
 pool_0230D990:
 loc_0230D990:
 	.word 0x00003FFF	; 0230D990
 pool_0230D994:
 loc_0230D994:
-	.word 0x0480805A	; 0230D994
+	.word REG_WIFI_RXBUF_READCSR	; 0230D994
 pool_0230D998:
 loc_0230D998:
 	.word 0x0000049C	; 0230D998
@@ -27946,7 +28092,7 @@ loc_0230D99C:
 	.word 0x00005F5E	; 0230D99C
 pool_0230D9A0:
 loc_0230D9A0:
-	.word 0x04808062	; 0230D9A0
+	.word REG_WIFI_RXBUF_GAP	; 0230D9A0
 pool_0230D9A4:
 loc_0230D9A4:
 	.word 0x00008001	; 0230D9A4
@@ -27965,7 +28111,7 @@ loc_0230D9B0:
 	ldr pc,[pool_0230D9B4]	; 0230D9B0
 pool_0230D9B4:
 loc_0230D9B4:
-	.word 0x037FCE38	; 0230D9B4
+	.word loc_037FCE38	; 0230D9B4
 .thumb
 
 ; ===== function loc_0230D9B8 =====
@@ -27979,7 +28125,7 @@ loc_0230D9BC:
 	ldr pc,[pool_0230D9C0]	; 0230D9BC
 pool_0230D9C0:
 loc_0230D9C0:
-	.word 0x03802514	; 0230D9C0
+	.word loc_03802514	; 0230D9C0
 .thumb
 
 ; ===== function loc_0230D9C4 =====
@@ -28018,7 +28164,7 @@ loc_0230D9F6:
 	bx r3	; 0230DA02
 pool_0230DA04:
 loc_0230DA04:
-	.word 0x0380FFF4	; 0230DA04
+	.word FirmwareWlWorkPointerSlot	; 0230DA04
 pool_0230DA08:
 loc_0230DA08:
 	.word 0x000004A0	; 0230DA08
@@ -28246,7 +28392,7 @@ loc_0230DBB4:
 	bx r3	; 0230DBBA
 pool_0230DBBC:
 loc_0230DBBC:
-	.word 0x0380FFF4	; 0230DBBC
+	.word FirmwareWlWorkPointerSlot	; 0230DBBC
 pool_0230DBC0:
 loc_0230DBC0:
 	.word 0x000004A0	; 0230DBC0
@@ -28283,7 +28429,7 @@ loc_0230DBE4:
 	ldr pc,[pool_0230DBE8]	; 0230DBE4
 pool_0230DBE8:
 loc_0230DBE8:
-	.word 0x037FCE1C	; 0230DBE8
+	.word P2_Entry_037FCE1C	; 0230DBE8
 .thumb
 
 ; ===== function loc_0230DBEC =====
@@ -28297,7 +28443,7 @@ loc_0230DBF0:
 	ldr pc,[pool_0230DBF4]	; 0230DBF0
 pool_0230DBF4:
 loc_0230DBF4:
-	.word 0x03802514	; 0230DBF4
+	.word loc_03802514	; 0230DBF4
 .thumb
 
 ; ===== function loc_0230DBF8 =====
@@ -28511,7 +28657,7 @@ loc_0230DD8E:
 	.byte 0xC0, 0x46	; 0230DD98
 pool_0230DD98:
 loc_0230DD98:
-	.word 0x0380FFF4	; 0230DD98
+	.word FirmwareWlWorkPointerSlot	; 0230DD98
 pool_0230DD9C:
 loc_0230DD9C:
 	.word 0x000004A0	; 0230DD9C
@@ -28542,7 +28688,7 @@ loc_0230DDB8:
 	ldr pc,[pool_0230DDBC]	; 0230DDB8
 pool_0230DDBC:
 loc_0230DDBC:
-	.word 0x03802514	; 0230DDBC
+	.word loc_03802514	; 0230DDBC
 .thumb
 
 ; ===== function loc_0230DDC0 =====
@@ -28556,7 +28702,7 @@ loc_0230DDC4:
 	ldr pc,[pool_0230DDC8]	; 0230DDC4
 pool_0230DDC8:
 loc_0230DDC8:
-	.word 0x037FCE1C	; 0230DDC8
+	.word P2_Entry_037FCE1C	; 0230DDC8
 .thumb
 
 ; ===== function loc_0230DDCC =====
@@ -28570,7 +28716,7 @@ loc_0230DDD0:
 	ldr pc,[pool_0230DDD4]	; 0230DDD0
 pool_0230DDD4:
 loc_0230DDD4:
-	.word 0x037FCE1C	; 0230DDD4
+	.word P2_Entry_037FCE1C	; 0230DDD4
 .thumb
 
 ; ===== function loc_0230DDD8 =====
@@ -28584,7 +28730,7 @@ loc_0230DDDC:
 	ldr pc,[pool_0230DDE0]	; 0230DDDC
 pool_0230DDE0:
 loc_0230DDE0:
-	.word 0x037FCE1C	; 0230DDE0
+	.word P2_Entry_037FCE1C	; 0230DDE0
 .thumb
 
 ; ===== function loc_0230DDE4 =====
@@ -28599,7 +28745,7 @@ loc_0230DDE8:
 	bx r12	; 0230DDEC
 pool_0230DDF0:
 loc_0230DDF0:
-	.word 0x037FCD11	; 0230DDF0
+	.word P2_Entry_037FCD10 + 1	; 0230DDF0
 .thumb
 
 ; ===== function loc_0230DDF4 =====
@@ -28613,7 +28759,7 @@ loc_0230DDF8:
 	ldr pc,[pool_0230DDFC]	; 0230DDF8
 pool_0230DDFC:
 loc_0230DDFC:
-	.word 0x03802514	; 0230DDFC
+	.word loc_03802514	; 0230DDFC
 .thumb
 
 ; ===== function loc_0230DE00 =====
@@ -28627,7 +28773,7 @@ loc_0230DE04:
 	ldr pc,[pool_0230DE08]	; 0230DE04
 pool_0230DE08:
 loc_0230DE08:
-	.word 0x03802720	; 0230DE08
+	.word loc_03802720	; 0230DE08
 .thumb
 
 ; ===== function loc_0230DE0C =====
@@ -28740,7 +28886,7 @@ loc_0230DEE0:
 	bx r3	; 0230DEE6
 pool_0230DEE8:
 loc_0230DEE8:
-	.word 0x0380FFF4	; 0230DEE8
+	.word FirmwareWlWorkPointerSlot	; 0230DEE8
 pool_0230DEEC:
 loc_0230DEEC:
 	.word 0x000001AC	; 0230DEEC
@@ -28813,7 +28959,7 @@ loc_0230DF60:
 	bx r3	; 0230DF66
 pool_0230DF68:
 loc_0230DF68:
-	.word 0x0380FFF4	; 0230DF68
+	.word FirmwareWlWorkPointerSlot	; 0230DF68
 pool_0230DF6C:
 loc_0230DF6C:
 	.word 0x000002E0	; 0230DF6C
@@ -28866,10 +29012,10 @@ loc_0230DFBC:
 	.byte 0xC0, 0x46	; 0230DFC8
 pool_0230DFC8:
 loc_0230DFC8:
-	.word 0x04808044	; 0230DFC8
+	.word REG_WIFI_RANDOM	; 0230DFC8
 pool_0230DFCC:
 loc_0230DFCC:
-	.word 0x0380FFF4	; 0230DFCC
+	.word FirmwareWlWorkPointerSlot	; 0230DFCC
 pool_0230DFD0:
 loc_0230DFD0:
 	.word 0x000002E0	; 0230DFD0
@@ -29041,14 +29187,31 @@ loc_0230E0DE:
 	b loc_0230E22A	; 0230E112
 loc_0230E114:
 	add r0,r0,r0	; 0230E114
+P4_SwitchIndexPC_0230E114:
 	add r0,pc	; 0230E116
-	ldrh r0,[r0,#0x8]	; 0230E118
+	ldrh r0,[r0,#(P4_SwitchTable_0230E114 - (P4_SwitchIndexPC_0230E114 + 4))]	; 0230E118
 	lsl r0,r0,#0x10	; 0230E11A
 	asr r0,r0,#0x10	; 0230E11C
+P4_SwitchTargetPC_0230E114:
 	add r0,pc	; 0230E11E
 	bx r0	; 0230E120
-	.byte 0x23, 0x00, 0x09, 0x01, 0x2B, 0x00, 0x09, 0x01, 0x33, 0x00, 0x3B, 0x00, 0x09, 0x01, 0x09, 0x01	; 0230E132
-	.byte 0x1B, 0x00, 0x09, 0x01, 0x45, 0x00, 0x4D, 0x00, 0x55, 0x00	; 0230E13C
+; 表项是相对 ADD 所读 PC 的有符号偏移，保留 ARM/Thumb 状态位。
+; Signed offsets from the ADD's PC, including the ARM/Thumb state bit.
+P4_SwitchTable_0230E114:
+	.halfword (loc_0230E144 + 1) - (P4_SwitchTargetPC_0230E114 + 4)
+	.halfword (loc_0230E22A + 1) - (P4_SwitchTargetPC_0230E114 + 4)
+	.halfword (loc_0230E14C + 1) - (P4_SwitchTargetPC_0230E114 + 4)
+	.halfword (loc_0230E22A + 1) - (P4_SwitchTargetPC_0230E114 + 4)
+	.halfword (loc_0230E154 + 1) - (P4_SwitchTargetPC_0230E114 + 4)
+	.halfword (loc_0230E15C + 1) - (P4_SwitchTargetPC_0230E114 + 4)
+	.halfword (loc_0230E22A + 1) - (P4_SwitchTargetPC_0230E114 + 4)
+	.halfword (loc_0230E22A + 1) - (P4_SwitchTargetPC_0230E114 + 4)
+	.halfword (loc_0230E13C + 1) - (P4_SwitchTargetPC_0230E114 + 4)
+	.halfword (loc_0230E22A + 1) - (P4_SwitchTargetPC_0230E114 + 4)
+	.halfword (loc_0230E166 + 1) - (P4_SwitchTargetPC_0230E114 + 4)
+	.halfword (loc_0230E16E + 1) - (P4_SwitchTargetPC_0230E114 + 4)
+	.halfword (loc_0230E176 + 1) - (P4_SwitchTargetPC_0230E114 + 4)
+P4_SwitchTable_0230E114End:
 loc_0230E13C:
 	add r0,r4,#0x0	; 0230E13C
 	bl loc_0230F2A8	; 0230E13E
@@ -29110,14 +29273,31 @@ loc_0230E192:
 	cmp r0,#0xc	; 0230E1AE
 	bhi loc_0230E22A	; 0230E1B0
 	add r0,r0,r0	; 0230E1B2
+P4_SwitchIndexPC_0230E1B2:
 	add r0,pc	; 0230E1B4
-	ldrh r0,[r0,#0x8]	; 0230E1B6
+	ldrh r0,[r0,#(P4_SwitchTable_0230E1B2 - (P4_SwitchIndexPC_0230E1B2 + 4))]	; 0230E1B6
 	lsl r0,r0,#0x10	; 0230E1B8
 	asr r0,r0,#0x10	; 0230E1BA
+P4_SwitchTargetPC_0230E1B2:
 	add r0,pc	; 0230E1BC
 	bx r0	; 0230E1BE
-	.byte 0x6B, 0x00, 0x23, 0x00, 0x6B, 0x00, 0x2B, 0x00, 0x6B, 0x00, 0x33, 0x00, 0x6B, 0x00, 0x6B, 0x00	; 0230E1D0
-	.byte 0x1B, 0x00, 0x6B, 0x00, 0x3D, 0x00, 0x45, 0x00, 0x4D, 0x00	; 0230E1DA
+; 表项是相对 ADD 所读 PC 的有符号偏移，保留 ARM/Thumb 状态位。
+; Signed offsets from the ADD's PC, including the ARM/Thumb state bit.
+P4_SwitchTable_0230E1B2:
+	.halfword (loc_0230E22A + 1) - (P4_SwitchTargetPC_0230E1B2 + 4)
+	.halfword (loc_0230E1E2 + 1) - (P4_SwitchTargetPC_0230E1B2 + 4)
+	.halfword (loc_0230E22A + 1) - (P4_SwitchTargetPC_0230E1B2 + 4)
+	.halfword (loc_0230E1EA + 1) - (P4_SwitchTargetPC_0230E1B2 + 4)
+	.halfword (loc_0230E22A + 1) - (P4_SwitchTargetPC_0230E1B2 + 4)
+	.halfword (loc_0230E1F2 + 1) - (P4_SwitchTargetPC_0230E1B2 + 4)
+	.halfword (loc_0230E22A + 1) - (P4_SwitchTargetPC_0230E1B2 + 4)
+	.halfword (loc_0230E22A + 1) - (P4_SwitchTargetPC_0230E1B2 + 4)
+	.halfword (loc_0230E1DA + 1) - (P4_SwitchTargetPC_0230E1B2 + 4)
+	.halfword (loc_0230E22A + 1) - (P4_SwitchTargetPC_0230E1B2 + 4)
+	.halfword (loc_0230E1FC + 1) - (P4_SwitchTargetPC_0230E1B2 + 4)
+	.halfword (loc_0230E204 + 1) - (P4_SwitchTargetPC_0230E1B2 + 4)
+	.halfword (loc_0230E20C + 1) - (P4_SwitchTargetPC_0230E1B2 + 4)
+P4_SwitchTable_0230E1B2End:
 loc_0230E1DA:
 	add r0,r4,#0x0	; 0230E1DA
 	bl loc_0230F2A8	; 0230E1DC
@@ -29182,7 +29362,7 @@ loc_0230E24C:
 	bx r3	; 0230E252
 pool_0230E254:
 loc_0230E254:
-	.word 0x0380FFF4	; 0230E254
+	.word FirmwareWlWorkPointerSlot	; 0230E254
 pool_0230E258:
 loc_0230E258:
 	.word 0x000004F4	; 0230E258
@@ -29210,7 +29390,7 @@ loc_0230E270:
 	ldr pc,[pool_0230E274]	; 0230E270
 pool_0230E274:
 loc_0230E274:
-	.word 0x03802514	; 0230E274
+	.word loc_03802514	; 0230E274
 .thumb
 
 ; ===== function loc_0230E278 =====
@@ -29250,13 +29430,24 @@ loc_0230E2A6:
 	cmp r7,#0x5	; 0230E2B8
 	bhi loc_0230E2D6	; 0230E2BA
 	add r0,r7,r7	; 0230E2BC
+P4_SwitchIndexPC_0230E2BC:
 	add r0,pc	; 0230E2BE
-	ldrh r0,[r0,#0x8]	; 0230E2C0
+	ldrh r0,[r0,#(P4_SwitchTable_0230E2BC - (P4_SwitchIndexPC_0230E2BC + 4))]	; 0230E2C0
 	lsl r0,r0,#0x10	; 0230E2C2
 	asr r0,r0,#0x10	; 0230E2C4
+P4_SwitchTargetPC_0230E2BC:
 	add r0,pc	; 0230E2C6
 	bx r0	; 0230E2C8
-	.byte 0x15, 0x00, 0xC9, 0x00, 0x8D, 0x01, 0x81, 0x00, 0x3B, 0x01, 0x25, 0x01	; 0230E2D6
+; 表项是相对 ADD 所读 PC 的有符号偏移，保留 ARM/Thumb 状态位。
+; Signed offsets from the ADD's PC, including the ARM/Thumb state bit.
+P4_SwitchTable_0230E2BC:
+	.halfword (loc_0230E2DE + 1) - (P4_SwitchTargetPC_0230E2BC + 4)
+	.halfword (loc_0230E392 + 1) - (P4_SwitchTargetPC_0230E2BC + 4)
+	.halfword (loc_0230E456 + 1) - (P4_SwitchTargetPC_0230E2BC + 4)
+	.halfword (loc_0230E34A + 1) - (P4_SwitchTargetPC_0230E2BC + 4)
+	.halfword (loc_0230E404 + 1) - (P4_SwitchTargetPC_0230E2BC + 4)
+	.halfword (loc_0230E3EE + 1) - (P4_SwitchTargetPC_0230E2BC + 4)
+P4_SwitchTable_0230E2BCEnd:
 loc_0230E2D6:
 	cmp r7,#0xdd	; 0230E2D6
 	bne loc_0230E2DC	; 0230E2D8
@@ -29538,7 +29729,7 @@ loc_0230E4E0:
 	bx r3	; 0230E4E6
 pool_0230E4E8:
 loc_0230E4E8:
-	.word 0x0380FFF4	; 0230E4E8
+	.word FirmwareWlWorkPointerSlot	; 0230E4E8
 pool_0230E4EC:
 loc_0230E4EC:
 	.word 0x00000376	; 0230E4EC
@@ -29624,7 +29815,7 @@ loc_0230E566:
 	.byte 0xC0, 0x46	; 0230E570
 pool_0230E570:
 loc_0230E570:
-	.word 0x0380FFF4	; 0230E570
+	.word FirmwareWlWorkPointerSlot	; 0230E570
 pool_0230E574:
 loc_0230E574:
 	.word 0x000002E0	; 0230E574
@@ -29709,7 +29900,7 @@ loc_0230E608:
 	bx r3	; 0230E60E
 pool_0230E610:
 loc_0230E610:
-	.word 0x0380FFF4	; 0230E610
+	.word FirmwareWlWorkPointerSlot	; 0230E610
 pool_0230E614:
 loc_0230E614:
 	.word 0x00000314	; 0230E614
@@ -30174,7 +30365,7 @@ loc_0230E92E:
 	.byte 0xC0, 0x46	; 0230E97C
 pool_0230E97C:
 loc_0230E97C:
-	.word 0x0380FFF4	; 0230E97C
+	.word FirmwareWlWorkPointerSlot	; 0230E97C
 pool_0230E980:
 loc_0230E980:
 	.word 0x0000061C	; 0230E980
@@ -30183,13 +30374,13 @@ loc_0230E984:
 	.word 0x000003E4	; 0230E984
 pool_0230E988:
 loc_0230E988:
-	.word 0x048080B0	; 0230E988
+	.word REG_WIFI_TXREQ_READ	; 0230E988
 pool_0230E98C:
 loc_0230E98C:
-	.word 0x0480819C	; 0230E98C
+	.word REG_WIFI_RF_PINS	; 0230E98C
 pool_0230E990:
 loc_0230E990:
-	.word 0x04808032	; 0230E990
+	.word REG_WIFI_WEP_CNT	; 0230E990
 pool_0230E994:
 loc_0230E994:
 	.word 0x00008000	; 0230E994
@@ -30300,7 +30491,7 @@ loc_0230EA50:
 	.word 0x000003BC	; 0230EA50
 pool_0230EA54:
 loc_0230EA54:
-	.word 0x0380FFF4	; 0230EA54
+	.word FirmwareWlWorkPointerSlot	; 0230EA54
 pool_0230EA58:
 loc_0230EA58:
 	.word 0x000003D8	; 0230EA58
@@ -30319,7 +30510,7 @@ loc_0230EA64:
 	ldr pc,[pool_0230EA68]	; 0230EA64
 pool_0230EA68:
 loc_0230EA68:
-	.word 0x037FCE1C	; 0230EA68
+	.word P2_Entry_037FCE1C	; 0230EA68
 .thumb
 
 ; ===== function loc_0230EA6C =====
@@ -30616,7 +30807,7 @@ loc_0230EC98:
 	bx r3	; 0230EC9E
 pool_0230ECA0:
 loc_0230ECA0:
-	.word 0x0380FFF4	; 0230ECA0
+	.word FirmwareWlWorkPointerSlot	; 0230ECA0
 pool_0230ECA4:
 loc_0230ECA4:
 	.word 0x000003BC	; 0230ECA4
@@ -30641,7 +30832,7 @@ loc_0230ECB8:
 	ldr pc,[pool_0230ECBC]	; 0230ECB8
 pool_0230ECBC:
 loc_0230ECBC:
-	.word 0x037FCE04	; 0230ECBC
+	.word loc_037FCE04	; 0230ECBC
 .thumb
 
 ; ===== function loc_0230ECC0 =====
@@ -30655,7 +30846,7 @@ loc_0230ECC4:
 	ldr pc,[pool_0230ECC8]	; 0230ECC4
 pool_0230ECC8:
 loc_0230ECC8:
-	.word 0x037FCE38	; 0230ECC8
+	.word loc_037FCE38	; 0230ECC8
 .thumb
 
 ; ===== function loc_0230ECCC =====
@@ -30722,7 +30913,7 @@ loc_0230ED40:
 	.word 0x00008000	; 0230ED40
 pool_0230ED44:
 loc_0230ED44:
-	.word 0x0380FFF4	; 0230ED44
+	.word FirmwareWlWorkPointerSlot	; 0230ED44
 pool_0230ED48:
 loc_0230ED48:
 	.word 0x000002FE	; 0230ED48
@@ -30741,7 +30932,7 @@ loc_0230ED54:
 	ldr pc,[pool_0230ED58]	; 0230ED54
 pool_0230ED58:
 loc_0230ED58:
-	.word 0x037FCE38	; 0230ED58
+	.word loc_037FCE38	; 0230ED58
 .thumb
 
 ; ===== function loc_0230ED5C =====
@@ -30869,7 +31060,7 @@ loc_0230EE4E:
 	.byte 0xC0, 0x46	; 0230EE58
 pool_0230EE58:
 loc_0230EE58:
-	.word 0x0380FFF4	; 0230EE58
+	.word FirmwareWlWorkPointerSlot	; 0230EE58
 pool_0230EE5C:
 loc_0230EE5C:
 	.word 0x00000314	; 0230EE5C
@@ -31023,7 +31214,7 @@ loc_0230EF6C:
 	bx r3	; 0230EF72
 pool_0230EF74:
 loc_0230EF74:
-	.word 0x0380FFF4	; 0230EF74
+	.word FirmwareWlWorkPointerSlot	; 0230EF74
 pool_0230EF78:
 loc_0230EF78:
 	.word 0x00000314	; 0230EF78
@@ -31051,7 +31242,7 @@ loc_0230EF90:
 	ldr pc,[pool_0230EF94]	; 0230EF90
 pool_0230EF94:
 loc_0230EF94:
-	.word 0x037FCE38	; 0230EF94
+	.word loc_037FCE38	; 0230EF94
 .thumb
 
 ; ===== function loc_0230EF98 =====
@@ -31171,7 +31362,7 @@ loc_0230F076:
 	.byte 0xC0, 0x46	; 0230F080
 pool_0230F080:
 loc_0230F080:
-	.word 0x0380FFF4	; 0230F080
+	.word FirmwareWlWorkPointerSlot	; 0230F080
 pool_0230F084:
 loc_0230F084:
 	.word 0x00000314	; 0230F084
@@ -31341,7 +31532,7 @@ loc_0230F1B0:
 	bx r3	; 0230F1B6
 pool_0230F1B8:
 loc_0230F1B8:
-	.word 0x0380FFF4	; 0230F1B8
+	.word FirmwareWlWorkPointerSlot	; 0230F1B8
 pool_0230F1BC:
 loc_0230F1BC:
 	.word 0x00000314	; 0230F1BC
@@ -31369,7 +31560,7 @@ loc_0230F1D4:
 	ldr pc,[pool_0230F1D8]	; 0230F1D4
 pool_0230F1D8:
 loc_0230F1D8:
-	.word 0x037FCE38	; 0230F1D8
+	.word loc_037FCE38	; 0230F1D8
 .thumb
 
 ; ===== function loc_0230F1DC =====
@@ -31461,7 +31652,7 @@ loc_0230F284:
 	bx r3	; 0230F28A
 pool_0230F28C:
 loc_0230F28C:
-	.word 0x0380FFF4	; 0230F28C
+	.word FirmwareWlWorkPointerSlot	; 0230F28C
 pool_0230F290:
 loc_0230F290:
 	.word 0x00000314	; 0230F290
@@ -31932,7 +32123,7 @@ loc_0230F596:
 	b loc_0230F6A0	; 0230F636
 pool_0230F638:
 loc_0230F638:
-	.word 0x0380FFF4	; 0230F638
+	.word FirmwareWlWorkPointerSlot	; 0230F638
 pool_0230F63C:
 loc_0230F63C:
 	.word 0x00000528	; 0230F63C
@@ -31944,7 +32135,7 @@ loc_0230F644:
 	.word 0x00008000	; 0230F644
 pool_0230F648:
 loc_0230F648:
-	.word 0x0480810C	; 0230F648
+	.word REG_WIFI_CONTENTFREE	; 0230F648
 pool_0230F64C:
 loc_0230F64C:
 	.word 0x00000308	; 0230F64C
@@ -31965,16 +32156,16 @@ loc_0230F660:
 	.word 0x000003E8	; 0230F660
 pool_0230F664:
 loc_0230F664:
-	.word 0x0380FFF0	; 0230F664
+	.word FirmwareWlAdjustedTimeSlot	; 0230F664
 pool_0230F668:
 loc_0230F668:
 	.word 0x0000FFFF	; 0230F668
 pool_0230F66C:
 loc_0230F66C:
-	.word 0x04808048	; 0230F66C
+	.word REG_WIFI_UNKNOWN_048	; 0230F66C
 pool_0230F670:
 loc_0230F670:
-	.word 0x04808038	; 0230F670
+	.word REG_WIFI_POWER_TX	; 0230F670
 pool_0230F674:
 loc_0230F674:
 	.word 0x000003D8	; 0230F674
@@ -31986,25 +32177,25 @@ loc_0230F67C:
 	.word 0x0000036A	; 0230F67C
 pool_0230F680:
 loc_0230F680:
-	.word 0x048080F6	; 0230F680
+	.word REG_WIFI_US_COMPARE3	; 0230F680
 pool_0230F684:
 loc_0230F684:
-	.word 0x048080F4	; 0230F684
+	.word REG_WIFI_US_COMPARE2	; 0230F684
 pool_0230F688:
 loc_0230F688:
-	.word 0x048080F2	; 0230F688
+	.word REG_WIFI_US_COMPARE1	; 0230F688
 pool_0230F68C:
 loc_0230F68C:
-	.word 0x048080F0	; 0230F68C
+	.word REG_WIFI_US_COMPARE0	; 0230F68C
 pool_0230F690:
 loc_0230F690:
-	.word 0x048080F8	; 0230F690
+	.word REG_WIFI_US_COUNT0	; 0230F690
 pool_0230F694:
 loc_0230F694:
-	.word 0x048080FA	; 0230F694
+	.word REG_WIFI_US_COUNT1	; 0230F694
 pool_0230F698:
 loc_0230F698:
-	.word 0x048080FC	; 0230F698
+	.word REG_WIFI_US_COUNT2	; 0230F698
 pool_0230F69C:
 loc_0230F69C:
 	.word 0x048080FE	; 0230F69C
@@ -32191,16 +32382,16 @@ loc_0230F7FE:
 	.byte 0xC0, 0x46	; 0230F808
 pool_0230F808:
 loc_0230F808:
-	.word 0x048080FE	; 0230F808
+	.word REG_WIFI_US_COUNT3	; 0230F808
 pool_0230F80C:
 loc_0230F80C:
-	.word 0x0380FFF4	; 0230F80C
+	.word FirmwareWlWorkPointerSlot	; 0230F80C
 pool_0230F810:
 loc_0230F810:
 	.word 0x00000300	; 0230F810
 pool_0230F814:
 loc_0230F814:
-	.word 0x04808134	; 0230F814
+	.word REG_WIFI_POST_BEACON	; 0230F814
 pool_0230F818:
 loc_0230F818:
 	.word 0x00000310	; 0230F818
@@ -32228,7 +32419,7 @@ loc_0230F830:
 	ldr pc,[pool_0230F834]	; 0230F830
 pool_0230F834:
 loc_0230F834:
-	.word 0x037FCE38	; 0230F834
+	.word loc_037FCE38	; 0230F834
 .thumb
 
 ; ===== function loc_0230F838 =====
@@ -32242,7 +32433,7 @@ loc_0230F83C:
 	ldr pc,[pool_0230F840]	; 0230F83C
 pool_0230F840:
 loc_0230F840:
-	.word 0x037FCE1C	; 0230F840
+	.word P2_Entry_037FCE1C	; 0230F840
 .thumb
 
 ; ===== function loc_0230F844 =====
@@ -32256,7 +32447,7 @@ loc_0230F848:
 	ldr pc,[pool_0230F84C]	; 0230F848
 pool_0230F84C:
 loc_0230F84C:
-	.word 0x037FCE1C	; 0230F84C
+	.word P2_Entry_037FCE1C	; 0230F84C
 .thumb
 
 ; ===== function loc_0230F850 =====
@@ -32270,7 +32461,7 @@ loc_0230F854:
 	ldr pc,[pool_0230F858]	; 0230F854
 pool_0230F858:
 loc_0230F858:
-	.word 0x038022BC	; 0230F858
+	.word loc_038022BC	; 0230F858
 .thumb
 
 ; ===== function loc_0230F85C =====
@@ -32284,7 +32475,7 @@ loc_0230F860:
 	ldr pc,[pool_0230F864]	; 0230F860
 pool_0230F864:
 loc_0230F864:
-	.word 0x038024C4	; 0230F864
+	.word loc_038024C4	; 0230F864
 .thumb
 
 ; ===== function loc_0230F868 =====
@@ -32298,7 +32489,7 @@ loc_0230F86C:
 	ldr pc,[pool_0230F870]	; 0230F86C
 pool_0230F870:
 loc_0230F870:
-	.word 0x037FCBF0	; 0230F870
+	.word loc_037FCBF0	; 0230F870
 .thumb
 
 ; ===== function loc_0230F874 =====
@@ -32312,7 +32503,7 @@ loc_0230F878:
 	ldr pc,[pool_0230F87C]	; 0230F878
 pool_0230F87C:
 loc_0230F87C:
-	.word 0x037FCC04	; 0230F87C
+	.word loc_037FCC04	; 0230F87C
 .thumb
 
 ; ===== function loc_0230F880 =====
@@ -32426,7 +32617,7 @@ loc_0230F93E:
 	.byte 0xC0, 0x46	; 0230F948
 pool_0230F948:
 loc_0230F948:
-	.word 0x0380FFF4	; 0230F948
+	.word FirmwareWlWorkPointerSlot	; 0230F948
 pool_0230F94C:
 loc_0230F94C:
 	.word 0x00000308	; 0230F94C
@@ -32438,7 +32629,7 @@ loc_0230F954:
 	.word 0x00000185	; 0230F954
 pool_0230F958:
 loc_0230F958:
-	.word 0x04808094	; 0230F958
+	.word REG_WIFI_TXBUF_REPLY1	; 0230F958
 pool_0230F95C:
 loc_0230F95C:
 	.word 0x00008000	; 0230F95C
@@ -32447,7 +32638,7 @@ loc_0230F960:
 	.word 0x0000049E	; 0230F960
 pool_0230F964:
 loc_0230F964:
-	.word 0x04808098	; 0230F964
+	.word REG_WIFI_TXBUF_REPLY2	; 0230F964
 pool_0230F968:
 loc_0230F968:
 	.word 0x0000014C	; 0230F968
@@ -32624,7 +32815,7 @@ loc_0230FAAE:
 	.byte 0xC0, 0x46	; 0230FAB8
 pool_0230FAB8:
 loc_0230FAB8:
-	.word 0x0380FFF4	; 0230FAB8
+	.word FirmwareWlWorkPointerSlot	; 0230FAB8
 pool_0230FABC:
 loc_0230FABC:
 	.word 0x000003E4	; 0230FABC
@@ -32655,7 +32846,7 @@ loc_0230FAD8:
 	ldr pc,[pool_0230FADC]	; 0230FAD8
 pool_0230FADC:
 loc_0230FADC:
-	.word 0x037FCE1C	; 0230FADC
+	.word P2_Entry_037FCE1C	; 0230FADC
 .thumb
 
 ; ===== function loc_0230FAE0 =====
@@ -32866,7 +33057,7 @@ loc_0230FC52:
 	.byte 0xC0, 0x46	; 0230FC5C
 pool_0230FC5C:
 loc_0230FC5C:
-	.word 0x0380FFF4	; 0230FC5C
+	.word FirmwareWlWorkPointerSlot	; 0230FC5C
 pool_0230FC60:
 loc_0230FC60:
 	.word 0x00000308	; 0230FC60
@@ -32890,7 +33081,7 @@ loc_0230FC78:
 	.word 0x00002000	; 0230FC78
 pool_0230FC7C:
 loc_0230FC7C:
-	.word 0x04808098	; 0230FC7C
+	.word REG_WIFI_TXBUF_REPLY2	; 0230FC7C
 pool_0230FC80:
 loc_0230FC80:
 	.word 0x00008000	; 0230FC80
@@ -32914,7 +33105,7 @@ loc_0230FC98:
 	.word 0x00000182	; 0230FC98
 pool_0230FC9C:
 loc_0230FC9C:
-	.word 0x04808094	; 0230FC9C
+	.word REG_WIFI_TXBUF_REPLY1	; 0230FC9C
 pool_0230FCA0:
 loc_0230FCA0:
 	.word 0x0000014C	; 0230FCA0
@@ -33242,7 +33433,7 @@ loc_0230FF0C:
 	bx r3	; 0230FF12
 pool_0230FF14:
 loc_0230FF14:
-	.word 0x0380FFF4	; 0230FF14
+	.word FirmwareWlWorkPointerSlot	; 0230FF14
 pool_0230FF18:
 loc_0230FF18:
 	.word 0x000004F4	; 0230FF18
@@ -33288,7 +33479,7 @@ loc_0230FF48:
 	ldr pc,[pool_0230FF4C]	; 0230FF48
 pool_0230FF4C:
 loc_0230FF4C:
-	.word 0x03802514	; 0230FF4C
+	.word loc_03802514	; 0230FF4C
 .thumb
 
 ; ===== function loc_0230FF50 =====
@@ -33322,7 +33513,7 @@ loc_0230FF76:
 	.byte 0xC0, 0x46	; 0230FF84
 pool_0230FF84:
 loc_0230FF84:
-	.word 0x0380FFF4	; 0230FF84
+	.word FirmwareWlWorkPointerSlot	; 0230FF84
 pool_0230FF88:
 loc_0230FF88:
 	.word 0x00000200	; 0230FF88
@@ -33346,7 +33537,7 @@ loc_0230FF8C:
 	bx r3	; 0230FFAA
 pool_0230FFAC:
 loc_0230FFAC:
-	.word 0x0380FFF4	; 0230FFAC
+	.word FirmwareWlWorkPointerSlot	; 0230FFAC
 pool_0230FFB0:
 loc_0230FFB0:
 	.word 0x00000200	; 0230FFB0
@@ -33362,7 +33553,7 @@ loc_0230FFB8:
 	ldr pc,[pool_0230FFBC]	; 0230FFB8
 pool_0230FFBC:
 loc_0230FFBC:
-	.word 0x037FCE04	; 0230FFBC
+	.word loc_037FCE04	; 0230FFBC
 .thumb
 
 ; ===== function loc_0230FFC0 =====
@@ -33485,7 +33676,7 @@ loc_02310096:
 	.byte 0xC0, 0x46	; 023100A0
 pool_023100A0:
 loc_023100A0:
-	.word 0x0380FFF4	; 023100A0
+	.word FirmwareWlWorkPointerSlot	; 023100A0
 pool_023100A4:
 loc_023100A4:
 	.word 0x00000200	; 023100A4
@@ -33504,7 +33695,7 @@ loc_023100B0:
 	ldr pc,[pool_023100B4]	; 023100B0
 pool_023100B4:
 loc_023100B4:
-	.word 0x037FCE04	; 023100B4
+	.word loc_037FCE04	; 023100B4
 .thumb
 
 ; ===== function loc_023100B8 =====
@@ -33584,7 +33775,7 @@ loc_0231014C:
 	.byte 0xC0, 0x46	; 02310154
 pool_02310154:
 loc_02310154:
-	.word 0x0380FFF4	; 02310154
+	.word FirmwareWlWorkPointerSlot	; 02310154
 pool_02310158:
 loc_02310158:
 	.word 0x000002D8	; 02310158
@@ -33610,7 +33801,7 @@ loc_0231016C:
 	bx r12	; 02310170
 pool_02310174:
 loc_02310174:
-	.word 0x03800A21	; 02310174
+	.word loc_03800A20 + 1	; 02310174
 .thumb
 
 ; ===== function loc_02310178 =====
@@ -33625,7 +33816,7 @@ loc_0231017C:
 	bx r12	; 02310180
 pool_02310184:
 loc_02310184:
-	.word 0x038018B9	; 02310184
+	.word loc_038018B8 + 1	; 02310184
 .thumb
 
 ; ===== function loc_02310188 =====
@@ -33640,7 +33831,7 @@ loc_0231018C:
 	bx r12	; 02310190
 pool_02310194:
 loc_02310194:
-	.word 0x038009D9	; 02310194
+	.word loc_038009D8 + 1	; 02310194
 .thumb
 
 ; ===== function loc_02310198 =====
@@ -33676,7 +33867,7 @@ loc_023101C8:
 	.byte 0xC0, 0x46	; 023101D0
 pool_023101D0:
 loc_023101D0:
-	.word 0x0380FFF4	; 023101D0
+	.word FirmwareWlWorkPointerSlot	; 023101D0
 pool_023101D4:
 loc_023101D4:
 	.word 0x000002DC	; 023101D4
@@ -33715,7 +33906,7 @@ loc_02310200:
 	bx r12	; 02310204
 pool_02310208:
 loc_02310208:
-	.word 0x038019B5	; 02310208
+	.word loc_038019B4 + 1	; 02310208
 .thumb
 
 ; ===== function loc_0231020C =====
@@ -33779,7 +33970,7 @@ loc_0231026A:
 	.byte 0xC0, 0x46	; 02310274
 pool_02310274:
 loc_02310274:
-	.word 0x0380FFF4	; 02310274
+	.word FirmwareWlWorkPointerSlot	; 02310274
 pool_02310278:
 loc_02310278:
 	.word 0x000002DC	; 02310278
@@ -33795,7 +33986,9 @@ loc_0231027C:
 	.byte 0x31, 0x2F, 0x30, 0x02, 0x41, 0x30, 0x30, 0x02, 0x21, 0x18, 0x30, 0x02, 0x21, 0x18, 0x30, 0x02	; 023102F0
 	.byte 0xAD, 0x37, 0x30, 0x02, 0xA9, 0x30, 0x30, 0x02, 0x1D, 0x31, 0x30, 0x02, 0x4D, 0x32, 0x30, 0x02	; 02310300
 	.byte 0xAD, 0x32, 0x30, 0x02, 0xE1, 0x43, 0x30, 0x02, 0x51, 0x44, 0x30, 0x02, 0x45, 0x48, 0x30, 0x02	; 02310310
-	.byte 0xA9, 0x48, 0x30, 0x02, 0x85, 0x37, 0x30, 0x02, 0x61, 0x37, 0x30, 0x02, 0xB9, 0xA0, 0x30, 0x02	; 02310320
+	.byte 0xA9, 0x48, 0x30, 0x02, 0x85, 0x37, 0x30, 0x02, 0x61, 0x37, 0x30, 0x02	; 02310310
+P4_Data_0231031C:
+	.byte 0xB9, 0xA0, 0x30, 0x02	; 0231031C
 	.byte 0x11, 0xA0, 0x30, 0x02, 0x59, 0x9F, 0x30, 0x02, 0xB1, 0x9E, 0x30, 0x02, 0x81, 0x9E, 0x30, 0x02	; 02310330
 	.byte 0xA1, 0x9C, 0x30, 0x02, 0xA5, 0xFC, 0x30, 0x02, 0xD5, 0xDF, 0x30, 0x02, 0x95, 0x8C, 0x30, 0x02	; 02310340
 	.byte 0x0D, 0xDE, 0x30, 0x02, 0xB9, 0x8E, 0x30, 0x02, 0xE1, 0x95, 0x30, 0x02, 0xC5, 0x4A, 0x30, 0x02	; 02310350
@@ -33807,7 +34000,9 @@ loc_0231027C:
 	.byte 0x12, 0x00, 0x16, 0x00, 0x18, 0x00, 0x24, 0x00, 0x30, 0x00, 0x48, 0x00, 0x60, 0x00, 0x6C, 0x00	; 023103B0
 	.byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	; 023103C0
 	.byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	; 023103D0
-	.byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xCC, 0x01, 0xD8, 0x00, 0x14	; 023103E0
+	.byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	; 023103D0
+P4_Data_023103D8:
+	.byte 0x00, 0x00, 0x01, 0xCC, 0x01, 0xD8, 0x00, 0x14	; 023103D8
 	.byte 0x01, 0xF0, 0x00, 0x3C, 0x00, 0x28, 0x01, 0xE4, 0x01, 0xA0, 0x00, 0x6C, 0x00, 0x78, 0x01, 0xB4	; 023103F0
 	.byte 0x00, 0x50, 0x01, 0x9C, 0x01, 0x88, 0x00, 0x44, 0x46, 0x01, 0x48, 0x01, 0x4A, 0x01, 0x4C, 0x01	; 02310400
 	.byte 0x20, 0x01, 0x22, 0x01, 0x54, 0x01, 0x44, 0x01, 0x30, 0x01, 0x32, 0x01, 0x40, 0x01, 0x42, 0x01	; 02310410
@@ -33816,13 +34011,16 @@ loc_0231027C:
 	.byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	; 02310440
 	.byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	; 02310450
 	.byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	; 02310460
-	.byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00	; 02310470
+	.byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	; 02310460
+P4_Data_02310468:
+	.byte 0x04, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00	; 02310468
 	.byte 0x0A, 0x00, 0x00, 0x00, 0x12, 0x00, 0x00, 0x00, 0x10, 0x00, 0xFF, 0xFF, 0x54, 0x02, 0x00, 0x00	; 02310480
 	.byte 0xB4, 0x00, 0xFF, 0xFF, 0x80, 0x00, 0x00, 0x00, 0x2A, 0x00, 0x00, 0x00, 0x28, 0x00, 0x00, 0x00	; 02310490
 	.byte 0xE8, 0x00, 0x00, 0x00, 0xEA, 0x00, 0x00, 0x00, 0xEE, 0x00, 0x01, 0x00, 0xEC, 0x00, 0x03, 0x3F	; 023104A0
 	.byte 0xA2, 0x01, 0x01, 0x00, 0xA0, 0x01, 0x00, 0x00, 0x10, 0x01, 0x00, 0x08, 0xBC, 0x00, 0x01, 0x00	; 023104B0
 	.byte 0xD4, 0x00, 0x03, 0x00, 0xD8, 0x00, 0x04, 0x00, 0xDA, 0x00, 0x02, 0x06, 0x76, 0x00, 0x00, 0x00	; 023104C0
-	.byte 0xFF, 0x00, 0x00, 0x00, 0xFF, 0x00, 0x01, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00	; 023104D0
+P4_Data_023104C0:
+	.byte 0xFF, 0x00, 0x00, 0x00, 0xFF, 0x00, 0x01, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00	; 023104C0
 	.byte 0xFF, 0x00, 0xFF, 0x00, 0x02, 0x00, 0x03, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00	; 023104E0
 	.byte 0xFF, 0x00, 0x04, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0x05, 0x00, 0xFF, 0x00, 0x06, 0x00	; 023104F0
 	.byte 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00	; 02310500
@@ -33837,7 +34035,8 @@ loc_0231027C:
 	.byte 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00	; 02310590
 	.byte 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0x0B, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00	; 023105A0
 	.byte 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00	; 023105B0
-	.byte 0x18, 0x00, 0xFF, 0xFF, 0x1A, 0x00, 0xFF, 0xFF, 0x1C, 0x00, 0xFF, 0xFF, 0x22, 0x01, 0xFF, 0xFF	; 023105C0
+P4_Data_023105B0:
+	.byte 0x18, 0x00, 0xFF, 0xFF, 0x1A, 0x00, 0xFF, 0xFF, 0x1C, 0x00, 0xFF, 0xFF, 0x22, 0x01, 0xFF, 0xFF	; 023105B0
 	.byte 0x24, 0x01, 0xFF, 0xFF, 0x02, 0x00, 0x04, 0x00, 0x05, 0x00, 0x06, 0x00, 0x07, 0x00, 0x1C, 0x00	; 023105D0
 	.byte 0x1D, 0x00, 0x1E, 0x00, 0x1F, 0x00, 0x20, 0x00, 0x21, 0x00, 0x26, 0x00, 0x29, 0x00, 0x2C, 0x00	; 023105E0
 	.byte 0x2D, 0x00, 0x2E, 0x00, 0x2F, 0x00, 0x30, 0x00, 0x33, 0x00, 0x34, 0x00, 0x35, 0x00, 0x36, 0x00	; 023105F0
@@ -33884,5 +34083,13 @@ loc_0231027C:
 	.byte 0x03, 0x00, 0x01, 0x00, 0x01, 0xAB, 0x30, 0x02, 0x01, 0x00, 0x01, 0x00, 0xB5, 0xAA, 0x30, 0x02	; 02310880
 	.byte 0x00, 0x00, 0x01, 0x00, 0xDD, 0x95, 0x30, 0x02, 0x00, 0x00, 0x01, 0x00, 0xDD, 0x95, 0x30, 0x02	; 02310890
 	.byte 0x01, 0x00, 0x01, 0x00, 0x89, 0xAA, 0x30, 0x02, 0x32, 0x2E, 0x31, 0x30, 0x2E, 0x30, 0x30, 0x00	; 023108A0
-	.byte 0x01, 0x00, 0x04, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	; 023108AC
+P4_Data_023108A0:
+	.byte 0x01, 0x00, 0x04, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	; 023108A0
+P4_ImageEnd:
+P4_BssStart:
 .close
+
+; P4 初始化器从组件末尾清零运行区；只有边界符号，不向文件填充 BSS。
+; P4 initialization clears runtime storage after its image; BSS emits no file data.
+.definelabel P4_BssBytes, 0x2424
+.definelabel P4_BssEnd, P4_BssStart + P4_BssBytes

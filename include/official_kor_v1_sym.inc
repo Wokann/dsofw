@@ -10,7 +10,7 @@
 .definelabel BootDisplayFade_1,                        RetailP1RamAddress + 0x000008f6
 .definelabel BootDisplayFade_2,                        RetailP1RamAddress + 0x00000912
 .definelabel BootDisplayFade_3,                        RetailP1RamAddress + 0x00000926
-.definelabel P3P4Crc16Gate,                            RetailP1RamAddress + 0x00006e34
+.definelabel P3P4Crc16Gate,                            RetailP1RamAddress + 0x00006e90
 .definelabel P5Crc16Gate,                              RetailP1RamAddress + 0x00006f00
 .definelabel NintendoLogoStateGate,                    RetailP3RamAddress + 0x000102b6
 .definelabel RSA_verify,                               RetailP1RamAddress + 0x000098c4

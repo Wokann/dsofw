@@ -5,9 +5,10 @@
 .include "../../include/common.inc"
 .include "../../include/official_v3_sym.inc"
 
-; Each source owns one output via .create; this entry only supplies the
-; common symbol scope and inclusion order. 每个源文件通过 .create 输出一个组件；
-; 此入口只提供共享符号域与包含顺序。
+; Each source owns one output via .create. Inclusion here establishes one
+; shared armips symbol scope, so P1/P2/P3 .func labels may be called across
+; components. 每个源文件通过 .create 输出一个组件；此入口建立共享符号域，
+; 让 P1/P2/P3 的 .func 可跨组件调用。
 .include "src/h.s"
 .include "src/p1.s"
 .include "src/p2.s"

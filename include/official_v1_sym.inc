@@ -1,9 +1,9 @@
 ; Nintendo official_v1 source-firmware layout
 .definelabel RetailP1RamAddress,                      0x02320000
 .definelabel RetailP2RamAddress,                      0x037fa800
-.definelabel RetailP3RamAddress,                      0x02354f10
+.definelabel RetailP3RamAddress,                      0x023591a0
 .definelabel RetailP4RamAddress,                      0x02300200
-.definelabel RetailP5RamAddress,                      0x02373d00
+.definelabel RetailP5RamAddress,                      0x0239f0e0
 ; Analyst names; these are not recovered Nintendo symbols.  Boot* names are
 ; functional inferences.  This revision predates the separate P3/P4 and P5
 ; CRC16 gates used by v3 and later, so those later names are intentionally absent.
