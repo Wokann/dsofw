@@ -24242,6 +24242,7 @@ loc_0232B168:
 	.word 0x00000800	; 0232B168
 
 ; ===== function loc_0232B16C =====
+P1_ThreadEntry_0232B16C:
 	push {lr}	; 0232B16C
 	sub sp,#0x4	; 0232B16E
 	blx P1_Arm9EnableIrqReturnPriorMask	; 0232B170
@@ -24297,7 +24298,7 @@ loc_0232B1BC:
 	cmp r4,#0x0	; 0232B1CC
 	beq loc_0232B1FE	; 0232B1CE
 	add r0,r5,#0x0	; 0232B1D0
-	blx loc_0232B57C	; 0232B1D2
+	blx P1_SaveThreadContext	; 0232B1D2
 	cmp r0,#0x0	; 0232B1D6
 	bne loc_0232B1FE	; 0232B1D8
 	ldr r0,[pool_0232B20C]	; 0232B1DA
@@ -24318,7 +24319,7 @@ loc_0232B1F4:
 	ldr r0,[pool_0232B204]	; 0232B1F4
 	str r4,[r0,#0x8]	; 0232B1F6
 	add r0,r4,#0x0	; 0232B1F8
-	blx loc_0232B5C8	; 0232B1FA
+	blx P1_LoadThreadContext	; 0232B1FA
 loc_0232B1FE:
 	pop {r4,r5,r6}	; 0232B1FE
 	pop {r3}	; 0232B200
@@ -24426,6 +24427,9 @@ loc_0232B296:
 pool_0232B2AC:
 loc_0232B2AC:
 	.word P1_BssStart + 0x26378	; 0232B2AC
+; 线程初始 LR 指向此处；清除 ID 表项并将线程标记为终止态。
+; Initial thread LR points here; clear its ID slot and mark the thread terminated.
+.func P1_ExitThread
 	push {r4,lr}	; 0232B2B0
 	blx P1_Arm9DisableIrqReturnPriorMask	; 0232B2B2
 	ldr r0,[pool_0232B2E8]	; 0232B2B6
@@ -24449,6 +24453,7 @@ loc_0232B2AC:
 	pop {r4}	; 0232B2E2
 	pop {r3}	; 0232B2E4
 	bx r3	; 0232B2E6
+.endfunc
 pool_0232B2E8:
 loc_0232B2E8:
 	.word P1_BssStart + 0x26378	; 0232B2E8
@@ -24458,6 +24463,9 @@ loc_0232B2EC:
 
 ; ===== function loc_0232B2F0 =====
 loc_0232B2F0:
+; r0=线程，r1=入口，r2=参数，r3=栈顶；栈参数为大小/优先级。
+; r0=thread, r1=entry, r2=argument, r3=stack top; stack arguments: size/priority.
+.func P1_CreateThread
 	push {r4,r5,r6,r7,lr}	; 0232B2F0
 	sub sp,#0xc	; 0232B2F2
 	add r5,r0,#0x0	; 0232B2F4
@@ -24512,10 +24520,10 @@ loc_0232B318:
 	add r0,r5,#0x0	; 0232B35C
 	ldr r1,[sp,#0x0]	; 0232B35E
 	sub r2,r4,#0x4	; 0232B360
-	blx loc_0232B518	; 0232B362
-	str r7,[r5,#0x4]	; 0232B366
+	blx P1_InitThreadContext	; 0232B362
+	str r7,[r5,#ThreadContextR0Offset]	; 0232B366
 	ldr r0,[pool_0232B3A0]	; 0232B368
-	str r0,[r5,#0x3c]	; 0232B36A
+	str r0,[r5,#ThreadContextLrOffset]	; 0232B36A
 	mov r0,#0x0	; 0232B36C
 	str r0,[sp,#0x8]	; 0232B36E
 	ldr r0,[sp,#0x8]	; 0232B370
@@ -24534,6 +24542,7 @@ loc_0232B318:
 	pop {r4,r5,r6,r7}	; 0232B38E
 	pop {r3}	; 0232B390
 	bx r3	; 0232B392
+.endfunc
 pool_0232B394:
 loc_0232B394:
 	.word P1_BssStart + 0x26394	; 0232B394
@@ -24545,7 +24554,7 @@ loc_0232B39C:
 	.word 0x7BF9DD5B	; 0232B39C
 pool_0232B3A0:
 loc_0232B3A0:
-	.word 0x0232B2B1	; 0232B3A0
+	.word P1_ExitThread + 1	; 0232B3A0
 
 ; ===== function loc_0232B3A4 =====
 loc_0232B3A4:
@@ -24628,7 +24637,7 @@ loc_0232B3FA:
 	ldr r1,[pool_0232B490]	; 0232B438
 	mov r2,#0x0	; 0232B43A
 	ldr r3,[pool_0232B494]	; 0232B43C
-	bl loc_0232B2F0	; 0232B43E
+	bl P1_CreateThread	; 0232B43E
 	mov r1,#0x20	; 0232B442
 	ldr r0,[pool_0232B48C]	; 0232B444
 	str r1,[r0,#0x70]	; 0232B446
@@ -24686,7 +24695,7 @@ loc_0232B48C:
 	.word P1_BssStart + 0x263D4	; 0232B48C
 pool_0232B490:
 loc_0232B490:
-	.word 0x0232B16D	; 0232B490
+	.word P1_ThreadEntry_0232B16C + 1	; 0232B490
 pool_0232B494:
 loc_0232B494:
 	.word 0x02357424	; 0232B494
@@ -24780,17 +24789,20 @@ loc_0232B514:
 
 ; ===== function loc_0232B518 =====
 loc_0232B518:
+; r0=上下文，r1=入口，r2=栈顶；保存入口+4/状态，并留出 SVC 栈。
+; r0=context, r1=entry, r2=stack top; save entry+4/state and reserve the SVC stack.
+.func P1_InitThreadContext
 	add r1,r1,#0x4	; 0232B518
-	str r1,[r0,#0x40]	; 0232B51C
-	str r2,[r0,#0x44]	; 0232B520
-	sub r2,r2,#0x40	; 0232B524
-	str r2,[r0,#0x38]	; 0232B528
+	str r1,[r0,#ThreadContextPcPlus4Offset]	; 0232B51C
+	str r2,[r0,#ThreadContextSvcSpOffset]	; 0232B520
+	sub r2,r2,#ThreadContextSvcStackBytes	; 0232B524
+	str r2,[r0,#ThreadContextSpOffset]	; 0232B528
 	ands r1,r1,#0x1	; 0232B52C
 	movne r1,#0x3f	; 0232B530
 	moveq r1,#0x1f	; 0232B534
-	str r1,[r0,#0x0]	; 0232B538
+	str r1,[r0,#ThreadContextCpsrOffset]	; 0232B538
 	mov r1,#0x0	; 0232B53C
-	str r1,[r0,#0x4]	; 0232B540
+	str r1,[r0,#ThreadContextR0Offset]	; 0232B540
 	str r1,[r0,#0x8]	; 0232B544
 	str r1,[r0,#0xc]	; 0232B548
 	str r1,[r0,#0x10]	; 0232B54C
@@ -24803,13 +24815,17 @@ loc_0232B518:
 	str r1,[r0,#0x2c]	; 0232B568
 	str r1,[r0,#0x30]	; 0232B56C
 	str r1,[r0,#0x34]	; 0232B570
-	str r1,[r0,#0x3c]	; 0232B574
+	str r1,[r0,#ThreadContextLrOffset]	; 0232B574
 	bx lr	; 0232B578
+.endfunc
 
 ; ===== function loc_0232B57C =====
 loc_0232B57C:
+; 保存寄存器及状态；首次返回 0，恢复后从同一返回点返回 1。
+; Save registers/state; return 0 now and 1 from the same return point after restoration.
+.func P1_SaveThreadContext
 	stmdb sp!,{r0,lr}	; 0232B57C
-	add r0,r0,#0x48	; 0232B580
+	add r0,r0,#ThreadContextArithmeticOffset	; 0232B580
 	ldr r1,[pool_0232B5C4]	; 0232B584
 	blx r1	; 0232B588
 	ldmia sp!,{r0,lr}	; 0232B58C
@@ -24818,22 +24834,27 @@ loc_0232B57C:
 	str r2,[r1],#0x4	; 0232B598
 	mov r0,#0xd3	; 0232B59C
 	msr cpsr_c,r0	; 0232B5A0
-	str sp,[r1,#0x40]	; 0232B5A4
+	str sp,[r1,#(ThreadContextSvcSpOffset - ThreadContextR0Offset)]	; 0232B5A4
 	msr cpsr_c,r2	; 0232B5A8
 	mov r0,#0x1	; 0232B5AC
 	stmia r1,{r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,sp,lr}	; 0232B5B0
-	adr r0,loc_0232B5C4	; 0232B5B4
-	str r0,[r1,#0x3c]	; 0232B5B8
+	adr r0,P1_SaveThreadContextReturn + 4	; 0232B5B4
+	str r0,[r1,#(ThreadContextPcPlus4Offset - ThreadContextR0Offset)]	; 0232B5B8
 	mov r0,#0x0	; 0232B5BC
+P1_SaveThreadContextReturn:
 	bx lr	; 0232B5C0
+.endfunc
 pool_0232B5C4:
 loc_0232B5C4:
-	.word loc_0232EF90 + 1	; 0232B5C4
+	.word P1_SaveArithmeticContext + 1	; 0232B5C4
 
 ; ===== function loc_0232B5C8 =====
 loc_0232B5C8:
+; 以 SVC 模式恢复状态和用户寄存器，再用已存 PC+4 恢复执行。
+; Restore saved state/user registers in SVC mode, then resume via the saved PC+4.
+.func P1_LoadThreadContext
 	stmdb sp!,{r0,lr}	; 0232B5C8
-	add r0,r0,#0x48	; 0232B5CC
+	add r0,r0,#ThreadContextArithmeticOffset	; 0232B5CC
 	ldr r1,[pool_0232B608]	; 0232B5D0
 	blx r1	; 0232B5D4
 	ldmia sp!,{r0,lr}	; 0232B5D8
@@ -24843,14 +24864,15 @@ loc_0232B5C8:
 	msr cpsr_c,r1	; 0232B5E8
 	ldr r1,[r0],#0x4	; 0232B5EC
 	msr spsr_cxsf,r1	; 0232B5F0
-	ldr sp,[r0,#0x40]	; 0232B5F4
-	ldr lr,[r0,#0x3c]	; 0232B5F8
+	ldr sp,[r0,#(ThreadContextSvcSpOffset - ThreadContextR0Offset)]	; 0232B5F4
+	ldr lr,[r0,#(ThreadContextPcPlus4Offset - ThreadContextR0Offset)]	; 0232B5F8
 	ldmia r0,{r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,sp,lr}^	; 0232B5FC
 	mov r0,r0	; 0232B600
 	subs pc,lr,#0x4	; 0232B604
+.endfunc
 pool_0232B608:
 loc_0232B608:
-	.word loc_0232EF50 + 1	; 0232B608
+	.word P1_RestoreArithmeticContext + 1	; 0232B608
 .thumb
 
 ; ===== function loc_0232B60C =====
@@ -32619,6 +32641,9 @@ loc_0232EF4C:
 
 ; ===== function loc_0232EF50 =====
 loc_0232EF50:
+; 恢复除法/开方操作数及模式。
+; Restore division/square-root operands and modes.
+.func P1_RestoreArithmeticContext
 	ldr r3,[r0,#0x0]	; 0232EF50
 	ldr r2,[r0,#0x4]	; 0232EF52
 	ldr r1,[pool_0232EF7C]	; 0232EF54
@@ -32641,6 +32666,7 @@ loc_0232EF50:
 	ldr r0,[pool_0232EF8C]	; 0232EF76
 	strh r1,[r0,#0x0]	; 0232EF78
 	bx lr	; 0232EF7A
+.endfunc
 pool_0232EF7C:
 loc_0232EF7C:
 	.word REG_DIV_NUMER	; 0232EF7C
@@ -32659,6 +32685,9 @@ loc_0232EF8C:
 
 ; ===== function loc_0232EF90 =====
 loc_0232EF90:
+; 保存除法/开方操作数及模式，不保存结果寄存器。
+; Save division/square-root operands and modes, not the result registers.
+.func P1_SaveArithmeticContext
 	ldr r1,[pool_0232EFC4]	; 0232EF90
 	ldr r2,[r1,#0x0]	; 0232EF92
 	ldr r1,[r1,#0x4]	; 0232EF94
@@ -32685,6 +32714,7 @@ loc_0232EF90:
 	and r2,r1	; 0232EFBE
 	strh r2,[r0,#0x1a]	; 0232EFC0
 	bx lr	; 0232EFC2
+.endfunc
 pool_0232EFC4:
 loc_0232EFC4:
 	.word REG_DIV_NUMER	; 0232EFC4
@@ -36285,9 +36315,9 @@ pool_01FF82CC:
 pool_01FF82D0:
 	.word P1_BssStart + 0x26380	; 01FF82D0
 pool_01FF82D4:
-	.word loc_0232EF90 + 1	; 01FF82D4
+	.word P1_SaveArithmeticContext + 1	; 01FF82D4
 pool_01FF82D8:
-	.word loc_0232EF50 + 1	; 01FF82D8
+	.word P1_RestoreArithmeticContext + 1	; 01FF82D8
 
 ; 写入所选 DMA 通道的源、目的和控制寄存器。
 ; Set source, destination and control registers for the selected DMA channel.

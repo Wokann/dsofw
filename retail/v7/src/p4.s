@@ -1219,7 +1219,7 @@ loc_023009E4:
 	.word 0x037F82F8	; 023009E4
 pool_023009E8:
 loc_023009E8:
-	.word 0x02301795	; 023009E8
+	.word P4_ThreadEntry_02301794 + 1	; 023009E8
 pool_023009EC:
 loc_023009EC:
 	.word 0x00001000	; 023009EC
@@ -1228,7 +1228,7 @@ loc_023009F0:
 	.word 0x037F8280	; 023009F0
 pool_023009F4:
 loc_023009F4:
-	.word 0x023017F9	; 023009F4
+	.word P4_ThreadEntry_023017F8 + 1	; 023009F4
 pool_023009F8:
 loc_023009F8:
 	.word 0x0230FB04	; 023009F8
@@ -1281,7 +1281,7 @@ loc_02300A28:
 	bx r12	; 02300A2C
 pool_02300A30:
 loc_02300A30:
-	.word loc_037FDFCC + 1	; 02300A30
+	.word P2_CreateThread + 1	; 02300A30
 .thumb
 
 ; ===== function loc_02300A34 =====
@@ -3233,6 +3233,7 @@ loc_02301790:
 	.word 0x00000186	; 02301790
 
 ; ===== function loc_02301794 =====
+P4_ThreadEntry_02301794:
 	push {r4,r5,r6,r7,lr}	; 02301794
 	sub sp,#0x4	; 02301796
 	bl P4_GetRuntimeState	; 02301798
@@ -3286,6 +3287,7 @@ loc_023017F0:
 	.byte 0x00, 0x00	; 023017F8
 
 ; ===== function loc_023017F8 =====
+P4_ThreadEntry_023017F8:
 	push {r4,r5,r6,r7,lr}	; 023017F8
 	sub sp,#0x4	; 023017FA
 	bl P4_GetRuntimeState	; 023017FC
@@ -10577,7 +10579,7 @@ loc_02304B10:
 	.word 0x00000312	; 02304B10
 pool_02304B14:
 loc_02304B14:
-	.word 0x037FB34D	; 02304B14
+	.word P2_ThreadEntry_037FB34C + 1	; 02304B14
 
 ; ===== function loc_02304B18 =====
 loc_02304B18:
@@ -10959,7 +10961,7 @@ loc_02304DD0:
 	bx r12	; 02304DD4
 pool_02304DD8:
 loc_02304DD8:
-	.word P2_Entry_037FDF8C + 1	; 02304DD8
+	.word P2_ExitThread + 1	; 02304DD8
 .thumb
 
 ; ===== function loc_02304DDC =====
