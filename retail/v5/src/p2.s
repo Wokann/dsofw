@@ -9080,6 +9080,7 @@ pool_037FE998:
 loc_037FE998:
 	.word P2_BssStart + 0x648	; 037FE998
 .arm
+P2_Code_037FE99C:
 	stmdb sp!,{lr}	; 037FE99C
 	bl loc_037FE9AC	; 037FE9A0
 	ldmia sp!,{lr}	; 037FE9A4
@@ -9542,7 +9543,7 @@ loc_037FECD0:
 	.word TIMER1_CR	; 037FECD0
 pool_037FECD4:
 loc_037FECD4:
-	.word 0x037FE99C	; 037FECD4
+	.word P2_Code_037FE99C	; 037FECD4
 pool_037FECD8:
 loc_037FECD8:
 	.word 0x0000FFFE	; 037FECD8
@@ -15686,6 +15687,7 @@ loc_038017E8:
 	.word P2_BssStart + 0xB80	; 038017E8
 
 ; ===== function loc_038017EC =====
+P2_Code_038017EC:
 	push {r4,r5,r6,lr}	; 038017EC
 	add r5,r0,#0x0	; 038017EE
 	mov r4,#0x7	; 038017F0
@@ -15802,7 +15804,7 @@ loc_038018C0:
 	.word P2_BssStart + 0x1B04	; 038018C0
 pool_038018C4:
 loc_038018C4:
-	.word 0x038017ED	; 038018C4
+	.word P2_Code_038017EC + 1	; 038018C4
 
 ; ===== function loc_038018C8 =====
 loc_038018C8:
@@ -16160,12 +16162,13 @@ loc_03801B20:
 	bx r3	; 03801B26
 pool_03801B28:
 loc_03801B28:
-	.word 0x03801B31	; 03801B28
+	.word P2_Code_03801B30 + 1	; 03801B28
 pool_03801B2C:
 loc_03801B2C:
 	.word P2_SetPxiReceiveCallback + 1	; 03801B2C
 
 ; ===== function loc_03801B30 =====
+P2_Code_03801B30:
 	push {r4,r5,lr}	; 03801B30
 	sub sp,#0x4	; 03801B32
 	add r5,r1,#0x0	; 03801B34
@@ -17113,6 +17116,7 @@ loc_038021AE:
 	pop {r3}	; 038021B6
 	bx r3	; 038021B8
 	.byte 0x00, 0x00	; 038021BC
+P2_Code_038021BC:
 	ldr r0,[pool_038021C4]	; 038021BC
 	ldr r3,[pool_038021C8]	; 038021BE
 	bx r3	; 038021C0
@@ -17693,7 +17697,7 @@ loc_03802604:
 	.word 0x038074A8	; 03802604
 pool_03802608:
 loc_03802608:
-	.word 0x038021BD	; 03802608
+	.word P2_Code_038021BC + 1	; 03802608
 pool_0380260C:
 loc_0380260C:
 	.word 0x00001388	; 0380260C
@@ -19098,6 +19102,7 @@ loc_03803080:
 	.word P2_BssStart + 0x25A0	; 03803080
 
 ; ===== function loc_03803084 =====
+P2_Code_03803084:
 	push {r4,lr}	; 03803084
 	sub sp,#0x8	; 03803086
 	add r4,r0,#0x0	; 03803088
@@ -19314,7 +19319,7 @@ pool_0380322C:
 pool_03803230:
 	.word 0x03807964	; 03803230
 pool_03803234:
-	.word 0x03803085	; 03803234
+	.word P2_Code_03803084 + 1	; 03803234
 pool_03803238:
 	.word 0x54505641	; 03803238
 
@@ -23504,6 +23509,7 @@ P2_Entry_0380F66C:
 	.byte 0xC0, 0x46	; 0380F672
 pool_0380F674:
 	.word P2_PxiChannel1UserCallbackSlot	; 0380F674
+P2_Code_0380F678:
 	.byte 0x00, 0xB5, 0x81, 0xB0, 0x04, 0x48, 0x00, 0x88, 0x02, 0x28, 0x02, 0xD1, 0x03, 0x48, 0x00, 0xF0	; 0380F678
 	.byte 0x29, 0xF8, 0x01, 0xB0, 0x08, 0xBC, 0x18, 0x47, 0x40, 0xFC, 0x7F, 0x02, 0x40, 0xE8, 0x3F, 0x02	; 0380F688
 	.byte 0x70, 0xB5, 0x0E, 0x1C, 0x00, 0x28, 0x13, 0xD0, 0x00, 0x25, 0x04, 0x1C, 0x0C, 0x34, 0x28, 0x01	; 0380F698

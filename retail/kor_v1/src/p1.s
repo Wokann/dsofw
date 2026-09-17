@@ -14358,7 +14358,7 @@ loc_0232673C:
 	.word P1_BssStart + 0x24FEC	; 0232673C
 pool_02326740:
 loc_02326740:
-	.word 0x02326745	; 02326740
+	.word loc_02326744 + 1	; 02326740
 
 ; ===== function loc_02326744 =====
 loc_02326744:
@@ -16784,7 +16784,7 @@ loc_0232779C:
 	bx r3	; 023277FA
 pool_023277FC:
 loc_023277FC:
-	.word 0x02327F68	; 023277FC
+	.word P1_Code_02327F68	; 023277FC
 pool_02327800:
 loc_02327800:
 	.word 0x023FEE00	; 02327800
@@ -17920,6 +17920,7 @@ pool_02327F64:
 loc_02327F64:
 	.word NdsCartHeaderRamAddress + 0x60	; 02327F64
 .arm
+P1_Code_02327F68:
 	mov r0,#0x0	; 02327F68
 	mcr p15,0x0,r0,c7,c6,0x0	; 02327F6C
 	ldr r1,[pool_02327FF4]	; 02327F70
@@ -20847,10 +20848,10 @@ loc_023295FC:
 	.word 0x00007FFF	; 023295FC
 
 ; ===== function loc_02329600 =====
-	push {r4,r5,r6,r7,lr}	; 02329600
 ; 已登记的双缓冲处理回调：先调度上下文的可选处理函数，再按模式继续处理。
 ; Registered two-buffer handler: call the context's optional worker, then continue by mode.
 .func P1_RunDualBufferCallback
+	push {r4,r5,r6,r7,lr}	; 02329600
 	sub sp,#0xc	; 02329602
 	add r7,r0,#0x0	; 02329604
 	str r1,[sp,#0x4]	; 02329606
@@ -20878,8 +20879,8 @@ loc_0232962E:
 	pop {r4,r5,r6,r7}	; 02329630
 	pop {r3}	; 02329632
 	bx r3	; 02329634
-	.byte 0x00, 0x00	; 02329638
 .endfunc
+	.byte 0x00, 0x00	; 02329638
 
 ; ===== function loc_02329638 =====
 loc_02329638:
@@ -20902,10 +20903,10 @@ loc_02329654:
 
 ; ===== function loc_02329658 =====
 loc_02329658:
-	push {r4,r5,r6,lr}	; 02329658
 ; 清零初始工作区、记录启动模式，并建立双缓冲处理对象。
 ; Clear initial workspace, record the start mode, and create the two-buffer processor.
 .func P1_StartDualBufferProcessor
+	push {r4,r5,r6,lr}	; 02329658
 	sub sp,#0x10	; 0232965A
 	add r5,r0,#0x0	; 0232965C
 	add r6,r1,#0x0	; 0232965E
@@ -20939,8 +20940,8 @@ loc_02329680:
 	pop {r4,r5,r6}	; 0232969A
 	pop {r3}	; 0232969C
 	bx r3	; 0232969E
-pool_023296A0:
 .endfunc
+pool_023296A0:
 loc_023296A0:
 	.word 0x0235A188	; 023296A0
 pool_023296A4:
@@ -27497,6 +27498,7 @@ loc_0232C53C:
 pool_0232C5AC:
 loc_0232C5AC:
 	.word P1_Data_02333B08	; 0232C5AC
+P1_Code_0232C5B0:
 	push {r4,r5,r6,r7}	; 0232C5B0
 	sub sp,#0xf0	; 0232C5B2
 	str r0,[sp,#0x0]	; 0232C5B4
@@ -28386,7 +28388,7 @@ loc_0232CBFC:
 	.word 0xC3D2E1F0	; 0232CBFC
 pool_0232CC00:
 loc_0232CC00:
-	.word 0x0232C5B1	; 0232CC00
+	.word P1_Code_0232C5B0 + 1	; 0232CC00
 
 ; ===== function loc_0232CC04 =====
 loc_0232CC04:
@@ -30014,6 +30016,7 @@ loc_0232D764:
 	.word 0x02362274	; 0232D764
 
 ; ===== function loc_0232D768 =====
+P1_Code_0232D768:
 	push {r4,lr}	; 0232D768
 	add r4,r0,#0x0	; 0232D76A
 	ldr r0,[r4,#0x8]	; 0232D76C
@@ -30570,7 +30573,7 @@ loc_0232DB34:
 	bx r3	; 0232DB4E
 pool_0232DB50:
 loc_0232DB50:
-	.word 0x0232D769	; 0232DB50
+	.word P1_Code_0232D768 + 1	; 0232DB50
 pool_0232DB54:
 loc_0232DB54:
 	.word 0x02362280	; 0232DB54
@@ -30776,12 +30779,12 @@ loc_0232DCCC:
 	.word 0x02362280	; 0232DCCC
 
 ; ===== function loc_0232DCD0 =====
-	push {r4,r5,r6,r7,lr}	; 0232DCD0
-	sub sp,#0xc	; 0232DCD2
-	add r5,r0,#0x0	; 0232DCD4
 ; 调度当前双缓冲区块；正常路径将两段缓冲区、块长度、用户值和上下文传给回调。
 ; Dispatch the current two-buffer block; normal path passes both buffers, size, user value and context.
 .func P1_DispatchDualBufferBlock
+	push {r4,r5,r6,r7,lr}	; 0232DCD0
+	sub sp,#0xc	; 0232DCD2
+	add r5,r0,#0x0	; 0232DCD4
 	ldr r0,[r5,#P1_DualBufferProcessorBlockByteCountOffset]	; 0232DCD6
 	ldr r1,[r5,#P1_DualBufferProcessorBlockCountOffset]	; 0232DCD8
 	blx P1_SignedDivMod	; 0232DCDA
@@ -30851,10 +30854,10 @@ loc_0232DD5A:
 	pop {r4,r5,r6,r7}	; 0232DD5C
 	pop {r3}	; 0232DD5E
 	bx r3	; 0232DD60
+.endfunc
 	.byte 0xC0, 0x46	; 0232DD64
 pool_0232DD64:
 loc_0232DD64:
-.endfunc
 	.word P1_DualBufferDeferredQueueGate	; 0232DD64
 pool_0232DD68:
 loc_0232DD68:
@@ -30868,12 +30871,12 @@ loc_0232DD70:
 
 ; ===== function loc_0232DD74 =====
 loc_0232DD74:
-	push {r4,lr}	; 0232DD74
-	sub sp,#0x8	; 0232DD76
-	ldr r4,[pool_0232DDD0]	; 0232DD78
 ; 将块索引归零、清零两段缓冲区并清理缓存，然后提交状态字段指定的控制请求。
 ; Reset block index, clear both buffers and clean cache, then submit the state-selected control request.
 .func P1_ResetDualBufferBuffers
+	push {r4,lr}	; 0232DD74
+	sub sp,#0x8	; 0232DD76
+	ldr r4,[pool_0232DDD0]	; 0232DD78
 	ldr r0,[r4,#P1_DualBufferProcessorActiveOffset]	; 0232DD7A
 	cmp r0,#0x0	; 0232DD7C
 	beq loc_0232DDC6	; 0232DD7E
@@ -30914,20 +30917,20 @@ loc_0232DDC6:
 	pop {r4}	; 0232DDC8
 	pop {r3}	; 0232DDCA
 	bx r3	; 0232DDCC
+.endfunc
 	.byte 0xC0, 0x46	; 0232DDD0
 pool_0232DDD0:
 loc_0232DDD0:
-.endfunc
 	.word P1_DualBufferProcessorState	; 0232DDD0
 
 ; ===== function loc_0232DDD4 =====
 loc_0232DDD4:
-	push {r4,lr}	; 0232DDD4
-	ldr r1,[pool_0232DE10]	; 0232DDD6
-	ldr r0,[r1,#P1_DualBufferProcessorActiveOffset]	; 0232DDD8
 ; 处理器有效时，依据其配置字段提交控制掩码并完成相关状态更新。
 ; When active, submit a control mask from configuration fields and complete related state updates.
 .func P1_ApplyDualBufferProcessorSettings
+	push {r4,lr}	; 0232DDD4
+	ldr r1,[pool_0232DE10]	; 0232DDD6
+	ldr r0,[r1,#P1_DualBufferProcessorActiveOffset]	; 0232DDD8
 	cmp r0,#0x0	; 0232DDDA
 	beq loc_0232DE08	; 0232DDDC
 	ldr r0,[r1,#P1_DualBufferProcessorControlMaskIndexOffset]	; 0232DDDE
@@ -30953,20 +30956,20 @@ loc_0232DE08:
 	pop {r4}	; 0232DE08
 	pop {r3}	; 0232DE0A
 	bx r3	; 0232DE0C
+.endfunc
 	.byte 0xC0, 0x46	; 0232DE10
 pool_0232DE10:
 loc_0232DE10:
-.endfunc
 	.word P1_DualBufferProcessorState	; 0232DE10
 
 ; ===== function loc_0232DE14 =====
 loc_0232DE14:
-	push {r4,r5,r6,r7,lr}	; 0232DE14
-	sub sp,#0x4	; 0232DE16
-	ldr r4,[pool_0232DEA4]	; 0232DE18
 ; 停止处理器关联服务，处理登记资源后清除其有效标志。
 ; Stop associated services, process registered resources, then clear the active flag.
 .func P1_StopDualBufferProcessor
+	push {r4,r5,r6,r7,lr}	; 0232DE14
+	sub sp,#0x4	; 0232DE16
+	ldr r4,[pool_0232DEA4]	; 0232DE18
 	ldr r0,[r4,#P1_DualBufferProcessorControlMaskIndexOffset]	; 0232DE1A
 	cmp r0,#0x0	; 0232DE1C
 	blt loc_0232DE24	; 0232DE1E
@@ -31036,10 +31039,10 @@ loc_0232DE96:
 	pop {r4,r5,r6,r7}	; 0232DE9C
 	pop {r3}	; 0232DE9E
 	bx r3	; 0232DEA0
+.endfunc
 	.byte 0xC0, 0x46	; 0232DEA4
 pool_0232DEA4:
 loc_0232DEA4:
-.endfunc
 	.word P1_DualBufferProcessorState	; 0232DEA4
 pool_0232DEA8:
 loc_0232DEA8:
@@ -31047,12 +31050,12 @@ loc_0232DEA8:
 
 ; ===== function loc_0232DEAC =====
 loc_0232DEAC:
-	push {r4,r5,r6,r7,lr}	; 0232DEAC
-	sub sp,#0x44	; 0232DEAE
-	str r0,[sp,#0x18]	; 0232DEB0
 ; 初始化双缓冲状态，保存缓冲区、分块信息、回调及其上下文，并登记块调度函数。
 ; Initialize two-buffer state, store buffers/block data/callback/context, and register the block dispatcher.
 .func P1_CreateDualBufferProcessor
+	push {r4,r5,r6,r7,lr}	; 0232DEAC
+	sub sp,#0x44	; 0232DEAE
+	str r0,[sp,#0x18]	; 0232DEB0
 	str r1,[sp,#0x1c]	; 0232DEB2
 	str r2,[sp,#0x20]	; 0232DEB4
 	str r3,[sp,#0x24]	; 0232DEB6
@@ -31324,10 +31327,10 @@ loc_0232E060:
 	pop {r4,r5,r6,r7}	; 0232E0C2
 	pop {r3}	; 0232E0C4
 	bx r3	; 0232E0C6
+.endfunc
 pool_0232E0C8:
 loc_0232E0C8:
 	.word P1_DualBufferProcessorState	; 0232E0C8
-.endfunc
 pool_0232E0CC:
 loc_0232E0CC:
 	.word 0x00FFB0FF	; 0232E0CC
@@ -31337,12 +31340,12 @@ loc_0232E0D0:
 
 ; ===== function loc_0232E0D4 =====
 loc_0232E0D4:
-	push {lr}	; 0232E0D4
-	sub sp,#0x4	; 0232E0D6
-	ldr r0,[pool_0232E0F0]	; 0232E0D8
 ; 仅当处理器已有效且模式字段为 1 时调用停止路径。
 ; Call the stop path only when the processor is active and its mode field is 1.
 .func P1_StopActiveDualBufferProcessor
+	push {lr}	; 0232E0D4
+	sub sp,#0x4	; 0232E0D6
+	ldr r0,[pool_0232E0F0]	; 0232E0D8
 	ldr r1,[r0,#P1_DualBufferProcessorActiveOffset]	; 0232E0DA
 	cmp r1,#0x0	; 0232E0DC
 	beq loc_0232E0EA	; 0232E0DE
@@ -31354,19 +31357,19 @@ loc_0232E0EA:
 	add sp,#0x4	; 0232E0EA
 	pop {r3}	; 0232E0EC
 	bx r3	; 0232E0EE
+.endfunc
 pool_0232E0F0:
 loc_0232E0F0:
 	.word P1_DualBufferProcessorState	; 0232E0F0
-.endfunc
 
 ; ===== function loc_0232E0F4 =====
 loc_0232E0F4:
-	push {r4,r5,r6,r7,lr}	; 0232E0F4
-	sub sp,#0x34	; 0232E0F6
-	add r5,r0,#0x0	; 0232E0F8
 ; 清零并清理首个缓冲区，然后将参数转交给双缓冲对象构造器。
 ; Clear and clean the first buffer, then forward parameters to the two-buffer constructor.
 .func P1_ConfigureDualBufferProcessor
+	push {r4,r5,r6,r7,lr}	; 0232E0F4
+	sub sp,#0x34	; 0232E0F6
+	add r5,r0,#0x0	; 0232E0F8
 	add r4,r1,#0x0	; 0232E0FA
 	add r6,r2,#0x0	; 0232E0FC
 	add r7,r3,#0x0	; 0232E0FE
@@ -31415,19 +31418,19 @@ loc_0232E116:
 	pop {r4,r5,r6,r7}	; 0232E15A
 	pop {r3}	; 0232E15C
 	bx r3	; 0232E15E
+.endfunc
 pool_0232E160:
 loc_0232E160:
 	.word P1_DualBufferProcessorState	; 0232E160
-.endfunc
 
 ; ===== function loc_0232E164 =====
 loc_0232E164:
-	push {r4,r5,lr}	; 0232E164
-	sub sp,#0x4	; 0232E166
-	ldr r4,[pool_0232E1C0]	; 0232E168
 ; 轮询处理状态；出现终止条件时停止，否则在状态值改变时向下层提交更新。
 ; Poll processor status; stop on termination, otherwise submit a changed state value to the lower layer.
 .func P1_UpdateDualBufferProcessorStatus
+	push {r4,r5,lr}	; 0232E164
+	sub sp,#0x4	; 0232E166
+	ldr r4,[pool_0232E1C0]	; 0232E168
 	ldr r0,[r4,#P1_DualBufferProcessorActiveOffset]	; 0232E16A
 	cmp r0,#0x0	; 0232E16C
 	beq loc_0232E1B6	; 0232E16E
@@ -31467,27 +31470,27 @@ loc_0232E1B6:
 	pop {r4,r5}	; 0232E1B8
 	pop {r3}	; 0232E1BA
 	bx r3	; 0232E1BC
+.endfunc
 	.byte 0xC0, 0x46	; 0232E1C0
 pool_0232E1C0:
 loc_0232E1C0:
-.endfunc
 	.word P1_DualBufferProcessorState	; 0232E1C0
 
 ; ===== function loc_0232E1C4 =====
 loc_0232E1C4:
-	mov r1,#0x0	; 0232E1C4
-	ldr r0,[pool_0232E1D0]	; 0232E1C6
-	str r1,[r0,#0x0]	; 0232E1C8
 ; 清除处理器有效标志及延后交付队列开关。
 ; Clear the processor active flag and deferred-delivery queue gate.
 .func P1_ClearDualBufferProcessorAndQueueState
+	mov r1,#0x0	; 0232E1C4
+	ldr r0,[pool_0232E1D0]	; 0232E1C6
+	str r1,[r0,#0x0]	; 0232E1C8
 	ldr r0,[pool_0232E1D4]	; 0232E1CA
 	str r1,[r0,#P1_DualBufferProcessorActiveOffset]	; 0232E1CC
 	bx lr	; 0232E1CE
+.endfunc
 pool_0232E1D0:
 loc_0232E1D0:
 	.word P1_DualBufferDeferredQueueGate	; 0232E1D0
-.endfunc
 pool_0232E1D4:
 loc_0232E1D4:
 	.word P1_DualBufferProcessorState	; 0232E1D4
@@ -32877,6 +32880,7 @@ loc_0232EB7C:
 loc_0232EB80:
 	ldrh r0,[r0,#0x4]	; 0232EB80
 	bx lr	; 0232EB82
+P1_Code_0232EB84:
 	ldr r1,[pool_0232EB90]	; 0232EB84
 	ldrh r2,[r1,#0x0]	; 0232EB86
 	ldr r0,[pool_0232EB94]	; 0232EB88
@@ -32889,6 +32893,7 @@ loc_0232EB90:
 pool_0232EB94:
 loc_0232EB94:
 	.word 0x00000800	; 0232EB94
+P1_Code_0232EB98:
 	ldr r1,[pool_0232EBA4]	; 0232EB98
 	ldrh r2,[r1,#0x0]	; 0232EB9A
 	ldr r0,[pool_0232EBA8]	; 0232EB9C
@@ -32913,7 +32918,7 @@ loc_0232EBB4:
 	.word 0x027FFFE0	; 0232EBB4
 pool_0232EBB8:
 loc_0232EBB8:
-	.word 0x0232EB99	; 0232EBB8
+	.word P1_Code_0232EB98 + 1	; 0232EBB8
 pool_0232EBBC:
 loc_0232EBBC:
 	.word loc_0232EC5C + 1	; 0232EBBC
@@ -32929,7 +32934,7 @@ loc_0232EBC8:
 	.word 0x027FFFE0	; 0232EBC8
 pool_0232EBCC:
 loc_0232EBCC:
-	.word 0x0232EB85	; 0232EBCC
+	.word P1_Code_0232EB84 + 1	; 0232EBCC
 pool_0232EBD0:
 loc_0232EBD0:
 	.word loc_0232ECCC + 1	; 0232EBD0
@@ -32945,10 +32950,11 @@ loc_0232EBDC:
 	.word 0x027FFFE0	; 0232EBDC
 pool_0232EBE0:
 loc_0232EBE0:
-	.word 0x0232EB99	; 0232EBE0
+	.word P1_Code_0232EB98 + 1	; 0232EBE0
 pool_0232EBE4:
 loc_0232EBE4:
 	.word loc_0232ED34 + 1	; 0232EBE4
+P1_Code_0232EBE8:
 	ldr r1,[pool_0232EBF4]	; 0232EBE8
 	ldrh r2,[r1,#0x0]	; 0232EBEA
 	mov r0,#0x80	; 0232EBEC
@@ -32958,6 +32964,7 @@ loc_0232EBE4:
 pool_0232EBF4:
 loc_0232EBF4:
 	.word REG_EXMEMCNT_ARM9	; 0232EBF4
+P1_Code_0232EBF8:
 	ldr r1,[pool_0232EC04]	; 0232EBF8
 	ldrh r2,[r1,#0x0]	; 0232EBFA
 	mov r0,#0x80	; 0232EBFC
@@ -32984,7 +32991,7 @@ loc_0232EC1C:
 	.word 0x027FFFE8	; 0232EC1C
 pool_0232EC20:
 loc_0232EC20:
-	.word 0x0232EBF9	; 0232EC20
+	.word P1_Code_0232EBF8 + 1	; 0232EC20
 
 ; ===== function loc_0232EC24 =====
 loc_0232EC24:
@@ -33002,7 +33009,7 @@ loc_0232EC38:
 	.word 0x027FFFE8	; 0232EC38
 pool_0232EC3C:
 loc_0232EC3C:
-	.word 0x0232EBE9	; 0232EC3C
+	.word P1_Code_0232EBE8 + 1	; 0232EC3C
 
 ; ===== function loc_0232EC40 =====
 loc_0232EC40:
@@ -33020,7 +33027,7 @@ loc_0232EC54:
 	.word 0x027FFFE8	; 0232EC54
 pool_0232EC58:
 loc_0232EC58:
-	.word 0x0232EBF9	; 0232EC58
+	.word P1_Code_0232EBF8 + 1	; 0232EC58
 loc_0232EC5C:
 	push {lr}	; 0232EC5C
 	sub sp,#0x4	; 0232EC5E
@@ -34860,6 +34867,7 @@ pool_0232F99C:
 loc_0232F99C:
 	.word P1_BssStart + 0x2EBFC	; 0232F99C
 .arm
+P1_Code_0232F9A0:
 	stmdb sp!,{lr}	; 0232F9A0
 	blx loc_0232FA04	; 0232F9A4
 	ldmia sp!,{lr}	; 0232F9A8
@@ -35303,7 +35311,7 @@ loc_0232FCCC:
 	.word TIMER1_CR	; 0232FCCC
 pool_0232FCD0:
 loc_0232FCD0:
-	.word 0x0232F9A0	; 0232FCD0
+	.word P1_Code_0232F9A0	; 0232FCD0
 pool_0232FCD4:
 loc_0232FCD4:
 	.word 0x0000FFFE	; 0232FCD4
@@ -38727,6 +38735,9 @@ loc_023317D0:
 
 ; ===== function loc_023317D4 =====
 loc_023317D4:
+; 填充请求记录的命令与四个参数，并将其追加到待处理链。
+; Fill a request record with a command and four arguments, then append it to the pending chain.
+.func P1_QueueRequestRecord
 	push {r4,r5,r6,r7,lr}	; 023317D4
 	sub sp,#0x4	; 023317D6
 	add r5,r0,#0x0	; 023317D8
@@ -38735,9 +38746,6 @@ loc_023317D4:
 	add r7,r3,#0x0	; 023317DE
 	mov r0,#0x1	; 023317E0
 	bl P1_AcquireRequestRecord	; 023317E2
-; 填充请求记录的命令与四个参数，并将其追加到待处理链。
-; Fill a request record with a command and four arguments, then append it to the pending chain.
-.func P1_QueueRequestRecord
 	cmp r0,#0x0	; 023317E6
 	beq loc_023317FA	; 023317E8
 	str r5,[r0,#P1_RequestRecordCommandOffset]	; 023317EA
@@ -38752,6 +38760,7 @@ loc_023317FA:
 	pop {r4,r5,r6,r7}	; 023317FC
 	pop {r3}	; 023317FE
 	bx r3	; 02331800
+.endfunc
 	.byte 0x00, 0x00	; 02331804
 
 ; ===== function loc_02331804 =====
@@ -38760,7 +38769,6 @@ loc_02331804:
 	sub sp,#0x4	; 02331806
 	add r1,r0,#0x0	; 02331808
 	mov r2,#0x0	; 0233180A
-.endfunc
 	str r2,[sp,#0x0]	; 0233180C
 	mov r0,#0x13	; 0233180E
 	add r3,r2,#0x0	; 02331810
@@ -39105,6 +39113,9 @@ loc_02331A50:
 
 ; ===== function loc_02331A70 =====
 loc_02331A70:
+; 从空闲请求链弹出首条记录；链耗尽时同步清空尾指针。
+; Pop the first record from the free request chain; clear its tail when exhausted.
+.func P1_PopFreeRequestRecord
 	ldr r1,[pool_02331A8C]	; 02331A70
 	ldr r0,[r1,#0x0]	; 02331A72
 	cmp r0,#0x0	; 02331A74
@@ -39113,9 +39124,6 @@ loc_02331A70:
 	bx lr	; 02331A7A
 loc_02331A7C:
 	ldr r2,[r0,#0x0]	; 02331A7C
-; 从空闲请求链弹出首条记录；链耗尽时同步清空尾指针。
-; Pop the first record from the free request chain; clear its tail when exhausted.
-.func P1_PopFreeRequestRecord
 	str r2,[r1,#0x0]	; 02331A7E
 	cmp r2,#0x0	; 02331A80
 	bne loc_02331A8A	; 02331A82
@@ -39124,6 +39132,7 @@ loc_02331A7C:
 	str r2,[r1,#0x0]	; 02331A88
 loc_02331A8A:
 	bx lr	; 02331A8A
+.endfunc
 pool_02331A8C:
 loc_02331A8C:
 	.word P1_RequestFreeHead	; 02331A8C
@@ -39132,7 +39141,6 @@ loc_02331A90:
 	.word P1_RequestFreeTail	; 02331A90
 
 ; ===== function loc_02331A94 =====
-.endfunc
 loc_02331A94:
 	push {r4,r5,lr}	; 02331A94
 	sub sp,#0x4	; 02331A96
@@ -39459,6 +39467,9 @@ loc_02331CC0:
 
 ; ===== function loc_02331CC4 =====
 loc_02331CC4:
+; 将请求记录追加到本地待处理单链表，并清零其 next 字段。
+; Append a request record to the local pending singly linked list and clear its next field.
+.func P1_EnqueueRequestRecord
 	ldr r2,[pool_02331CE0]	; 02331CC4
 	ldr r1,[r2,#0x0]	; 02331CC6
 	cmp r1,#0x0	; 02331CC8
@@ -39467,9 +39478,6 @@ loc_02331CC4:
 	str r0,[r1,#0x0]	; 02331CCE
 	str r0,[r2,#0x0]	; 02331CD0
 	b loc_02331CD8	; 02331CD2
-; 将请求记录追加到本地待处理单链表，并清零其 next 字段。
-; Append a request record to the local pending singly linked list and clear its next field.
-.func P1_EnqueueRequestRecord
 loc_02331CD4:
 	str r0,[r1,#0x0]	; 02331CD4
 	str r0,[r2,#0x0]	; 02331CD6
@@ -39477,6 +39485,7 @@ loc_02331CD8:
 	mov r1,#0x0	; 02331CD8
 	str r1,[r0,#P1_RequestRecordNextOffset]	; 02331CDA
 	bx lr	; 02331CDC
+.endfunc
 	.byte 0xC0, 0x46	; 02331CE0
 pool_02331CE0:
 loc_02331CE0:
@@ -39485,9 +39494,11 @@ pool_02331CE4:
 loc_02331CE4:
 	.word P1_RequestPendingHead	; 02331CE4
 
-.endfunc
 ; ===== function loc_02331CE8 =====
 loc_02331CE8:
+; 从空闲链取出请求记录；调用方要求时等待可用记录。
+; Take a request record from the free chain; wait for one when the caller requires it.
+.func P1_AcquireRequestRecord
 	push {r4,lr}	; 02331CE8
 	add r4,r0,#0x0	; 02331CEA
 	bl loc_0232F2BC	; 02331CEC
@@ -39496,9 +39507,6 @@ loc_02331CE8:
 	mov r0,#0x0	; 02331CF4
 	pop {r4}	; 02331CF6
 	pop {r3}	; 02331CF8
-; 从空闲链取出请求记录；调用方要求时等待可用记录。
-; Take a request record from the free chain; wait for one when the caller requires it.
-.func P1_AcquireRequestRecord
 	bx r3	; 02331CFA
 loc_02331CFC:
 	bl P1_PopFreeRequestRecord	; 02331CFC
@@ -39542,6 +39550,7 @@ loc_02331D4C:
 	pop {r4}	; 02331D4C
 	pop {r3}	; 02331D4E
 	bx r3	; 02331D50
+.endfunc
 	.byte 0x00, 0x00	; 02331D54
 
 ; ===== function loc_02331D54 =====
@@ -39550,7 +39559,6 @@ loc_02331D54:
 	sub sp,#0x4	; 02331D56
 	cmp r0,#0x0	; 02331D58
 	bne loc_02331D70	; 02331D5A
-.endfunc
 	bl loc_02331F74	; 02331D5C
 	ldr r1,[pool_02331DCC]	; 02331D60
 	ldr r1,[r1,#0x0]	; 02331D62
@@ -41469,7 +41477,7 @@ loc_02332A5E:
 	bx r3	; 02332A62
 pool_02332A64:
 loc_02332A64:
-	.word 0x02332E4D	; 02332A64
+	.word P1_Code_02332E4C + 1	; 02332A64
 
 ; ===== function loc_02332A68 =====
 loc_02332A68:
@@ -41500,7 +41508,7 @@ loc_02332A8E:
 	bx r3	; 02332A92
 pool_02332A94:
 loc_02332A94:
-	.word 0x02332E4D	; 02332A94
+	.word P1_Code_02332E4C + 1	; 02332A94
 
 ; ===== function loc_02332A98 =====
 loc_02332A98:
@@ -41573,7 +41581,7 @@ loc_02332B06:
 	bx r3	; 02332B0A
 pool_02332B0C:
 loc_02332B0C:
-	.word 0x02332E4D	; 02332B0C
+	.word P1_Code_02332E4C + 1	; 02332B0C
 
 ; ===== function loc_02332B10 =====
 loc_02332B10:
@@ -41631,7 +41639,7 @@ loc_02332B62:
 	bx r3	; 02332B66
 pool_02332B68:
 loc_02332B68:
-	.word 0x02332E4D	; 02332B68
+	.word P1_Code_02332E4C + 1	; 02332B68
 
 ; ===== function loc_02332B6C =====
 loc_02332B6C:
@@ -41701,7 +41709,7 @@ loc_02332BDE:
 	bx r3	; 02332BE2
 pool_02332BE4:
 loc_02332BE4:
-	.word 0x02332E4D	; 02332BE4
+	.word P1_Code_02332E4C + 1	; 02332BE4
 
 ; ===== function loc_02332BE8 =====
 loc_02332BE8:
@@ -42054,6 +42062,7 @@ loc_02332E42:
 pool_02332E48:
 loc_02332E48:
 	.word P1_BssStart + 0x30874	; 02332E48
+P1_Code_02332E4C:
 	str r0,[r1,#0x0]	; 02332E4C
 	bx lr	; 02332E4E
 
@@ -42109,6 +42118,7 @@ pool_02332EA4:
 loc_02332EA4:
 	.word P1_BssStart + 0x308BC	; 02332EA4
 .thumb
+P1_Code_02332EA8:
 	ldr r1,[pool_02332EB0]	; 02332EA8
 	str r0,[r1,#0x20]	; 02332EAA
 	bx lr	; 02332EAC
@@ -42835,7 +42845,7 @@ loc_023333B8:
 	.byte 0xC0, 0x46	; 023333C4
 pool_023333C4:
 loc_023333C4:
-	.word 0x02332EA9	; 023333C4
+	.word P1_Code_02332EA8 + 1	; 023333C4
 pool_023333C8:
 loc_023333C8:
 	.word P1_BssStart + 0x308BC	; 023333C8
@@ -42928,7 +42938,7 @@ loc_02333464:
 	.byte 0xC0, 0x46	; 02333470
 pool_02333470:
 loc_02333470:
-	.word 0x02332EA9	; 02333470
+	.word P1_Code_02332EA8 + 1	; 02333470
 pool_02333474:
 loc_02333474:
 	.word P1_BssStart + 0x308BC	; 02333474
@@ -43022,7 +43032,7 @@ loc_02333508:
 	.byte 0xC0, 0x46	; 02333514
 pool_02333514:
 loc_02333514:
-	.word 0x02332EA9	; 02333514
+	.word P1_Code_02332EA8 + 1	; 02333514
 pool_02333518:
 loc_02333518:
 	.word P1_BssStart + 0x308BC	; 02333518
@@ -43101,7 +43111,7 @@ loc_02333598:
 	.byte 0xC0, 0x46	; 023335A4
 pool_023335A4:
 loc_023335A4:
-	.word 0x02332EA9	; 023335A4
+	.word P1_Code_02332EA8 + 1	; 023335A4
 pool_023335A8:
 loc_023335A8:
 	.word P1_BssStart + 0x308BC	; 023335A8
@@ -43181,7 +43191,7 @@ loc_0233362C:
 	.byte 0xC0, 0x46	; 02333638
 pool_02333638:
 loc_02333638:
-	.word 0x02332EA9	; 02333638
+	.word P1_Code_02332EA8 + 1	; 02333638
 pool_0233363C:
 loc_0233363C:
 	.word P1_BssStart + 0x308BC	; 0233363C

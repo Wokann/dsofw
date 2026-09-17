@@ -6017,7 +6017,7 @@ loc_0235BCE8:
 	.word REG_BLDCNT_SUB	; 0235BCE8
 pool_0235BCEC:
 loc_0235BCEC:
-	.word 0x0235BFF5	; 0235BCEC
+	.word P3_Code_0235BFF4 + 1	; 0235BCEC
 pool_0235BCF0:
 loc_0235BCF0:
 	.word 0x02374098	; 0235BCF0
@@ -6434,6 +6434,7 @@ loc_0235BFF0:
 	.word UiBootZeroStart + 0x370	; 0235BFF0
 
 ; ===== function loc_0235BFF4 =====
+P3_Code_0235BFF4:
 	push {lr}	; 0235BFF4
 	sub sp,#0x4	; 0235BFF6
 	mov r0,#0x2	; 0235BFF8
@@ -26366,6 +26367,7 @@ loc_0236C3AA:
 	lsl r1,r7,#0x8	; 0236C3BA
 	lsr r4,r2,#0xf	; 0236C3BC
 	lsl r1,r7,#0x8	; 0236C3BE
+P3_Code_0236C3C0:
 	push {r4,lr}	; 0236C3C0
 	sub sp,#0x18	; 0236C3C2
 	add r4,r0,#0x0	; 0236C3C4
@@ -26603,7 +26605,7 @@ loc_0236C564:
 	.word 0x02390C08	; 0236C564
 pool_0236C568:
 loc_0236C568:
-	.word 0x0236C3C1	; 0236C568
+	.word P3_Code_0236C3C0 + 1	; 0236C568
 pool_0236C56C:
 loc_0236C56C:
 	.word 0x0236C241	; 0236C56C

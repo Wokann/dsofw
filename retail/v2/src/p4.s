@@ -2074,6 +2074,7 @@ pool_02300FE0:
 loc_02300FE0:
 	.word loc_037FCC04	; 02300FE0
 .thumb
+P4_Code_02300FE4:
 	push {r4,lr}	; 02300FE4
 	bl loc_023008B4	; 02300FE6
 	add r4,r0,#0x0	; 02300FEA
@@ -2436,7 +2437,7 @@ loc_02301290:
 	.word 0x000003E8	; 02301290
 pool_02301294:
 loc_02301294:
-	.word 0x02300FE5	; 02301294
+	.word P4_Code_02300FE4 + 1	; 02301294
 pool_02301298:
 loc_02301298:
 	.word 0x00002800	; 02301298
@@ -7122,7 +7123,7 @@ loc_02303388:
 	.word 0x00001518	; 02303388
 pool_0230338C:
 loc_0230338C:
-	.word 0x02303689	; 0230338C
+	.word P4_Code_02303688 + 1	; 0230338C
 
 ; ===== function loc_02303390 =====
 loc_02303390:
@@ -7190,7 +7191,7 @@ loc_023033F4:
 	.word 0x00000104	; 023033F4
 pool_023033F8:
 loc_023033F8:
-	.word 0x02303689	; 023033F8
+	.word P4_Code_02303688 + 1	; 023033F8
 
 ; ===== function loc_023033FC =====
 loc_023033FC:
@@ -7219,7 +7220,7 @@ loc_02303428:
 	.word 0x00001518	; 02303428
 pool_0230342C:
 loc_0230342C:
-	.word 0x02303689	; 0230342C
+	.word P4_Code_02303688 + 1	; 0230342C
 
 ; ===== function loc_02303430 =====
 loc_02303430:
@@ -7255,7 +7256,7 @@ loc_02303468:
 	.word 0x00000190	; 02303468
 pool_0230346C:
 loc_0230346C:
-	.word 0x02303689	; 0230346C
+	.word P4_Code_02303688 + 1	; 0230346C
 
 ; ===== function loc_02303470 =====
 loc_02303470:
@@ -7316,7 +7317,7 @@ loc_023034D8:
 	.word FirmwareWlAdjustedTimeSlot	; 023034D8
 pool_023034DC:
 loc_023034DC:
-	.word 0x02303689	; 023034DC
+	.word P4_Code_02303688 + 1	; 023034DC
 
 ; ===== function loc_023034E0 =====
 loc_023034E0:
@@ -7572,6 +7573,7 @@ loc_02303684:
 	.word FirmwareWlAdjustedTimeSlot	; 02303684
 
 ; ===== function loc_02303688 =====
+P4_Code_02303688:
 	push {lr}	; 02303688
 	sub sp,#0x4	; 0230368A
 	cmp r0,#0xd3	; 0230368C
@@ -7666,7 +7668,7 @@ loc_02303730:
 	.word 0x00001518	; 02303730
 pool_02303734:
 loc_02303734:
-	.word 0x02303689	; 02303734
+	.word P4_Code_02303688 + 1	; 02303734
 
 ; ===== function loc_02303738 =====
 loc_02303738:
@@ -12172,6 +12174,7 @@ loc_02305628:
 pool_0230562C:
 loc_0230562C:
 	.word 0x000082EA	; 0230562C
+P4_Code_02305630:
 	push {lr}	; 02305630
 	sub sp,#0x4	; 02305632
 	ldr r0,[pool_02305688]	; 02305634
@@ -12360,7 +12363,7 @@ loc_02305764:
 	.word 0x000005EC	; 02305764
 pool_02305768:
 loc_02305768:
-	.word 0x023057C9	; 02305768
+	.word P4_Code_023057C8 + 1	; 02305768
 
 ; ===== function loc_0230576C =====
 loc_0230576C:
@@ -12414,7 +12417,7 @@ loc_023057B4:
 	.word 0x000005EC	; 023057B4
 pool_023057B8:
 loc_023057B8:
-	.word 0x023057C9	; 023057B8
+	.word P4_Code_023057C8 + 1	; 023057B8
 
 ; ===== function loc_023057BC =====
 loc_023057BC:
@@ -12429,6 +12432,7 @@ pool_023057C4:
 loc_023057C4:
 	.word loc_03802514	; 023057C4
 .thumb
+P4_Code_023057C8:
 	mov r1,#0x0	; 023057C8
 	str r1,[r0,#0x0]	; 023057CA
 	bx lr	; 023057CC
@@ -14304,7 +14308,7 @@ loc_023064D0:
 	.word 0x00000314	; 023064D0
 pool_023064D4:
 loc_023064D4:
-	.word 0x02305631	; 023064D4
+	.word P4_Code_02305630 + 1	; 023064D4
 
 ; ===== function loc_023064D8 =====
 loc_023064D8:
@@ -16980,6 +16984,7 @@ loc_02307840:
 	.word 0x00000396	; 02307840
 
 ; ===== function loc_02307844 =====
+P4_Code_02307844:
 	push {r4,lr}	; 02307844
 	ldr r0,[pool_02307880]	; 02307846
 	bl loc_02304B4C	; 02307848
@@ -17537,7 +17542,7 @@ loc_02307C00:
 	.word REG_WIFI_RF_STATUS	; 02307C00
 pool_02307C04:
 loc_02307C04:
-	.word 0x02307845	; 02307C04
+	.word P4_Code_02307844 + 1	; 02307C04
 pool_02307C08:
 loc_02307C08:
 	.word 0x000003B8	; 02307C08
@@ -22268,6 +22273,7 @@ loc_02309C7C:
 pool_02309C80:
 loc_02309C80:
 	.word loc_0230997C + 1	; 02309C80
+P4_Code_02309C84:
 	mov r2,#0x83	; 02309C84
 	ldr r0,[pool_02309C98]	; 02309C86
 	ldr r1,[r0,#0x0]	; 02309C88
@@ -22533,7 +22539,7 @@ loc_02309E68:
 	.word 0x00008000	; 02309E68
 pool_02309E6C:
 loc_02309E6C:
-	.word 0x02309C85	; 02309E6C
+	.word P4_Code_02309C84 + 1	; 02309E6C
 pool_02309E70:
 loc_02309E70:
 	.word REG_WIFI_RF_PINS	; 02309E70
@@ -22556,6 +22562,7 @@ loc_02309E80:
 .thumb
 	bx lr	; 02309E84
 	.byte 0x00, 0x00	; 02309E88
+P4_Code_02309E88:
 	mov r2,#0x7	; 02309E88
 	ldr r3,[pool_02309EA4]	; 02309E8A
 	ldr r1,[r3,#0x0]	; 02309E8C
@@ -22644,7 +22651,8 @@ loc_02309F28:
 	.word 0x000003BC	; 02309F28
 pool_02309F2C:
 loc_02309F2C:
-	.word 0x02309E89	; 02309F2C
+	.word P4_Code_02309E88 + 1	; 02309F2C
+P4_Code_02309F30:
 	mov r2,#0x7	; 02309F30
 	ldr r3,[pool_02309F4C]	; 02309F32
 	ldr r1,[r3,#0x0]	; 02309F34
@@ -22741,7 +22749,8 @@ loc_02309FE0:
 	.word 0x000003BC	; 02309FE0
 pool_02309FE4:
 loc_02309FE4:
-	.word 0x02309F31	; 02309FE4
+	.word P4_Code_02309F30 + 1	; 02309FE4
+P4_Code_02309FE8:
 	mov r2,#0x7	; 02309FE8
 	ldr r3,[pool_0230A004]	; 02309FEA
 	ldr r1,[r3,#0x0]	; 02309FEC
@@ -22822,7 +22831,8 @@ loc_0230A070:
 	.word 0x000003BC	; 0230A070
 pool_0230A074:
 loc_0230A074:
-	.word 0x02309FE9	; 0230A074
+	.word P4_Code_02309FE8 + 1	; 0230A074
+P4_Code_0230A078:
 	ldr r0,[pool_0230A0B0]	; 0230A078
 	ldr r1,[r0,#0x0]	; 0230A07A
 	ldr r0,[pool_0230A0B4]	; 0230A07C
@@ -23039,7 +23049,7 @@ loc_0230A1FC:
 	.word 0x00000314	; 0230A1FC
 pool_0230A200:
 loc_0230A200:
-	.word 0x0230A079	; 0230A200
+	.word P4_Code_0230A078 + 1	; 0230A200
 pool_0230A204:
 loc_0230A204:
 	.word 0x000002F2	; 0230A204
@@ -23984,19 +23994,19 @@ loc_0230BCF8:
 	.word 0x00000414	; 0230BCF8
 pool_0230BCFC:
 loc_0230BCFC:
-	.word 0x0230D359	; 0230BCFC
+	.word P4_Code_0230D358 + 1	; 0230BCFC
 pool_0230BD00:
 loc_0230BD00:
 	.word 0x000003F4	; 0230BD00
 pool_0230BD04:
 loc_0230BD04:
-	.word 0x0230D039	; 0230BD04
+	.word P4_Code_0230D038 + 1	; 0230BD04
 pool_0230BD08:
 loc_0230BD08:
 	.word 0x00000408	; 0230BD08
 pool_0230BD0C:
 loc_0230BD0C:
-	.word 0x0230CFD9	; 0230BD0C
+	.word P4_Code_0230CFD8 + 1	; 0230BD0C
 pool_0230BD10:
 loc_0230BD10:
 	.word 0x0000041C	; 0230BD10
@@ -24038,7 +24048,7 @@ loc_0230BD40:
 	.word 0x04804330	; 0230BD40
 pool_0230BD44:
 loc_0230BD44:
-	.word 0x0230CF1D	; 0230BD44
+	.word P4_Code_0230CF1C + 1	; 0230BD44
 pool_0230BD48:
 loc_0230BD48:
 	.word 0x04804234	; 0230BD48
@@ -26592,6 +26602,7 @@ loc_0230CF18:
 	.word 0x0000055C	; 0230CF18
 
 ; ===== function loc_0230CF1C =====
+P4_Code_0230CF1C:
 	push {r4,lr}	; 0230CF1C
 	add r2,r0,#0x0	; 0230CF1E
 	add r4,r1,#0x0	; 0230CF20
@@ -26697,6 +26708,7 @@ loc_0230CFD4:
 	.word 0x00000178	; 0230CFD4
 
 ; ===== function loc_0230CFD8 =====
+P4_Code_0230CFD8:
 	push {r4,r5,lr}	; 0230CFD8
 	sub sp,#0x4	; 0230CFDA
 	ldr r1,[pool_0230D02C]	; 0230CFDC
@@ -26752,6 +26764,7 @@ loc_0230D034:
 	.word 0x0000040C	; 0230D034
 
 ; ===== function loc_0230D038 =====
+P4_Code_0230D038:
 	push {r4,r5,r6,r7,lr}	; 0230D038
 	sub sp,#0x4	; 0230D03A
 	add r5,r0,#0x0	; 0230D03C
@@ -27182,6 +27195,7 @@ loc_0230D354:
 	.word 0x0000016C	; 0230D354
 
 ; ===== function loc_0230D358 =====
+P4_Code_0230D358:
 	push {r4,r5,r6,r7,lr}	; 0230D358
 	sub sp,#0x4	; 0230D35A
 	add r5,r0,#0x0	; 0230D35C

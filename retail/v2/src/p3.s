@@ -6014,7 +6014,7 @@ loc_0235BD08:
 	.word REG_BLDCNT_SUB	; 0235BD08
 pool_0235BD0C:
 loc_0235BD0C:
-	.word 0x0235C015	; 0235BD0C
+	.word P3_Code_0235C014 + 1	; 0235BD0C
 pool_0235BD10:
 loc_0235BD10:
 	.word 0x023740D8	; 0235BD10
@@ -6431,6 +6431,7 @@ loc_0235C010:
 	.word UiBootZeroStart + 0x370	; 0235C010
 
 ; ===== function loc_0235C014 =====
+P3_Code_0235C014:
 	push {lr}	; 0235C014
 	sub sp,#0x4	; 0235C016
 	mov r0,#0x2	; 0235C018
