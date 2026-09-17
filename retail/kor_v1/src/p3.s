@@ -4100,7 +4100,7 @@ loc_02366910:
 	.word 0x0237C81C	; 02366910
 pool_02366914:
 loc_02366914:
-	.word 0x027FF864	; 02366914
+	.word FirmwareBootSharedAddress + BootSharedSettingsInvalidOffset	; 02366914
 pool_02366918:
 loc_02366918:
 	.word FirmwareUserSettingsSharedAddress + UserSettingsOptionsOffset	; 02366918
@@ -4997,7 +4997,7 @@ loc_02366F94:
 	.word P3_Data_0237BCA8	; 02366F94
 pool_02366F98:
 loc_02366F98:
-	.word 0x027FF864	; 02366F98
+	.word FirmwareBootSharedAddress + BootSharedSettingsInvalidOffset	; 02366F98
 pool_02366F9C:
 loc_02366F9C:
 	.word P1_BssStart + 0x25B58	; 02366F9C
@@ -6238,7 +6238,7 @@ loc_02367878:
 	.word 0x0237BD6C	; 02367878
 pool_0236787C:
 loc_0236787C:
-	.word 0x027FF864	; 0236787C
+	.word FirmwareBootSharedAddress + BootSharedSettingsInvalidOffset	; 0236787C
 pool_02367880:
 loc_02367880:
 	.word FirmwareUserSettingsSharedAddress + UserSettingsThemeOffset	; 02367880
@@ -7803,7 +7803,7 @@ loc_023683EC:
 	.word P3_Data_0237BE6C	; 023683EC
 pool_023683F0:
 loc_023683F0:
-	.word 0x027FF864	; 023683F0
+	.word FirmwareBootSharedAddress + BootSharedSettingsInvalidOffset	; 023683F0
 pool_023683F4:
 loc_023683F4:
 	.word 0x027FFCD8	; 023683F4
@@ -8997,7 +8997,7 @@ loc_02368D00:
 	.word 0x00000400	; 02368D00
 pool_02368D04:
 loc_02368D04:
-	.word 0x027FF864	; 02368D04
+	.word FirmwareBootSharedAddress + BootSharedSettingsInvalidOffset	; 02368D04
 pool_02368D08:
 loc_02368D08:
 	.word 0x027FFC86	; 02368D08
@@ -10105,7 +10105,7 @@ loc_02369590:
 	.word 0x00000400	; 02369590
 pool_02369594:
 loc_02369594:
-	.word 0x027FF864	; 02369594
+	.word FirmwareBootSharedAddress + BootSharedSettingsInvalidOffset	; 02369594
 pool_02369598:
 loc_02369598:
 	.word 0x027FFC9C	; 02369598
@@ -11750,7 +11750,7 @@ loc_0236A18C:
 	.byte 0xC0, 0x46	; 0236A1AC
 pool_0236A1AC:
 loc_0236A1AC:
-	.word 0x027FF864	; 0236A1AC
+	.word FirmwareBootSharedAddress + BootSharedSettingsInvalidOffset	; 0236A1AC
 pool_0236A1B0:
 loc_0236A1B0:
 	.word 0x027FFCD2	; 0236A1B0
@@ -12326,7 +12326,7 @@ loc_0236A604:
 	.word FirmwareUserSettingsSharedAddress + UserSettingsRtcOffset	; 0236A604
 pool_0236A608:
 loc_0236A608:
-	.word 0x027FF864	; 0236A608
+	.word FirmwareBootSharedAddress + BootSharedSettingsInvalidOffset	; 0236A608
 pool_0236A60C:
 loc_0236A60C:
 	.word 0x027FFC80	; 0236A60C
@@ -13608,7 +13608,7 @@ loc_0236AFD0:
 	.word FirmwareUserSettingsSharedAddress + UserSettingsRtcOffset	; 0236AFD0
 pool_0236AFD4:
 loc_0236AFD4:
-	.word 0x027FF864	; 0236AFD4
+	.word FirmwareBootSharedAddress + BootSharedSettingsInvalidOffset	; 0236AFD4
 pool_0236AFD8:
 loc_0236AFD8:
 	.word 0x027FFC80	; 0236AFD8
@@ -14601,7 +14601,7 @@ loc_0236B764:
 	.word 0x00001000	; 0236B764
 pool_0236B768:
 loc_0236B768:
-	.word 0x027FF864	; 0236B768
+	.word FirmwareBootSharedAddress + BootSharedSettingsInvalidOffset	; 0236B768
 pool_0236B76C:
 loc_0236B76C:
 	.word 0x00002000	; 0236B76C
@@ -14948,7 +14948,7 @@ loc_0236BA18:
 	.word 0x0000FFFF	; 0236BA18
 pool_0236BA1C:
 loc_0236BA1C:
-	.word 0x027FF864	; 0236BA1C
+	.word FirmwareBootSharedAddress + BootSharedSettingsInvalidOffset	; 0236BA1C
 pool_0236BA20:
 loc_0236BA20:
 	.word FirmwareUserSettingsSharedAddress + UserSettingsBirthMonthOffset	; 0236BA20
@@ -15612,7 +15612,7 @@ loc_0236BF04:
 	.word 0x0237C560	; 0236BF04
 pool_0236BF08:
 loc_0236BF08:
-	.word 0x027FF864	; 0236BF08
+	.word FirmwareBootSharedAddress + BootSharedSettingsInvalidOffset	; 0236BF08
 pool_0236BF0C:
 loc_0236BF0C:
 	.word FirmwareUserSettingsSharedAddress + UserSettingsOptionsOffset	; 0236BF0C

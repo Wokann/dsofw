@@ -14967,7 +14967,7 @@ loc_02326B5C:
 	.word 0x022C0000	; 02326B5C
 pool_02326B60:
 loc_02326B60:
-	.word 0x027FF860	; 02326B60
+	.word FirmwareBootSharedAddress	; 02326B60
 pool_02326B64:
 loc_02326B64:
 	.word 0x0000FFFF	; 02326B64
@@ -15042,19 +15042,19 @@ loc_02326BB4:
 .endfunc
 pool_02326BD8:
 loc_02326BD8:
-	.word 0x027FF800	; 02326BD8
+	.word FirmwareBootInfoScratchAddress	; 02326BD8
 pool_02326BDC:
 loc_02326BDC:
 	.word 0x027FFC00	; 02326BDC
 pool_02326BE0:
 loc_02326BE0:
-	.word 0x027FF850	; 02326BE0
+	.word FirmwareBootInfoScratchAddress + BootScratchBios7CrcSourceOffset	; 02326BE0
 pool_02326BE4:
 loc_02326BE4:
 	.word FirmwareBootInfoAddress + BootInfoBios7Crc16Offset	; 02326BE4
 pool_02326BE8:
 loc_02326BE8:
-	.word 0x027FF818	; 02326BE8
+	.word FirmwareBootInfoScratchAddress + BootScratchRtcSourceOffset	; 02326BE8
 pool_02326BEC:
 loc_02326BEC:
 	.word FirmwareBootInfoAddress + BootInfoRtcRandomOffset	; 02326BEC
@@ -15238,7 +15238,7 @@ loc_02326D28:
 	.word NdsCartHeaderRamAddress + 0x15E	; 02326D28
 pool_02326D2C:
 loc_02326D2C:
-	.word 0x027FF808	; 02326D2C
+	.word FirmwareBootInfoScratchAddress + BootInfoCardHeaderCrc16Offset	; 02326D2C
 
 ; ===== function loc_02326D30 =====
 loc_02326D30:
@@ -15448,7 +15448,7 @@ loc_02326E90:
 	push {lr}	; 02326E90
 	sub sp,#0x4	; 02326E92
 	ldr r0,[pool_02326F04]	; 02326E94
-	bl loc_02328014	; 02326E96
+	bl P1_LoadAndSelectUserSettings	; 02326E96
 	ldr r1,[pool_02326F08]	; 02326E9A
 	str r0,[r1,#0x0]	; 02326E9C
 	ldr r0,[r1,#0x0]	; 02326E9E
@@ -15507,7 +15507,7 @@ loc_02326F04:
 	.word FirmwareUserSettingsSharedAddress	; 02326F04
 pool_02326F08:
 loc_02326F08:
-	.word 0x027FF864	; 02326F08
+	.word FirmwareBootSharedAddress + BootSharedSettingsInvalidOffset	; 02326F08
 pool_02326F0C:
 loc_02326F0C:
 	.word 0x0100001C	; 02326F0C
@@ -15525,7 +15525,7 @@ loc_02326F1C:
 	.word FirmwareUserSettingsSharedAddress + UserSettingsBirthDayOffset	; 02326F1C
 pool_02326F20:
 loc_02326F20:
-	.word 0x027FF818	; 02326F20
+	.word FirmwareBootInfoScratchAddress + BootScratchRtcSourceOffset	; 02326F20
 pool_02326F24:
 loc_02326F24:
 	.word 0xFFFFBFFF	; 02326F24
@@ -15564,7 +15564,7 @@ loc_02326F4C:
 .definelabel P1_TransitionRuntimeEntry, P1_TransitionItcmBase + (P1_TransitionLoadEntry - P1_TransitionCopySource)
 pool_02326F74:
 loc_02326F74:
-	.word 0x027FF880	; 02326F74
+	.word FirmwareBootSharedAddress + BootSharedArm9StateOffset	; 02326F74
 pool_02326F78:
 loc_02326F78:
 	.word 0x027FF884	; 02326F78
@@ -15684,7 +15684,7 @@ loc_0232705C:
 	.word FirmwareUserSettingsSharedAddress + UserSettingsOptionsOffset	; 0232705C
 pool_02327060:
 loc_02327060:
-	.word 0x027FF864	; 02327060
+	.word FirmwareBootSharedAddress + BootSharedSettingsInvalidOffset	; 02327060
 pool_02327064:
 loc_02327064:
 	.word REG_IME	; 02327064
@@ -15946,7 +15946,7 @@ loc_02327234:
 	.word REG_IPC_SYNC	; 02327234
 pool_02327238:
 loc_02327238:
-	.word 0x027FF880	; 02327238
+	.word FirmwareBootSharedAddress + BootSharedArm9StateOffset	; 02327238
 pool_0232723C:
 loc_0232723C:
 	.word 0x00000F00	; 0232723C
@@ -16084,7 +16084,7 @@ loc_02327300:
 	.word 0x027FFEC0	; 02327300
 pool_02327304:
 loc_02327304:
-	.word 0x027FF812	; 02327304
+	.word FirmwareBootInfoScratchAddress + BootInfoCardSecureDisableOffset	; 02327304
 pool_02327308:
 loc_02327308:
 	.word 0x80000020	; 02327308
@@ -16380,7 +16380,7 @@ loc_0232752A:
 	bx r3	; 02327532
 pool_02327534:
 loc_02327534:
-	.word 0x027FF860	; 02327534
+	.word FirmwareBootSharedAddress	; 02327534
 pool_02327538:
 loc_02327538:
 	.word 0x027FFEC0	; 02327538
@@ -16504,7 +16504,7 @@ loc_023275F0:
 	.word 0x00001000	; 023275F0
 pool_023275F4:
 loc_023275F4:
-	.word 0x027FF880	; 023275F4
+	.word FirmwareBootSharedAddress + BootSharedArm9StateOffset	; 023275F4
 pool_023275F8:
 loc_023275F8:
 	.word REG_POSTFLG	; 023275F8
@@ -16616,7 +16616,7 @@ loc_023276A4:
 	.word 0x0380F000	; 023276A4
 pool_023276A8:
 loc_023276A8:
-	.word 0x027FF860	; 023276A8
+	.word FirmwareBootSharedAddress	; 023276A8
 pool_023276AC:
 loc_023276AC:
 	.word 0x022C0000	; 023276AC
@@ -16719,13 +16719,13 @@ loc_02327758:
 	.word P1_BssStart + 0x24E28	; 02327758
 pool_0232775C:
 loc_0232775C:
-	.word 0x027FF880	; 0232775C
+	.word FirmwareBootSharedAddress + BootSharedArm9StateOffset	; 0232775C
 pool_02327760:
 loc_02327760:
 	.word 0x027FF800	; 02327760
 pool_02327764:
 loc_02327764:
-	.word 0x027FF814	; 02327764
+	.word FirmwareBootInfoScratchAddress + BootInfoHasSerialDebuggerOffset	; 02327764
 pool_02327768:
 loc_02327768:
 	.word NdsCartHeaderRamAddress + 0x60	; 02327768
@@ -17040,7 +17040,7 @@ loc_02327964:
 	.word REG_GCDATAIN	; 02327964
 pool_02327968:
 loc_02327968:
-	.word 0x027FF800	; 02327968
+	.word FirmwareBootInfoScratchAddress	; 02327968
 pool_0232796C:
 loc_0232796C:
 	.word FirmwareBootSharedAddress + BootSharedEventFlagsOffset	; 0232796C
@@ -17677,6 +17677,9 @@ loc_02327E50:
 
 ; ===== function loc_02327E54 =====
 loc_02327E54:
+; 检查副本并按更新计数选择；返回 0 成功，1 表示两份均无效。
+; Validate/select by update counter; return 0 on success, 1 if neither copy is valid.
+.func P1_SelectValidUserSettingsCopy
 	push {r4,r5,r6,r7,lr}	; 02327E54
 	sub sp,#0x4	; 02327E56
 	add r7,r0,#0x0	; 02327E58
@@ -17769,6 +17772,7 @@ loc_02327EF6:
 	pop {r4,r5,r6,r7}	; 02327EFA
 	pop {r3}	; 02327EFC
 	bx r3	; 02327EFE
+.endfunc
 pool_02327F00:
 loc_02327F00:
 	.word 0x0000FFFF	; 02327F00
@@ -17787,7 +17791,7 @@ loc_02327F08:
 	cmp r0,#0xff	; 02327F14
 	bne loc_02327F28	; 02327F16
 	mov r0,#0x0	; 02327F18
-	bl loc_02328014	; 02327F1A
+	bl P1_LoadAndSelectUserSettings	; 02327F1A
 	cmp r0,#0x0	; 02327F1E
 	beq loc_02327F28	; 02327F20
 	mov r1,#0x0	; 02327F22
@@ -17928,6 +17932,9 @@ loc_02328010:
 
 ; ===== function loc_02328014 =====
 loc_02328014:
+; 读取两份用户设置并选用有效副本；返回 1 表示无可用副本。
+; Read both settings copies and select one; return 1 when neither is usable.
+.func P1_LoadAndSelectUserSettings
 	push {r4,r5,r6,lr}	; 02328014
 	add r5,r0,#0x0	; 02328016
 	mov r4,#0x0	; 02328018
@@ -17951,7 +17958,7 @@ loc_02328014:
 	ldr r1,[pool_0232809C]	; 02328042
 	blx P1_InvalidateDataCacheRange	; 02328044
 	lsl r0,r6,#0	; 02328048
-	bl loc_02327E54	; 0232804A
+	bl P1_SelectValidUserSettingsCopy	; 0232804A
 	cmp r0,#0x0	; 0232804E
 	beq loc_0232805A	; 02328050
 	mov r4,#0x1	; 02328052
@@ -17985,6 +17992,7 @@ loc_02328088:
 	pop {r4,r5,r6}	; 0232808A
 	pop {r3}	; 0232808C
 	bx r3	; 0232808E
+.endfunc
 pool_02328090:
 loc_02328090:
 	.word 0x023565E0	; 02328090
@@ -18108,7 +18116,7 @@ loc_02328148:
 	.byte 0xC0, 0x46	; 02328158
 pool_02328158:
 loc_02328158:
-	.word 0x080000B4	; 02328158
+	.word Slot2BusBaseAddress + 0xB4	; 02328158
 pool_0232815C:
 loc_0232815C:
 	.word 0x09FE1FE0	; 0232815C
@@ -18117,7 +18125,7 @@ loc_02328160:
 	.word 0x09FFFFE0	; 02328160
 pool_02328164:
 loc_02328164:
-	.word 0x0800009E	; 02328164
+	.word Slot2BusBaseAddress + 0x9E	; 02328164
 pool_02328168:
 loc_02328168:
 	.word 0x02330D34	; 02328168
@@ -20066,7 +20074,7 @@ loc_02329100:
 	.byte 0xC0, 0x46	; 02329108
 pool_02329108:
 loc_02329108:
-	.word 0x08000004	; 02329108
+	.word Slot2BusBaseAddress + 0x4	; 02329108
 
 ; ===== function loc_0232910C =====
 loc_0232910C:
@@ -26615,10 +26623,10 @@ loc_0232C2F0:
 	.word P1_BssStart + 0x26680	; 0232C2F0
 pool_0232C2F4:
 loc_0232C2F4:
-	.word 0x08000000	; 0232C2F4
+	.word Slot2BusBaseAddress	; 0232C2F4
 pool_0232C2F8:
 loc_0232C2F8:
-	.word 0x0801FFFE	; 0232C2F8
+	.word Slot2BusBaseAddress + 0x1FFFE	; 0232C2F8
 
 ; ===== function loc_0232C2FC =====
 loc_0232C2FC:
@@ -36109,7 +36117,7 @@ pool_01FF8074:
 pool_01FF8078:
 	.word 0x00003130	; 01FF8078
 pool_01FF807C:
-	.word 0x08000180	; 01FF807C
+	.word Slot2BusBaseAddress + 0x180	; 01FF807C
 pool_01FF8080:
 	.word P1_ItcmRuntimeStart	; 01FF8080
 P1_Runtime_01FF8084:
@@ -36188,13 +36196,13 @@ P1_Runtime_01FF810A:
 	bx r3	; 01FF811C
 	.byte 0xC0, 0x46	; 01FF811E
 pool_01FF8120:
-	.word 0x08010420	; 01FF8120
+	.word Slot2BusBaseAddress + 0x10420	; 01FF8120
 pool_01FF8124:
 	.word 0x00004000	; 01FF8124
 pool_01FF8128:
 	.word 0x00000400	; 01FF8128
 pool_01FF812C:
-	.word 0x0801040A	; 01FF812C
+	.word Slot2BusBaseAddress + 0x1040A	; 01FF812C
 
 ; 按 IE/IF 选择并应答 IRQ，再调用对应回调。
 ; Select and acknowledge an enabled IRQ, then dispatch its callback.

@@ -15443,7 +15443,7 @@ loc_02326EEC:
 	.word 0x022C0000	; 02326EEC
 pool_02326EF0:
 loc_02326EF0:
-	.word 0x027FF860	; 02326EF0
+	.word FirmwareBootSharedAddress	; 02326EF0
 pool_02326EF4:
 loc_02326EF4:
 	.word 0x0000FFFF	; 02326EF4
@@ -15572,19 +15572,19 @@ loc_02326FAC:
 .endfunc
 pool_02326FD0:
 loc_02326FD0:
-	.word 0x027FF800	; 02326FD0
+	.word FirmwareBootInfoScratchAddress	; 02326FD0
 pool_02326FD4:
 loc_02326FD4:
 	.word 0x027FFC00	; 02326FD4
 pool_02326FD8:
 loc_02326FD8:
-	.word 0x027FF850	; 02326FD8
+	.word FirmwareBootInfoScratchAddress + BootScratchBios7CrcSourceOffset	; 02326FD8
 pool_02326FDC:
 loc_02326FDC:
 	.word FirmwareBootInfoAddress + BootInfoBios7Crc16Offset	; 02326FDC
 pool_02326FE0:
 loc_02326FE0:
-	.word 0x027FF818	; 02326FE0
+	.word FirmwareBootInfoScratchAddress + BootScratchRtcSourceOffset	; 02326FE0
 pool_02326FE4:
 loc_02326FE4:
 	.word FirmwareBootInfoAddress + BootInfoRtcRandomOffset	; 02326FE4
@@ -15768,7 +15768,7 @@ loc_02327120:
 	.word NdsCartHeaderRamAddress + 0x15E	; 02327120
 pool_02327124:
 loc_02327124:
-	.word 0x027FF808	; 02327124
+	.word FirmwareBootInfoScratchAddress + BootInfoCardHeaderCrc16Offset	; 02327124
 
 ; ===== function loc_02327128 =====
 loc_02327128:
@@ -16142,7 +16142,7 @@ loc_023273A8:
 	sub sp,#0x28	; 023273AA
 	mov r4,#0x0	; 023273AC
 	ldr r0,[pool_0232746C]	; 023273AE
-	bl loc_023286E8	; 023273B0
+	bl P1_LoadAndSelectUserSettings	; 023273B0
 	ldr r1,[pool_02327470]	; 023273B4
 	str r0,[r1,#0x0]	; 023273B6
 	ldr r0,[r1,#0x0]	; 023273B8
@@ -16239,7 +16239,7 @@ loc_0232746C:
 	.word FirmwareUserSettingsSharedAddress	; 0232746C
 pool_02327470:
 loc_02327470:
-	.word 0x027FF864	; 02327470
+	.word FirmwareBootSharedAddress + BootSharedSettingsInvalidOffset	; 02327470
 pool_02327474:
 loc_02327474:
 	.word 0x0100001C	; 02327474
@@ -16263,7 +16263,7 @@ loc_0232748C:
 	.word 0x01000022	; 0232748C
 pool_02327490:
 loc_02327490:
-	.word 0x027FF818	; 02327490
+	.word FirmwareBootInfoScratchAddress + BootScratchRtcSourceOffset	; 02327490
 pool_02327494:
 loc_02327494:
 	.word 0xFFFFBFFF	; 02327494
@@ -16296,7 +16296,7 @@ loc_023274BC:
 	bx lr	; 023274BE
 pool_023274C0:
 loc_023274C0:
-	.word 0x027FF878	; 023274C0
+	.word FirmwareBootSharedAddress + BootSharedConsoleTypeOffset	; 023274C0
 .arm
 ; 此段随后覆盖复制至 ITCM；运行入口不是 CRT 初始内容。
 ; This stub later replaces ITCM contents; its entry is not the CRT image.
@@ -16326,7 +16326,7 @@ loc_023274E0:
 .definelabel P1_TransitionRuntimeEntry, P1_TransitionItcmBase + (P1_TransitionLoadEntry - P1_TransitionCopySource)
 pool_02327508:
 loc_02327508:
-	.word 0x027FF880	; 02327508
+	.word FirmwareBootSharedAddress + BootSharedArm9StateOffset	; 02327508
 pool_0232750C:
 loc_0232750C:
 	.word 0x027FF884	; 0232750C
@@ -16446,7 +16446,7 @@ loc_023275F0:
 	.word FirmwareUserSettingsSharedAddress + UserSettingsOptionsOffset	; 023275F0
 pool_023275F4:
 loc_023275F4:
-	.word 0x027FF864	; 023275F4
+	.word FirmwareBootSharedAddress + BootSharedSettingsInvalidOffset	; 023275F4
 pool_023275F8:
 loc_023275F8:
 	.word REG_IME	; 023275F8
@@ -16760,7 +16760,7 @@ loc_02327818:
 	.word REG_IPC_SYNC	; 02327818
 pool_0232781C:
 loc_0232781C:
-	.word 0x027FF880	; 0232781C
+	.word FirmwareBootSharedAddress + BootSharedArm9StateOffset	; 0232781C
 pool_02327820:
 loc_02327820:
 	.word 0x00000F00	; 02327820
@@ -16896,7 +16896,7 @@ loc_023278E0:
 	.word 0x027FFEC0	; 023278E0
 pool_023278E4:
 loc_023278E4:
-	.word 0x027FF812	; 023278E4
+	.word FirmwareBootInfoScratchAddress + BootInfoCardSecureDisableOffset	; 023278E4
 pool_023278E8:
 loc_023278E8:
 	.word 0x80000020	; 023278E8
@@ -17194,7 +17194,7 @@ loc_02327B0C:
 	.byte 0xC0, 0x46	; 02327B18
 pool_02327B18:
 loc_02327B18:
-	.word 0x027FF860	; 02327B18
+	.word FirmwareBootSharedAddress	; 02327B18
 pool_02327B1C:
 loc_02327B1C:
 	.word 0x027FFEC0	; 02327B1C
@@ -17310,7 +17310,7 @@ loc_02327BC8:
 	.word 0x00000800	; 02327BC8
 pool_02327BCC:
 loc_02327BCC:
-	.word 0x027FF880	; 02327BCC
+	.word FirmwareBootSharedAddress + BootSharedArm9StateOffset	; 02327BCC
 pool_02327BD0:
 loc_02327BD0:
 	.word REG_POSTFLG	; 02327BD0
@@ -17420,7 +17420,7 @@ loc_02327C78:
 	.word 0x0380F000	; 02327C78
 pool_02327C7C:
 loc_02327C7C:
-	.word 0x027FF860	; 02327C7C
+	.word FirmwareBootSharedAddress	; 02327C7C
 pool_02327C80:
 loc_02327C80:
 	.word 0x022C0000	; 02327C80
@@ -17526,13 +17526,13 @@ loc_02327D30:
 	.word P1_BssStart + 0x25038	; 02327D30
 pool_02327D34:
 loc_02327D34:
-	.word 0x027FF880	; 02327D34
+	.word FirmwareBootSharedAddress + BootSharedArm9StateOffset	; 02327D34
 pool_02327D38:
 loc_02327D38:
 	.word 0x027FF800	; 02327D38
 pool_02327D3C:
 loc_02327D3C:
-	.word 0x027FF814	; 02327D3C
+	.word FirmwareBootInfoScratchAddress + BootInfoHasSerialDebuggerOffset	; 02327D3C
 pool_02327D40:
 loc_02327D40:
 	.word NdsCartHeaderRamAddress + 0x60	; 02327D40
@@ -17847,7 +17847,7 @@ loc_02327F3C:
 	.word REG_GCDATAIN	; 02327F3C
 pool_02327F40:
 loc_02327F40:
-	.word 0x027FF800	; 02327F40
+	.word FirmwareBootInfoScratchAddress	; 02327F40
 pool_02327F44:
 loc_02327F44:
 	.word FirmwareBootSharedAddress + BootSharedEventFlagsOffset	; 02327F44
@@ -18624,6 +18624,9 @@ loc_02328524:
 
 ; ===== function loc_0232852C =====
 loc_0232852C:
+; 检查副本并按更新计数选择；返回 0 成功，1 表示两份均无效。
+; Validate/select by update counter; return 0 on success, 1 if neither copy is valid.
+.func P1_SelectValidUserSettingsCopy
 	push {r4,r5,r6,r7,lr}	; 0232852C
 	sub sp,#0xc	; 0232852E
 	str r0,[sp,#0x0]	; 02328530
@@ -18724,6 +18727,7 @@ loc_023285E0:
 	pop {r4,r5,r6,r7}	; 023285E4
 	pop {r3}	; 023285E6
 	bx r3	; 023285E8
+.endfunc
 	.byte 0xC0, 0x46	; 023285EC
 pool_023285EC:
 loc_023285EC:
@@ -18746,7 +18750,7 @@ loc_023285F8:
 	cmp r0,#0xff	; 02328604
 	bne loc_02328618	; 02328606
 	mov r0,#0x0	; 02328608
-	bl loc_023286E8	; 0232860A
+	bl P1_LoadAndSelectUserSettings	; 0232860A
 	cmp r0,#0x0	; 0232860E
 	beq loc_02328618	; 02328610
 	mov r1,#0x0	; 02328612
@@ -18867,6 +18871,9 @@ loc_023286E4:
 
 ; ===== function loc_023286E8 =====
 loc_023286E8:
+; 读取两份用户设置并选用有效副本；返回 1 表示无可用副本。
+; Read both settings copies and select one; return 1 when neither is usable.
+.func P1_LoadAndSelectUserSettings
 	push {r4,r5,r6,r7,lr}	; 023286E8
 	sub sp,#0xc	; 023286EA
 	str r0,[sp,#0x0]	; 023286EC
@@ -18900,7 +18907,7 @@ loc_02328718:
 	cmp r0,#0x0	; 02328726
 	beq loc_02328718	; 02328728
 	add r0,r5,#0x0	; 0232872A
-	bl loc_0232852C	; 0232872C
+	bl P1_SelectValidUserSettingsCopy	; 0232872C
 	cmp r0,#0x0	; 02328730
 	beq loc_0232873E	; 02328732
 	mov r0,#0x1	; 02328734
@@ -18942,6 +18949,7 @@ loc_02328778:
 	pop {r4,r5,r6,r7}	; 0232877C
 	pop {r3}	; 0232877E
 	bx r3	; 02328780
+.endfunc
 	.byte 0xC0, 0x46	; 02328784
 pool_02328784:
 loc_02328784:
@@ -19066,7 +19074,7 @@ loc_0232883C:
 	.byte 0xC0, 0x46	; 0232884C
 pool_0232884C:
 loc_0232884C:
-	.word 0x080000B4	; 0232884C
+	.word Slot2BusBaseAddress + 0xB4	; 0232884C
 pool_02328850:
 loc_02328850:
 	.word 0x09FE1FE0	; 02328850
@@ -19075,7 +19083,7 @@ loc_02328854:
 	.word 0x09FFFFE0	; 02328854
 pool_02328858:
 loc_02328858:
-	.word 0x0800009E	; 02328858
+	.word Slot2BusBaseAddress + 0x9E	; 02328858
 pool_0232885C:
 loc_0232885C:
 	.word 0x02334034	; 0232885C
@@ -20967,7 +20975,7 @@ loc_02329748:
 	.byte 0xC0, 0x46	; 02329750
 pool_02329750:
 loc_02329750:
-	.word 0x08000004	; 02329750
+	.word Slot2BusBaseAddress + 0x4	; 02329750
 
 ; ===== function loc_02329754 =====
 loc_02329754:
@@ -35540,10 +35548,10 @@ loc_0232FF44:
 	.word P1_BssStart + 0x2EC28	; 0232FF44
 pool_0232FF48:
 loc_0232FF48:
-	.word 0x08000000	; 0232FF48
+	.word Slot2BusBaseAddress	; 0232FF48
 pool_0232FF4C:
 loc_0232FF4C:
-	.word 0x0801FFFE	; 0232FF4C
+	.word Slot2BusBaseAddress + 0x1FFFE	; 0232FF4C
 
 ; ===== function loc_0232FF50 =====
 loc_0232FF50:
@@ -43581,7 +43589,7 @@ pool_01FF8074:
 pool_01FF8078:
 	.word 0x00003130	; 01FF8078
 pool_01FF807C:
-	.word 0x08000180	; 01FF807C
+	.word Slot2BusBaseAddress + 0x180	; 01FF807C
 pool_01FF8080:
 	.word P1_ItcmRuntimeStart	; 01FF8080
 P1_Runtime_01FF8084:
@@ -43660,13 +43668,13 @@ P1_Runtime_01FF810A:
 	bx r3	; 01FF811C
 	.byte 0xC0, 0x46	; 01FF811E
 pool_01FF8120:
-	.word 0x08010420	; 01FF8120
+	.word Slot2BusBaseAddress + 0x10420	; 01FF8120
 pool_01FF8124:
 	.word 0x00004000	; 01FF8124
 pool_01FF8128:
 	.word 0x00000400	; 01FF8128
 pool_01FF812C:
-	.word 0x0801040A	; 01FF812C
+	.word Slot2BusBaseAddress + 0x1040A	; 01FF812C
 
 ; 按 IE/IF 选择并应答 IRQ，再调用对应回调。
 ; Select and acknowledge an enabled IRQ, then dispatch its callback.

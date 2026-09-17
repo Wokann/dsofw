@@ -216,7 +216,7 @@ loc_037FA9D8:
 	.word P2_BssStart + 0x8	; 037FA9D8
 pool_037FA9DC:
 loc_037FA9DC:
-	.word 0x027FF884	; 037FA9DC
+	.word FirmwareBootSharedAddress + BootSharedArm7StateOffset	; 037FA9DC
 pool_037FA9E0:
 loc_037FA9E0:
 	.word REG_VCOUNT	; 037FA9E0
@@ -1060,7 +1060,7 @@ loc_037FAFB0:
 	.word REG_IME	; 037FAFB0
 pool_037FAFB4:
 loc_037FAFB4:
-	.word 0x027FF884	; 037FAFB4
+	.word FirmwareBootSharedAddress + BootSharedArm7StateOffset	; 037FAFB4
 pool_037FAFB8:
 loc_037FAFB8:
 	.word 0x027FF890	; 037FAFB8
@@ -1081,7 +1081,7 @@ loc_037FAFCC:
 	.word P2_BssStart	; 037FAFCC
 pool_037FAFD0:
 loc_037FAFD0:
-	.word 0x027FF880	; 037FAFD0
+	.word FirmwareBootSharedAddress + BootSharedArm9StateOffset	; 037FAFD0
 pool_037FAFD4:
 loc_037FAFD4:
 	.word 0x00002100	; 037FAFD4
@@ -23530,7 +23530,7 @@ pool_037F81C8:
 pool_037F81CC:
 	.word NdsCartHeaderArm7RamAddress	; 037F81CC
 pool_037F81D0:
-	.word 0x027FF860	; 037F81D0
+	.word FirmwareBootSharedAddress	; 037F81D0
 pool_037F81D4:
 	.word 0x022C0000	; 037F81D4
 pool_037F81D8:
@@ -23787,7 +23787,7 @@ pool_0380F764:
 pool_0380F768:
 	.word FirmwareBootParamAddress	; 0380F768
 pool_0380F76C:
-	.word 0x027FF860	; 0380F76C
+	.word FirmwareBootSharedAddress	; 0380F76C
 pool_0380F770:
 	.word NdsCartHeaderRamAddress	; 0380F770
 pool_0380F774:

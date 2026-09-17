@@ -216,7 +216,7 @@ loc_037FA9D8:
 	.word P2_BssStart + 0x8	; 037FA9D8
 pool_037FA9DC:
 loc_037FA9DC:
-	.word 0x027FF884	; 037FA9DC
+	.word FirmwareBootSharedAddress + BootSharedArm7StateOffset	; 037FA9DC
 pool_037FA9E0:
 loc_037FA9E0:
 	.word REG_VCOUNT	; 037FA9E0
@@ -540,7 +540,7 @@ loc_037FABE8:
 	.word FirmwareBootSharedAddress + BootSharedSettingsFlashOffset	; 037FABE8
 pool_037FABEC:
 loc_037FABEC:
-	.word 0x027FF878	; 037FABEC
+	.word FirmwareBootSharedAddress + BootSharedConsoleTypeOffset	; 037FABEC
 
 ; ===== function P2_ClearMainRamOutsideArm9Image =====
 ; Clears the main-RAM ranges before and after the ARM9 image described by NDS header +0x28/+0x2C.
@@ -1117,7 +1117,7 @@ loc_037FB004:
 	.word REG_IME	; 037FB004
 pool_037FB008:
 loc_037FB008:
-	.word 0x027FF884	; 037FB008
+	.word FirmwareBootSharedAddress + BootSharedArm7StateOffset	; 037FB008
 pool_037FB00C:
 loc_037FB00C:
 	.word 0x027FF890	; 037FB00C
@@ -1138,7 +1138,7 @@ loc_037FB020:
 	.word P2_BssStart	; 037FB020
 pool_037FB024:
 loc_037FB024:
-	.word 0x027FF880	; 037FB024
+	.word FirmwareBootSharedAddress + BootSharedArm9StateOffset	; 037FB024
 pool_037FB028:
 loc_037FB028:
 	.word 0x00002100	; 037FB028
@@ -23582,7 +23582,7 @@ pool_0380F770:
 pool_0380F774:
 	.word FirmwareBootParamAddress	; 0380F774
 pool_0380F778:
-	.word 0x027FF860	; 0380F778
+	.word FirmwareBootSharedAddress	; 0380F778
 pool_0380F77C:
 	.word NdsCartHeaderRamAddress	; 0380F77C
 pool_0380F780:
