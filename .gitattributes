@@ -1,2 +1,6 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Immutable checksum records must retain their original bytes on checkout.
+# 只读校验记录保留原始字节，不随 Git 换行设置转换。
+*.crc32 -text
