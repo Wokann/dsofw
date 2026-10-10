@@ -1,9 +1,11 @@
 # `official_v5` component listings
 
+[中文说明](README.zh-cn.md)
+
 The five listings in this directory are the decompressed original Nintendo
 firmware V5 components, mapped to their observed runtime addresses. See the
-parent [README](../README.md) for loader-literal evidence, CPU selection, and
-export limitations.
+[Technical Notes](../../TECHNICAL.md) for loader-literal evidence, CPU
+selection, and export policy.
 
 | File | Runtime address | Raw component size |
 | --- | --- | --- |
@@ -12,10 +14,3 @@ export limitations.
 | `p3.s` | `0x02358DC0` | `0x1AF80` |
 | `p4.s` | `0x02300200` | `0xD940` |
 | `p5.s` | `0x023A4A00` | `0x3A7A0` |
-
----
-
-# `official_v5` 组件清单
-
-本目录的五份清单是已解压的任天堂原始 V5 固件组件，已映射到观察到的实际运行期地址。
-装载常量证据、CPU 选择和导出限制请参阅上级 [README](../README.md)。
