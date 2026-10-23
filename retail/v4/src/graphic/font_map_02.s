@@ -1,0 +1,243 @@
+; BNCMP resource; included by p5.s at P5_CharacterMap2.
+; BNCMP 资源，由 p5.s 在 P5_CharacterMap2 处引入。
+    .ascii "JNCM"
+    .incbin "src/graphic/font_map_02.bncmp", 0x4, 0x2 ; original format bytes / 原始格式字节
+    .dh (P5_FontResource2_MetricsEnd - P5_FontResource2_Metrics) / 2 ; glyph count / 字形数
+P5_CharacterMap2_OffsetBase:
+    .word P5_CharacterMap2_Ranges - P5_CharacterMap2_OffsetBase
+    .word P5_CharacterMap2_Explicit - P5_CharacterMap2_OffsetBase
+P5_CharacterMap2_Ranges:
+    .dh (P5_CharacterMap2_RangeEntriesEnd - P5_CharacterMap2_RangeEntries) / 4
+P5_CharacterMap2_RangeEntries:
+    .dh 0x0020 ; inclusive first / 起始码点（含）
+    .dh 0x007F ; inclusive last / 结束码点（含）
+    .dh 0x00BF ; inclusive first / 起始码点（含）
+    .dh 0x00DD ; inclusive last / 结束码点（含）
+    .dh 0x00DF ; inclusive first / 起始码点（含）
+    .dh 0x00FD ; inclusive last / 结束码点（含）
+    .dh 0x3041 ; inclusive first / 起始码点（含）
+    .dh 0x3093 ; inclusive last / 结束码点（含）
+    .dh 0x30A1 ; inclusive first / 起始码点（含）
+    .dh 0x30F6 ; inclusive last / 结束码点（含）
+    .dh 0xE000 ; inclusive first / 起始码点（含）
+    .dh 0xE01C ; inclusive last / 结束码点（含）
+    .dh 0xE028 ; inclusive first / 起始码点（含）
+    .dh 0xE02E ; inclusive last / 结束码点（含）
+    .dh 0xE030 ; inclusive first / 起始码点（含）
+    .dh 0xE036 ; inclusive last / 结束码点（含）
+P5_CharacterMap2_RangeEntriesEnd:
+    .byte 0x00, 0x00
+P5_CharacterMap2_Explicit:
+    .dh (P5_CharacterMap2_End - P5_CharacterMap2_CodePoints) / 2
+    .dh (0x007F - 0x0020 + 1) + (0x00DD - 0x00BF + 1) + (0x00FD - 0x00DF + 1) + (0x3093 - 0x3041 + 1) + (0x30F6 - 0x30A1 + 1) + (0xE01C - 0xE000 + 1) + (0xE02E - 0xE028 + 1) + (0xE036 - 0xE030 + 1) ; first explicit glyph index / 离散码点起始字形索引
+P5_CharacterMap2_CodePoints:
+    .dh 0x00A1
+    .dh 0x00A2
+    .dh 0x00A3
+    .dh 0x00A8
+    .dh 0x00A9
+    .dh 0x00AE
+    .dh 0x00B0
+    .dh 0x00B1
+    .dh 0x00B4
+    .dh 0x00B7
+    .dh 0x0152
+    .dh 0x0153
+    .dh 0x02C6
+    .dh 0x02DC
+    .dh 0x2010
+    .dh 0x2015
+    .dh 0x2018
+    .dh 0x2019
+    .dh 0x201A
+    .dh 0x201C
+    .dh 0x201D
+    .dh 0x201E
+    .dh 0x2022
+    .dh 0x2026
+    .dh 0x2032
+    .dh 0x2033
+    .dh 0x203A
+    .dh 0x203B
+    .dh 0x20AC
+    .dh 0x2122
+    .dh 0x2190
+    .dh 0x2191
+    .dh 0x2192
+    .dh 0x2193
+    .dh 0x221E
+    .dh 0x2234
+    .dh 0x25A0
+    .dh 0x25A1
+    .dh 0x25B2
+    .dh 0x25B3
+    .dh 0x25BC
+    .dh 0x25BD
+    .dh 0x25C6
+    .dh 0x25C7
+    .dh 0x25CB
+    .dh 0x25CE
+    .dh 0x25CF
+    .dh 0x2605
+    .dh 0x2606
+    .dh 0x266A
+    .dh 0x266D
+    .dh 0x266F
+    .dh 0x3000
+    .dh 0x3001
+    .dh 0x3002
+    .dh 0x3005
+    .dh 0x3008
+    .dh 0x3009
+    .dh 0x300C
+    .dh 0x300D
+    .dh 0x3012
+    .dh 0x3014
+    .dh 0x3015
+    .dh 0x309B
+    .dh 0x309C
+    .dh 0x309D
+    .dh 0x309E
+    .dh 0x30FB
+    .dh 0x30FC
+    .dh 0x4E00
+    .dh 0x4E0A
+    .dh 0x4E0B
+    .dh 0x4E86
+    .dh 0x4ECA
+    .dh 0x4ED6
+    .dh 0x4ED8
+    .dh 0x4EE5
+    .dh 0x4F4D
+    .dh 0x4F53
+    .dh 0x4F55
+    .dh 0x4F7F
+    .dh 0x4FDD
+    .dh 0x4FE1
+    .dh 0x5065
+    .dh 0x5165
+    .dh 0x5168
+    .dh 0x5185
+    .dh 0x5206
+    .dh 0x5207
+    .dh 0x521D
+    .dh 0x523B
+    .dh 0x524D
+    .dh 0x529B
+    .dh 0x52A0
+    .dh 0x52D5
+    .dh 0x53BB
+    .dh 0x53C2
+    .dh 0x53D6
+    .dh 0x5408
+    .dh 0x540D
+    .dh 0x54E1
+    .dh 0x5728
+    .dh 0x5831
+    .dh 0x5916
+    .dh 0x5927
+    .dh 0x597D
+    .dh 0x59CB
+    .dh 0x5B58
+    .dh 0x5B89
+    .dh 0x5B8C
+    .dh 0x5B9A
+    .dh 0x5BA4
+    .dh 0x5BB9
+    .dh 0x5DEE
+    .dh 0x5E74
+    .dh 0x5EA6
+    .dh 0x5EB7
+    .dh 0x5F8C
+    .dh 0x5FC5
+    .dh 0x5FDC
+    .dh 0x60C5
+    .dh 0x614B
+    .dh 0x6271
+    .dh 0x629E
+    .dh 0x62BC
+    .dh 0x632F
+    .dh 0x63A2
+    .dh 0x6574
+    .dh 0x65B9
+    .dh 0x65E5
+    .dh 0x660E
+    .dh 0x6642
+    .dh 0x66F8
+    .dh 0x6708
+    .dh 0x672C
+    .dh 0x6A5F
+    .dh 0x6B63
+    .dh 0x6B8B
+    .dh 0x6C7A
+    .dh 0x6CD5
+    .dh 0x6D88
+    .dh 0x6E90
+    .dh 0x72B6
+    .dh 0x73FE
+    .dh 0x751F
+    .dh 0x7528
+    .dh 0x753B
+    .dh 0x767A
+    .dh 0x767B
+    .dh 0x78BA
+    .dh 0x793A
+    .dh 0x79FB
+    .dh 0x7D42
+    .dh 0x7D4C
+    .dh 0x7D9A
+    .dh 0x7F6E
+    .dh 0x80FD
+    .dh 0x81EA
+    .dh 0x8272
+    .dh 0x884C
+    .dh 0x8868
+    .dh 0x88DC
+    .dh 0x8981
+    .dh 0x898B
+    .dh 0x89E3
+    .dh 0x8A00
+    .dh 0x8A2D
+    .dh 0x8A8D
+    .dh 0x8A95
+    .dh 0x8A9E
+    .dh 0x8AAC
+    .dh 0x8AAD
+    .dh 0x8ABF
+    .dh 0x8D77
+    .dh 0x9000
+    .dh 0x901A
+    .dh 0x904A
+    .dh 0x904E
+    .dh 0x9078
+    .dh 0x9332
+    .dh 0x958B
+    .dh 0x9593
+    .dh 0x9664
+    .dh 0x96FB
+    .dh 0x9762
+    .dh 0x9CF4
+    .dh 0xFF01
+    .dh 0xFF06
+    .dh 0xFF08
+    .dh 0xFF09
+    .dh 0xFF0B
+    .dh 0xFF0C
+    .dh 0xFF0D
+    .dh 0xFF0E
+    .dh 0xFF0F
+    .dh 0xFF1A
+    .dh 0xFF1B
+    .dh 0xFF1D
+    .dh 0xFF1F
+    .dh 0xFF3B
+    .dh 0xFF3C
+    .dh 0xFF3D
+    .dh 0xFF3E
+    .dh 0xFF3F
+    .dh 0xFF40
+    .dh 0xFF5B
+    .dh 0xFF5C
+    .dh 0xFF5D
+    .dh 0xFF5E
+    .dh 0xFFE3

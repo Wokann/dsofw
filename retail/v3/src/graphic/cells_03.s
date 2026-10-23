@@ -1,0 +1,93 @@
+; BNCD resource; included by p5.s at P5_CellResource3.
+; BNCD 资源，由 p5.s 在 P5_CellResource3 处引入。
+    .ascii "JNCD"
+    .dh 0x0101
+    .dh (P5_CellResource3_DirectoryEnd - P5_CellResource3_Directory) / 6
+    .word P5_CellResource3_Directory - P5_CellResource3
+    .word P5_CellResource3_Auxiliary - P5_CellResource3
+    .word P5_CellResource3_Payload - P5_CellResource3
+    .word P5_CellResource3_End - P5_CellResource3_Payload
+    .word 0x00000002 ; unknown field, preserved / 未知字段，原样保留
+P5_CellResource3_Directory:
+    .byte 0x20
+    .byte 0x20
+    .dh (P5_CellResource3_Aux000 - P5_CellResource3_Auxiliary) / 12
+    .dh 0x0001 ; record count / 辅助记录数
+    .byte 0x20
+    .byte 0x20
+    .dh (P5_CellResource3_Aux001 - P5_CellResource3_Auxiliary) / 12
+    .dh 0x0001 ; record count / 辅助记录数
+    .byte 0x20
+    .byte 0x20
+    .dh (P5_CellResource3_Aux002 - P5_CellResource3_Auxiliary) / 12
+    .dh 0x0001 ; record count / 辅助记录数
+    .byte 0x20
+    .byte 0x20
+    .dh (P5_CellResource3_Aux003 - P5_CellResource3_Auxiliary) / 12
+    .dh 0x0001 ; record count / 辅助记录数
+    .byte 0x20
+    .byte 0x20
+    .dh (P5_CellResource3_Aux004 - P5_CellResource3_Auxiliary) / 12
+    .dh 0x0001 ; record count / 辅助记录数
+    .byte 0x20
+    .byte 0x20
+    .dh (P5_CellResource3_Aux005 - P5_CellResource3_Auxiliary) / 12
+    .dh 0x0001 ; record count / 辅助记录数
+    .byte 0x20
+    .byte 0x20
+    .dh (P5_CellResource3_Aux006 - P5_CellResource3_Auxiliary) / 12
+    .dh 0x0001 ; record count / 辅助记录数
+    .byte 0x40
+    .byte 0x40
+    .dh (P5_CellResource3_Aux007 - P5_CellResource3_Auxiliary) / 12
+    .dh 0x0001 ; record count / 辅助记录数
+    .byte 0x40
+    .byte 0x40
+    .dh (P5_CellResource3_Aux008 - P5_CellResource3_Auxiliary) / 12
+    .dh 0x0001 ; record count / 辅助记录数
+    .byte 0x80
+    .byte 0x20
+    .dh (P5_CellResource3_Aux009 - P5_CellResource3_Auxiliary) / 12
+    .dh 0x0002 ; record count / 辅助记录数
+    .byte 0x40
+    .byte 0x40
+    .dh (P5_CellResource3_Aux011 - P5_CellResource3_Auxiliary) / 12
+    .dh 0x0001 ; record count / 辅助记录数
+P5_CellResource3_DirectoryEnd:
+    .byte 0x00, 0x00
+; Record fields and pixel/palette interpretation remain unconfirmed. / 记录字段及像素、调色板解释尚待确认。
+P5_CellResource3_Auxiliary:
+P5_CellResource3_Aux000:
+    .byte 0x00, 0x00, 0x00, 0x80, 0x00, 0xF0, 0x00, 0x00, 0x00, 0x00, 0x04, 0x00
+P5_CellResource3_Aux001:
+    .byte 0x00, 0x00, 0x00, 0x80
+    .byte 0x00, 0xF0, 0x00, 0x00, 0x04, 0x00, 0x04, 0x00
+P5_CellResource3_Aux002:
+    .byte 0x00, 0x00, 0x00, 0x80, 0x00, 0xF0, 0x00, 0x00
+    .byte 0x08, 0x00, 0x04, 0x00
+P5_CellResource3_Aux003:
+    .byte 0x00, 0x00, 0x00, 0x80, 0x00, 0xF0, 0x00, 0x00, 0x0C, 0x00, 0x04, 0x00
+P5_CellResource3_Aux004:
+    .byte 0x00, 0x00, 0x00, 0x80, 0x00, 0xF0, 0x00, 0x00, 0x10, 0x00, 0x04, 0x00
+P5_CellResource3_Aux005:
+    .byte 0x00, 0x00, 0x00, 0x80
+    .byte 0x00, 0xF0, 0x00, 0x00, 0x14, 0x00, 0x04, 0x00
+P5_CellResource3_Aux006:
+    .byte 0x00, 0x00, 0x00, 0x80, 0x00, 0xF0, 0x00, 0x00
+    .byte 0x18, 0x00, 0x04, 0x00
+P5_CellResource3_Aux007:
+    .byte 0x00, 0x00, 0x00, 0xC0, 0x00, 0xF0, 0x00, 0x00, 0x1C, 0x00, 0x10, 0x00
+P5_CellResource3_Aux008:
+    .byte 0x00, 0x00, 0x00, 0xC0, 0x00, 0xF0, 0x00, 0x00, 0x2C, 0x00, 0x10, 0x00
+P5_CellResource3_Aux009:
+    .byte 0x00, 0x40, 0x00, 0xC0
+    .byte 0x00, 0x70, 0x00, 0x00, 0x3C, 0x00, 0x08, 0x00
+P5_CellResource3_Aux010:
+    .byte 0x00, 0x40, 0x40, 0xC0, 0x00, 0x70, 0x00, 0x00
+    .byte 0x44, 0x00, 0x08, 0x00
+P5_CellResource3_Aux011:
+    .byte 0x00, 0x00, 0x00, 0xC0, 0x00, 0xF0, 0x00, 0x00, 0x4C, 0x00, 0x10, 0x00
+P5_CellResource3_Aux012:
+P5_CellResource3_Payload:
+; OBJ graphics from the complete BNCD file. / 从完整 BNCD 文件引用 OBJ 图像区。
+    .incbin "src/graphic/cells_03.bncd", 0xF0, 0x2E00

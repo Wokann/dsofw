@@ -4,3 +4,21 @@
 # Immutable checksum records must retain their original bytes on checkout.
 # 只读校验记录保留原始字节，不随 Git 换行设置转换。
 *.crc32 -text
+
+# Firmware resource containers must not undergo text or newline conversion.
+# 固件资源容器按二进制保存，不进行文本或换行转换。
+*.bnfr binary
+*.bncmp binary
+*.bncd binary
+*.bnbl binary
+*.bncl binary
+*.bnll binary
+*.bmg binary
+*.sdat binary
+*.ssar binary
+*.sbnk binary
+*.swar binary
+
+# A trailing space can be the encoded character in an armips table entry.
+# armips 字符表的行尾空格可能是实际映射字符。
+include/*.tbl whitespace=-blank-at-eol

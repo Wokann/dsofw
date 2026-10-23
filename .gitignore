@@ -56,8 +56,6 @@ dkms.conf
 extracted
 resource
 *.bin
-# Documented, source-controlled 1bpp font/graphic resources referenced by armips.
-!retail/**/src/graphic/*.bin
 temp
 tmp
 build
