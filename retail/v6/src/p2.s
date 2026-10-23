@@ -681,7 +681,7 @@ loc_037FACE0:
 	.word P2_BssStart + 0x14	; 037FACE0
 pool_037FACE4:
 loc_037FACE4:
-	.word 0x038053C4	; 037FACE4
+	.word P2_BssStart + 0x24	; 037FACE4
 
 ; ===== function loc_037FACE8 =====
 P2_IrqHandler_037FACE8:
@@ -7010,7 +7010,7 @@ loc_037FDB88:
 	.word 0x03805870	; 037FDB88
 pool_037FDB8C:
 loc_037FDB8C:
-	.word 0x038058D0	; 037FDB8C
+	.word P2_BssStart + 0x530	; 037FDB8C
 pool_037FDB90:
 loc_037FDB90:
 	.word P2_IrqHandlers	; 037FDB90
@@ -10665,7 +10665,7 @@ loc_037FF550:
 	.word P2_BssStart + 0x674	; 037FF550
 pool_037FF554:
 loc_037FF554:
-	.word 0x03805A18	; 037FF554
+	.word P2_BssStart + 0x678	; 037FF554
 pool_037FF558:
 loc_037FF558:
 	.word 0x0000FFF5	; 037FF558
@@ -11391,7 +11391,7 @@ pool_037FFA38:
 pool_037FFA3C:
 	.word 0x00000AA8	; 037FFA3C
 pool_037FFA40:
-	.word 0x03805A5C	; 037FFA40
+	.word P2_BssStart + 0x6BC	; 037FFA40
 pool_037FFA44:
 	.word 0x00010000	; 037FFA44
 P2_Entry_037FFA48:
@@ -11408,11 +11408,11 @@ P2_Entry_037FFA48:
 	bx r3	; 037FFA60
 	.byte 0xC0, 0x46	; 037FFA62
 pool_037FFA64:
-	.word 0x03805A28	; 037FFA64
+	.word P2_BssStart + 0x688	; 037FFA64
 pool_037FFA68:
 	.word 0x03805A3C	; 037FFA68
 pool_037FFA6C:
-	.word 0x03805A5C	; 037FFA6C
+	.word P2_BssStart + 0x6BC	; 037FFA6C
 
 ; ===== function loc_037FFA70 =====
 loc_037FFA70:
@@ -12014,7 +12014,7 @@ loc_037FFE3C:
 	.byte 0xC0, 0x46	; 037FFE50
 pool_037FFE50:
 loc_037FFE50:
-	.word 0x03805F24	; 037FFE50
+	.word P2_BssStart + 0xB84	; 037FFE50
 
 ; ===== function loc_037FFE54 =====
 loc_037FFE54:
@@ -12908,7 +12908,7 @@ P2_Entry_03800476:
 	pop {r3}	; 03800480
 	bx r3	; 03800482
 pool_03800484:
-	.word 0x03805F24	; 03800484
+	.word P2_BssStart + 0xB84	; 03800484
 pool_03800488:
 	.word SCHANNEL0_CR + 3	; 03800488
 P2_Entry_0380048C:
@@ -12978,7 +12978,7 @@ loc_038004F6:
 	bx r3	; 038004FA
 pool_038004FC:
 loc_038004FC:
-	.word 0x038066A4	; 038004FC
+	.word P2_BssStart + 0x1304	; 038004FC
 
 ; ===== function loc_03800500 =====
 loc_03800500:
@@ -15867,7 +15867,7 @@ P2_Entry_03801922:
 	pop {r3}	; 03801934
 	bx r3	; 03801936
 pool_03801938:
-	.word 0x03805F24	; 03801938
+	.word P2_BssStart + 0xB84	; 03801938
 pool_0380193C:
 	.word 0x00000F80	; 0380193C
 pool_03801940:
@@ -16563,7 +16563,7 @@ loc_03801E10:
 	.word P2_BssStart + 0xB80	; 03801E10
 pool_03801E14:
 loc_03801E14:
-	.word 0x03805F24	; 03801E14
+	.word P2_BssStart + 0xB84	; 03801E14
 pool_03801E18:
 loc_03801E18:
 	.word 0x00001180	; 03801E18
@@ -16603,7 +16603,7 @@ loc_03801E2C:
 	.byte 0xC0, 0x46	; 03801E4C
 pool_03801E4C:
 loc_03801E4C:
-	.word 0x038070A4	; 03801E4C
+	.word P2_BssStart + 0x1D04	; 03801E4C
 pool_03801E50:
 loc_03801E50:
 	.word 0x038070B8	; 03801E50
@@ -17044,7 +17044,7 @@ loc_0380213C:
 	.word P2_BssStart + 0x1DBC	; 0380213C
 pool_03802140:
 loc_03802140:
-	.word 0x03807160	; 03802140
+	.word P2_BssStart + 0x1DC0	; 03802140
 pool_03802144:
 loc_03802144:
 	.word P2_PublishExtendedKeyState + 1	; 03802144
@@ -17670,7 +17670,7 @@ loc_038025E4:
 	.word P2_PxiCallback_0380248C + 1	; 038025E4
 pool_038025E8:
 loc_038025E8:
-	.word 0x03807190	; 038025E8
+	.word P2_BssStart + 0x1DF0	; 038025E8
 pool_038025EC:
 loc_038025EC:
 	.word 0x038071A4	; 038025EC
@@ -17697,7 +17697,7 @@ loc_03802608:
 	.word P2_ThreadEntry_038021D4 + 1	; 03802608
 pool_0380260C:
 loc_0380260C:
-	.word 0x038074B0	; 0380260C
+	.word P2_BssStart + 0x2110	; 0380260C
 pool_03802610:
 loc_03802610:
 	.word P2_Code_038021C4 + 1	; 03802610
@@ -19035,13 +19035,13 @@ loc_03803024:
 	.word P2_PxiCallback_03802D28 + 1	; 03803024
 pool_03803028:
 loc_03803028:
-	.word 0x03807760	; 03803028
+	.word P2_BssStart + 0x23C0	; 03803028
 pool_0380302C:
 loc_0380302C:
 	.word 0x03807774	; 0380302C
 pool_03803030:
 loc_03803030:
-	.word 0x038077B4	; 03803030
+	.word P2_BssStart + 0x2414	; 03803030
 pool_03803034:
 loc_03803034:
 	.word P2_BssStart + 0x2540	; 03803034
@@ -19622,7 +19622,7 @@ loc_0380344C:
 	.word P2_BssStart + 0x25A0	; 0380344C
 pool_03803450:
 loc_03803450:
-	.word 0x0380796C	; 03803450
+	.word P2_BssStart + 0x25CC	; 03803450
 pool_03803454:
 loc_03803454:
 	.word 0x54505641	; 03803454
@@ -23202,7 +23202,7 @@ loc_038050B8:
 	.byte 0xC0, 0x46	; 038050C0
 pool_038050C0:
 loc_038050C0:
-	.word 0x03805250	; 038050C0
+	.word P2_ReferencedData_03805250	; 038050C0
 
 ; ===== function loc_038050C4 =====
 loc_038050C4:
@@ -23210,7 +23210,7 @@ loc_038050C4:
 	bx lr	; 038050C6
 pool_038050C8:
 loc_038050C8:
-	.word 0x03807A80	; 038050C8
+	.word P2_BssStart + 0x26E0	; 038050C8
 
 ; ===== function loc_038050CC =====
 loc_038050CC:
@@ -23218,7 +23218,7 @@ loc_038050CC:
 	bx lr	; 038050CE
 pool_038050D0:
 loc_038050D0:
-	.word 0x03807A84	; 038050D0
+	.word P2_BssStart + 0x26E4	; 038050D0
 	.byte 0xA5, 0x50, 0x80, 0x03, 0x21, 0x00, 0x00, 0x00, 0x80, 0x01, 0x10, 0x00	; 038050D4
 P2_Data_038050E0:
 	.byte 0x49, 0x32, 0x00, 0x00	; 038050E0
@@ -23254,7 +23254,9 @@ P2_Data_0380522C:
 	.byte 0x08, 0x09, 0x0A, 0x0B, 0x0E, 0x0C, 0x0F, 0x0D	; 03805234
 P2_Data_0380523C:
 	.byte 0x00, 0x01, 0x05, 0x0E, 0x1A, 0x26, 0x33, 0x3F	; 0380523C
-	.byte 0x49, 0x54, 0x5C, 0x64, 0x6D, 0x74, 0x7B, 0x7F, 0x84, 0x89, 0x8F, 0x00, 0x00, 0x00, 0x00, 0x00	; 03805244
+	.byte 0x49, 0x54, 0x5C, 0x64, 0x6D, 0x74, 0x7B, 0x7F, 0x84, 0x89, 0x8F, 0x00	; 03805244
+P2_ReferencedData_03805250:
+	.byte 0x00, 0x00, 0x00, 0x00	; 03805250
 ; CRT：复制描述符范围、初始化数据源、主 BSS 范围。
 ; CRT: copy-descriptor bounds, initialized-data source, main BSS bounds.
 P2_CrtDataInitTable:

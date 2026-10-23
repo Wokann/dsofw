@@ -571,7 +571,7 @@ loc_023591F0:
 	.word REG_BG1HOFS_SUB	; 023591F0
 pool_023591F4:
 loc_023591F4:
-	.word 0x023C1178	; 023591F4
+	.word P5_ReferencedData_023C1178	; 023591F4
 pool_023591F8:
 loc_023591F8:
 	.word 0x023BC5C0	; 023591F8
@@ -636,7 +636,7 @@ loc_02359250:
 	.word 0x00003FF8	; 02359250
 pool_02359254:
 loc_02359254:
-	.word 0x02373D40	; 02359254
+	.word UiBootZeroStart	; 02359254
 
 ; ===== function P3_RegisterCallback =====
 ; Appends r0 to the 8-slot callback array and increments the count at +0x20.
@@ -722,10 +722,10 @@ loc_023592D4:
 	.word UiBootZeroStart + 0x124	; 023592D4
 pool_023592D8:
 loc_023592D8:
-	.word 0x02373D64	; 023592D8
+	.word UiBootZeroStart + 0x24	; 023592D8
 pool_023592DC:
 loc_023592DC:
-	.word 0x02373E98	; 023592DC
+	.word UiBootZeroStart + 0x158	; 023592DC
 pool_023592E0:
 loc_023592E0:
 	.word REG_DISPCNT_B	; 023592E0
@@ -865,10 +865,10 @@ loc_023593D8:
 	.word UiBootZeroStart + 0x124	; 023593D8
 pool_023593DC:
 loc_023593DC:
-	.word 0x02373D64	; 023593DC
+	.word UiBootZeroStart + 0x24	; 023593DC
 pool_023593E0:
 loc_023593E0:
-	.word 0x02373E98	; 023593E0
+	.word UiBootZeroStart + 0x158	; 023593E0
 
 ; ===== function loc_023593E4 =====
 loc_023593E4:
@@ -916,10 +916,10 @@ loc_02359438:
 	.word UiBootZeroStart + 0x124	; 02359438
 pool_0235943C:
 loc_0235943C:
-	.word 0x02373D64	; 0235943C
+	.word UiBootZeroStart + 0x24	; 0235943C
 pool_02359440:
 loc_02359440:
-	.word 0x02373E98	; 02359440
+	.word UiBootZeroStart + 0x158	; 02359440
 
 ; ===== function loc_02359444 =====
 loc_02359444:
@@ -1035,13 +1035,13 @@ loc_0235951C:
 	.word UiBootZeroStart + 0x124	; 0235951C
 pool_02359520:
 loc_02359520:
-	.word 0x02373E8C	; 02359520
+	.word UiBootZeroStart + 0x14C	; 02359520
 pool_02359524:
 loc_02359524:
-	.word 0x02373E98	; 02359524
+	.word UiBootZeroStart + 0x158	; 02359524
 pool_02359528:
 loc_02359528:
-	.word 0x02373D64	; 02359528
+	.word UiBootZeroStart + 0x24	; 02359528
 pool_0235952C:
 loc_0235952C:
 	.word REG_BG1CNT_SUB	; 0235952C
@@ -1259,7 +1259,7 @@ loc_02359698:
 	.word 0x0000011C	; 02359698
 pool_0235969C:
 loc_0235969C:
-	.word 0x023C1178	; 0235969C
+	.word P5_ReferencedData_023C1178	; 0235969C
 pool_023596A0:
 loc_023596A0:
 	.word 0x023A509C	; 023596A0
@@ -4097,7 +4097,7 @@ loc_0235AB4C:
 	.word UiBootZeroStart + 0x184	; 0235AB4C
 pool_0235AB50:
 loc_0235AB50:
-	.word 0x023A4D3C	; 0235AB50
+	.word P5_ReferencedData_023A4D3C	; 0235AB50
 pool_0235AB54:
 loc_0235AB54:
 	.word FirmwareBootSharedAddress + BootSharedSettingsInvalidOffset	; 0235AB54
@@ -4392,13 +4392,13 @@ loc_0235AD64:
 	.word UiBootZeroStart + 0x184	; 0235AD64
 pool_0235AD68:
 loc_0235AD68:
-	.word 0x023C1178	; 0235AD68
+	.word P5_ReferencedData_023C1178	; 0235AD68
 pool_0235AD6C:
 loc_0235AD6C:
 	.word 0x023A572C	; 0235AD6C
 pool_0235AD70:
 loc_0235AD70:
-	.word 0x02373EF0	; 0235AD70
+	.word UiBootZeroStart + 0x1B0	; 0235AD70
 pool_0235AD74:
 loc_0235AD74:
 	.word 0x01FF0000	; 0235AD74
@@ -4965,7 +4965,7 @@ loc_0235B1A4:
 	.word UiBootZeroStart + 0x208	; 0235B1A4
 pool_0235B1A8:
 loc_0235B1A8:
-	.word 0x023A4D5C	; 0235B1A8
+	.word P5_ReferencedData_023A4D5C	; 0235B1A8
 pool_0235B1AC:
 loc_0235B1AC:
 	.word P3_Data_023733EC	; 0235B1AC
@@ -5076,7 +5076,7 @@ loc_0235B270:
 	.word UiBootZeroStart + 0x308	; 0235B270
 pool_0235B274:
 loc_0235B274:
-	.word 0x02373F48	; 0235B274
+	.word UiBootZeroStart + 0x208	; 0235B274
 
 ; ===== function loc_0235B278 =====
 loc_0235B278:
@@ -5244,13 +5244,13 @@ loc_0235B396:
 	bx r3	; 0235B3A2
 pool_0235B3A4:
 loc_0235B3A4:
-	.word 0x02373F58	; 0235B3A4
+	.word UiBootZeroStart + 0x218	; 0235B3A4
 pool_0235B3A8:
 loc_0235B3A8:
 	.word UiBootZeroStart + 0x208	; 0235B3A8
 pool_0235B3AC:
 loc_0235B3AC:
-	.word 0x023C1178	; 0235B3AC
+	.word P5_ReferencedData_023C1178	; 0235B3AC
 pool_0235B3B0:
 loc_0235B3B0:
 	.word 0x023A575C	; 0235B3B0
@@ -5288,7 +5288,7 @@ loc_0235B3D8:
 	.byte 0xC0, 0x46	; 0235B3E4
 pool_0235B3E4:
 loc_0235B3E4:
-	.word 0x023733BC	; 0235B3E4
+	.word P3_ReferencedData_023733BC	; 0235B3E4
 
 ; ===== function loc_0235B3E8 =====
 loc_0235B3E8:
@@ -5320,7 +5320,7 @@ loc_0235B408:
 	.byte 0xC0, 0x46	; 0235B414
 pool_0235B414:
 loc_0235B414:
-	.word 0x023733BC	; 0235B414
+	.word P3_ReferencedData_023733BC	; 0235B414
 pool_0235B418:
 loc_0235B418:
 	.word P3_Data_023733C0	; 0235B418
@@ -6212,7 +6212,7 @@ loc_0235BA8A:
 	.byte 0xC0, 0x46	; 0235BA94
 pool_0235BA94:
 loc_0235BA94:
-	.word 0x023A4CA0	; 0235BA94
+	.word P5_ReferencedData_023A4CA0	; 0235BA94
 pool_0235BA98:
 loc_0235BA98:
 	.word UiBootZeroStart + 0x370	; 0235BA98
@@ -6338,10 +6338,10 @@ loc_0235BB6C:
 	.word UiBootZeroStart + 0x370	; 0235BB6C
 pool_0235BB70:
 loc_0235BB70:
-	.word 0x023740D8	; 0235BB70
+	.word UiBootZeroStart + 0x398	; 0235BB70
 pool_0235BB74:
 loc_0235BB74:
-	.word 0x023C1178	; 0235BB74
+	.word P5_ReferencedData_023C1178	; 0235BB74
 pool_0235BB78:
 loc_0235BB78:
 	.word 0x023A55A4	; 0235BB78
@@ -6587,7 +6587,7 @@ loc_0235BD20:
 	.word REG_BLDALPHA_SUB	; 0235BD20
 pool_0235BD24:
 loc_0235BD24:
-	.word 0x0237412C	; 0235BD24
+	.word UiBootZeroStart + 0x3EC	; 0235BD24
 
 ; ===== function loc_0235BD28 =====
 loc_0235BD28:
@@ -6806,10 +6806,10 @@ loc_0235BEBC:
 	.byte 0xC0, 0x46	; 0235BEC8
 pool_0235BEC8:
 loc_0235BEC8:
-	.word 0x0237415C	; 0235BEC8
+	.word UiBootZeroStart + 0x41C	; 0235BEC8
 pool_0235BECC:
 loc_0235BECC:
-	.word 0x023A4BD8	; 0235BECC
+	.word P5_ReferencedData_023A4BD8	; 0235BECC
 pool_0235BED0:
 loc_0235BED0:
 	.word UiBootZeroStart + 0x3C4	; 0235BED0
@@ -6827,7 +6827,7 @@ loc_0235BEE0:
 	.word UiBootZeroStart + 0x444	; 0235BEE0
 pool_0235BEE4:
 loc_0235BEE4:
-	.word 0x0237412C	; 0235BEE4
+	.word UiBootZeroStart + 0x3EC	; 0235BEE4
 
 ; ===== function loc_0235BEE8 =====
 loc_0235BEE8:
@@ -6906,7 +6906,7 @@ loc_0235BF88:
 	.word REG_BLDCNT_SUB	; 0235BF88
 pool_0235BF8C:
 loc_0235BF8C:
-	.word 0x0237415C	; 0235BF8C
+	.word UiBootZeroStart + 0x41C	; 0235BF8C
 pool_0235BF90:
 loc_0235BF90:
 	.word UiBootZeroStart + 0x404	; 0235BF90
@@ -7074,16 +7074,16 @@ loc_0235C0E6:
 	.byte 0xC0, 0x46	; 0235C0F0
 pool_0235C0F0:
 loc_0235C0F0:
-	.word 0x0237415C	; 0235C0F0
+	.word UiBootZeroStart + 0x41C	; 0235C0F0
 pool_0235C0F4:
 loc_0235C0F4:
-	.word 0x02374130	; 0235C0F4
+	.word UiBootZeroStart + 0x3F0	; 0235C0F4
 pool_0235C0F8:
 loc_0235C0F8:
 	.word UiBootZeroStart + 0x404	; 0235C0F8
 pool_0235C0FC:
 loc_0235C0FC:
-	.word 0x023C1178	; 0235C0FC
+	.word P5_ReferencedData_023C1178	; 0235C0FC
 pool_0235C100:
 loc_0235C100:
 	.word 0x023A532C	; 0235C100
@@ -7092,10 +7092,10 @@ loc_0235C104:
 	.word UiBootZeroStart + 0x3C4	; 0235C104
 pool_0235C108:
 loc_0235C108:
-	.word 0x02374194	; 0235C108
+	.word UiBootZeroStart + 0x454	; 0235C108
 pool_0235C10C:
 loc_0235C10C:
-	.word 0x023741C0	; 0235C10C
+	.word UiBootZeroStart + 0x480	; 0235C10C
 
 ; ===== function loc_0235C110 =====
 loc_0235C110:
@@ -7934,7 +7934,7 @@ loc_0235C700:
 	.word REG_BLDCNT_SUB	; 0235C700
 pool_0235C704:
 loc_0235C704:
-	.word 0x023C1178	; 0235C704
+	.word P5_ReferencedData_023C1178	; 0235C704
 
 ; ===== function loc_0235C708 =====
 loc_0235C708:
@@ -7974,7 +7974,7 @@ loc_0235C746:
 	bx r3	; 0235C74A
 pool_0235C74C:
 loc_0235C74C:
-	.word 0x023741F8	; 0235C74C
+	.word UiBootZeroStart + 0x4B8	; 0235C74C
 
 ; ===== function loc_0235C750 =====
 loc_0235C750:
@@ -8022,7 +8022,7 @@ loc_0235C7A2:
 	bx r3	; 0235C7A6
 pool_0235C7A8:
 loc_0235C7A8:
-	.word 0x023741F8	; 0235C7A8
+	.word UiBootZeroStart + 0x4B8	; 0235C7A8
 
 ; ===== function loc_0235C7AC =====
 loc_0235C7AC:
@@ -8431,25 +8431,25 @@ loc_0235CA96:
 	.byte 0xC0, 0x46	; 0235CAE4
 pool_0235CAE4:
 loc_0235CAE4:
-	.word 0x023C1178	; 0235CAE4
+	.word P5_ReferencedData_023C1178	; 0235CAE4
 pool_0235CAE8:
 loc_0235CAE8:
 	.word 0x023A58E4	; 0235CAE8
 pool_0235CAEC:
 loc_0235CAEC:
-	.word 0x0237425C	; 0235CAEC
+	.word UiBootZeroStart + 0x51C	; 0235CAEC
 pool_0235CAF0:
 loc_0235CAF0:
-	.word 0x02374204	; 0235CAF0
+	.word UiBootZeroStart + 0x4C4	; 0235CAF0
 pool_0235CAF4:
 loc_0235CAF4:
-	.word 0x02374230	; 0235CAF4
+	.word UiBootZeroStart + 0x4F0	; 0235CAF4
 pool_0235CAF8:
 loc_0235CAF8:
-	.word 0x023741F8	; 0235CAF8
+	.word UiBootZeroStart + 0x4B8	; 0235CAF8
 pool_0235CAFC:
 loc_0235CAFC:
-	.word 0x023737A0	; 0235CAFC
+	.word P3_ReferencedData_023737A0	; 0235CAFC
 pool_0235CB00:
 loc_0235CB00:
 	.word FirmwareUserSettingsSharedAddress + UserSettingsOptionsOffset	; 0235CB00
@@ -8556,7 +8556,7 @@ loc_0235CBD0:
 	.word 0x0237425C	; 0235CBD0
 pool_0235CBD4:
 loc_0235CBD4:
-	.word 0x023A64F0	; 0235CBD4
+	.word P5_ReferencedData_023A64F0	; 0235CBD4
 pool_0235CBD8:
 loc_0235CBD8:
 	.word 0x02374204	; 0235CBD8
@@ -8568,7 +8568,7 @@ loc_0235CBE0:
 	.word 0x000003F3	; 0235CBE0
 pool_0235CBE4:
 loc_0235CBE4:
-	.word 0x023741F8	; 0235CBE4
+	.word UiBootZeroStart + 0x4B8	; 0235CBE4
 
 ; ===== function loc_0235CBE8 =====
 loc_0235CBE8:
@@ -8966,7 +8966,7 @@ loc_0235CF0C:
 	.word UiBootZeroStart + 0x4B4	; 0235CF0C
 pool_0235CF10:
 loc_0235CF10:
-	.word 0x023741F8	; 0235CF10
+	.word UiBootZeroStart + 0x4B8	; 0235CF10
 pool_0235CF14:
 loc_0235CF14:
 	.word 0x023A4D88	; 0235CF14
@@ -9071,7 +9071,7 @@ loc_0235CFC8:
 	bx r3	; 0235CFE2
 pool_0235CFE4:
 loc_0235CFE4:
-	.word 0x02374414	; 0235CFE4
+	.word UiBootZeroStart + 0x6D4	; 0235CFE4
 pool_0235CFE8:
 loc_0235CFE8:
 	.word UiBootZeroStart + 0x4B4	; 0235CFE8
@@ -9167,7 +9167,7 @@ loc_0235D07A:
 	bx r3	; 0235D07E
 pool_0235D080:
 loc_0235D080:
-	.word 0x02374C1C	; 0235D080
+	.word UiBootZeroStart + 0xEDC	; 0235D080
 
 ; ===== function loc_0235D084 =====
 loc_0235D084:
@@ -9205,7 +9205,7 @@ loc_0235D0BE:
 	bx r3	; 0235D0C2
 pool_0235D0C4:
 loc_0235D0C4:
-	.word 0x02374C1C	; 0235D0C4
+	.word UiBootZeroStart + 0xEDC	; 0235D0C4
 
 ; ===== function loc_0235D0C8 =====
 loc_0235D0C8:
@@ -9309,7 +9309,7 @@ loc_0235D194:
 	.word 0x02374C80	; 0235D194
 pool_0235D198:
 loc_0235D198:
-	.word 0x023A6380	; 0235D198
+	.word P5_ReferencedData_023A6380	; 0235D198
 pool_0235D19C:
 loc_0235D19C:
 	.word 0x02374C28	; 0235D19C
@@ -9321,7 +9321,7 @@ loc_0235D1A4:
 	.word 0x000003F3	; 0235D1A4
 pool_0235D1A8:
 loc_0235D1A8:
-	.word 0x02374C1C	; 0235D1A8
+	.word UiBootZeroStart + 0xEDC	; 0235D1A8
 
 ; ===== function loc_0235D1AC =====
 loc_0235D1AC:
@@ -9698,7 +9698,7 @@ loc_0235D48E:
 	bx r3	; 0235D4B2
 pool_0235D4B4:
 loc_0235D4B4:
-	.word 0x023C1178	; 0235D4B4
+	.word P5_ReferencedData_023C1178	; 0235D4B4
 pool_0235D4B8:
 loc_0235D4B8:
 	.word 0x023A55D4	; 0235D4B8
@@ -9707,16 +9707,16 @@ loc_0235D4BC:
 	.word 0x02374C80	; 0235D4BC
 pool_0235D4C0:
 loc_0235D4C0:
-	.word 0x02374C28	; 0235D4C0
+	.word UiBootZeroStart + 0xEE8	; 0235D4C0
 pool_0235D4C4:
 loc_0235D4C4:
-	.word 0x02374C1C	; 0235D4C4
+	.word UiBootZeroStart + 0xEDC	; 0235D4C4
 pool_0235D4C8:
 loc_0235D4C8:
-	.word 0x02374C54	; 0235D4C8
+	.word UiBootZeroStart + 0xF14	; 0235D4C8
 pool_0235D4CC:
 loc_0235D4CC:
-	.word 0x023737AC	; 0235D4CC
+	.word P3_ReferencedData_023737AC	; 0235D4CC
 pool_0235D4D0:
 loc_0235D4D0:
 	.word FirmwareUserSettingsSharedAddress + UserSettingsOptionsOffset	; 0235D4D0
@@ -10073,7 +10073,7 @@ loc_0235D79C:
 	.word UiBootZeroStart + 0xED8	; 0235D79C
 pool_0235D7A0:
 loc_0235D7A0:
-	.word 0x02374C1C	; 0235D7A0
+	.word UiBootZeroStart + 0xEDC	; 0235D7A0
 pool_0235D7A4:
 loc_0235D7A4:
 	.word 0x023A4D08	; 0235D7A4
@@ -10161,7 +10161,7 @@ loc_0235D7C0:
 	.byte 0xC0, 0x46	; 0235D84C
 pool_0235D84C:
 loc_0235D84C:
-	.word 0x023750F8	; 0235D84C
+	.word UiBootZeroStart + 0x13B8	; 0235D84C
 pool_0235D850:
 loc_0235D850:
 	.word UiBootZeroStart + 0xED8	; 0235D850
@@ -10363,7 +10363,7 @@ loc_0235D9A8:
 	.byte 0xC0, 0x46	; 0235D9B0
 pool_0235D9B0:
 loc_0235D9B0:
-	.word 0x023758F8	; 0235D9B0
+	.word UiBootZeroStart + 0x1BB8	; 0235D9B0
 
 ; ===== function loc_0235D9B4 =====
 loc_0235D9B4:
@@ -10459,7 +10459,7 @@ loc_0235DA34:
 	bx lr	; 0235DA36
 pool_0235DA38:
 loc_0235DA38:
-	.word 0x023758F8	; 0235DA38
+	.word UiBootZeroStart + 0x1BB8	; 0235DA38
 
 ; ===== function loc_0235DA3C =====
 loc_0235DA3C:
@@ -10515,7 +10515,7 @@ loc_0235DA8C:
 	.byte 0xC0, 0x46	; 0235DA94
 pool_0235DA94:
 loc_0235DA94:
-	.word 0x023758F8	; 0235DA94
+	.word UiBootZeroStart + 0x1BB8	; 0235DA94
 
 ; ===== function loc_0235DA98 =====
 loc_0235DA98:
@@ -10591,7 +10591,7 @@ loc_0235DB14:
 	.word 0x02375948	; 0235DB14
 pool_0235DB18:
 loc_0235DB18:
-	.word 0x0237593C	; 0235DB18
+	.word UiBootZeroStart + 0x1BFC	; 0235DB18
 
 ; ===== function loc_0235DB1C =====
 loc_0235DB1C:
@@ -10727,7 +10727,7 @@ loc_0235DC14:
 	.word UiBootZeroStart + 0x1BFC	; 0235DC14
 pool_0235DC18:
 loc_0235DC18:
-	.word 0x02375974	; 0235DC18
+	.word UiBootZeroStart + 0x1C34	; 0235DC18
 pool_0235DC1C:
 loc_0235DC1C:
 	.word REG_BLDCNT_SUB	; 0235DC1C
@@ -10775,7 +10775,7 @@ loc_0235DC6C:
 	.word UiBootZeroStart + 0x1BFC	; 0235DC6C
 pool_0235DC70:
 loc_0235DC70:
-	.word 0x02375948	; 0235DC70
+	.word UiBootZeroStart + 0x1C08	; 0235DC70
 pool_0235DC74:
 loc_0235DC74:
 	.word UiBootZeroStart + 0x1C7C	; 0235DC74
@@ -10892,10 +10892,10 @@ loc_0235DD64:
 	.word FirmwareUserSettingsSharedAddress + UserSettingsAlarmHourOffset	; 0235DD64
 pool_0235DD68:
 loc_0235DD68:
-	.word 0x02375974	; 0235DD68
+	.word UiBootZeroStart + 0x1C34	; 0235DD68
 pool_0235DD6C:
 loc_0235DD6C:
-	.word 0x02375948	; 0235DD6C
+	.word UiBootZeroStart + 0x1C08	; 0235DD6C
 pool_0235DD70:
 loc_0235DD70:
 	.word REG_BG1CNT_SUB	; 0235DD70
@@ -10937,7 +10937,7 @@ loc_0235DDA0:
 	.word 0x02375A44	; 0235DDA0
 pool_0235DDA4:
 loc_0235DDA4:
-	.word 0x023759DC	; 0235DDA4
+	.word UiBootZeroStart + 0x1C9C	; 0235DDA4
 pool_0235DDA8:
 loc_0235DDA8:
 	.word P3_UiOnLidOpened + 1	; 0235DDA8
@@ -11309,13 +11309,13 @@ loc_0235E084:
 	.word UiBootZeroStart + 0x1BFC	; 0235E084
 pool_0235E088:
 loc_0235E088:
-	.word 0x023759DC	; 0235E088
+	.word UiBootZeroStart + 0x1C9C	; 0235E088
 pool_0235E08C:
 loc_0235E08C:
 	.word 0x00000400	; 0235E08C
 pool_0235E090:
 loc_0235E090:
-	.word 0x0237596C	; 0235E090
+	.word UiBootZeroStart + 0x1C2C	; 0235E090
 pool_0235E094:
 loc_0235E094:
 	.word 0x02375974	; 0235E094
@@ -11623,13 +11623,13 @@ loc_0235E31C:
 	.word UiBootZeroStart + 0x1BFC	; 0235E31C
 pool_0235E320:
 loc_0235E320:
-	.word 0x023759DC	; 0235E320
+	.word UiBootZeroStart + 0x1C9C	; 0235E320
 pool_0235E324:
 loc_0235E324:
-	.word 0x02375A44	; 0235E324
+	.word UiBootZeroStart + 0x1D04	; 0235E324
 pool_0235E328:
 loc_0235E328:
-	.word 0x023C1178	; 0235E328
+	.word P5_ReferencedData_023C1178	; 0235E328
 pool_0235E32C:
 loc_0235E32C:
 	.word 0x023A4DBC	; 0235E32C
@@ -11638,7 +11638,7 @@ loc_0235E330:
 	.word UiBootZeroStart + 0x1C1C	; 0235E330
 pool_0235E334:
 loc_0235E334:
-	.word 0x023759B0	; 0235E334
+	.word UiBootZeroStart + 0x1C70	; 0235E334
 pool_0235E338:
 loc_0235E338:
 	.word 0x023A508C	; 0235E338
@@ -11656,10 +11656,10 @@ loc_0235E348:
 	.word UiBootZeroStart + 0x1C7C	; 0235E348
 pool_0235E34C:
 loc_0235E34C:
-	.word 0x023759EC	; 0235E34C
+	.word UiBootZeroStart + 0x1CAC	; 0235E34C
 pool_0235E350:
 loc_0235E350:
-	.word 0x02375A18	; 0235E350
+	.word UiBootZeroStart + 0x1CD8	; 0235E350
 
 ; ===== function loc_0235E354 =====
 loc_0235E354:
@@ -11797,7 +11797,7 @@ loc_0235E434:
 	.word 0x02375A84	; 0235E434
 pool_0235E438:
 loc_0235E438:
-	.word 0x02375A70	; 0235E438
+	.word UiBootZeroStart + 0x1D30	; 0235E438
 
 ; ===== function loc_0235E43C =====
 loc_0235E43C:
@@ -11884,7 +11884,7 @@ loc_0235E4D0:
 	.word UiBootZeroStart + 0x1D30	; 0235E4D0
 pool_0235E4D4:
 loc_0235E4D4:
-	.word 0x02375A84	; 0235E4D4
+	.word UiBootZeroStart + 0x1D44	; 0235E4D4
 
 ; ===== function loc_0235E4D8 =====
 loc_0235E4D8:
@@ -11975,7 +11975,7 @@ loc_0235E598:
 	.word 0x02375A74	; 0235E598
 pool_0235E59C:
 loc_0235E59C:
-	.word 0x02375A84	; 0235E59C
+	.word UiBootZeroStart + 0x1D44	; 0235E59C
 pool_0235E5A0:
 loc_0235E5A0:
 	.word REG_DISPCNT_B	; 0235E5A0
@@ -11990,7 +11990,7 @@ loc_0235E5AC:
 	.word REG_BLDCNT_SUB	; 0235E5AC
 pool_0235E5B0:
 loc_0235E5B0:
-	.word 0x02375A90	; 0235E5B0
+	.word UiBootZeroStart + 0x1D50	; 0235E5B0
 pool_0235E5B4:
 loc_0235E5B4:
 	.word 0x02375AB4	; 0235E5B4
@@ -12541,7 +12541,7 @@ loc_0235EA0C:
 	.word P3_Data_02373618	; 0235EA0C
 pool_0235EA10:
 loc_0235EA10:
-	.word 0x023C1178	; 0235EA10
+	.word P5_ReferencedData_023C1178	; 0235EA10
 pool_0235EA14:
 loc_0235EA14:
 	.word 0x023A5124	; 0235EA14
@@ -12553,10 +12553,10 @@ loc_0235EA1C:
 	.word P3_Data_0237361C	; 0235EA1C
 pool_0235EA20:
 loc_0235EA20:
-	.word 0x02375AB4	; 0235EA20
+	.word UiBootZeroStart + 0x1D74	; 0235EA20
 pool_0235EA24:
 loc_0235EA24:
-	.word 0x02375AE0	; 0235EA24
+	.word UiBootZeroStart + 0x1DA0	; 0235EA24
 
 ; ===== function loc_0235EA28 =====
 loc_0235EA28:
@@ -12615,7 +12615,7 @@ loc_0235EA80:
 	.word 0x02375B34	; 0235EA80
 pool_0235EA84:
 loc_0235EA84:
-	.word 0x02375B0C	; 0235EA84
+	.word UiBootZeroStart + 0x1DCC	; 0235EA84
 
 ; ===== function loc_0235EA88 =====
 loc_0235EA88:
@@ -12702,7 +12702,7 @@ loc_0235EB1C:
 	.word UiBootZeroStart + 0x1DCC	; 0235EB1C
 pool_0235EB20:
 loc_0235EB20:
-	.word 0x02375B34	; 0235EB20
+	.word UiBootZeroStart + 0x1DF4	; 0235EB20
 pool_0235EB24:
 loc_0235EB24:
 	.word UiBootZeroStart + 0x1E4C	; 0235EB24
@@ -13048,7 +13048,7 @@ loc_0235EDEC:
 	.word 0x00000108	; 0235EDEC
 pool_0235EDF0:
 loc_0235EDF0:
-	.word 0x02375B10	; 0235EDF0
+	.word UiBootZeroStart + 0x1DD0	; 0235EDF0
 pool_0235EDF4:
 loc_0235EDF4:
 	.word 0x000007D0	; 0235EDF4
@@ -13081,7 +13081,7 @@ loc_0235EE18:
 	.word 0x02373674	; 0235EE18
 pool_0235EE1C:
 loc_0235EE1C:
-	.word 0x02375B34	; 0235EE1C
+	.word UiBootZeroStart + 0x1DF4	; 0235EE1C
 pool_0235EE20:
 loc_0235EE20:
 	.word REG_DISPCNT_B	; 0235EE20
@@ -13096,7 +13096,7 @@ loc_0235EE2C:
 	.word REG_BLDCNT_SUB	; 0235EE2C
 pool_0235EE30:
 loc_0235EE30:
-	.word 0x02375B28	; 0235EE30
+	.word UiBootZeroStart + 0x1DE8	; 0235EE30
 pool_0235EE34:
 loc_0235EE34:
 	.word 0x02375B90	; 0235EE34
@@ -13111,7 +13111,7 @@ loc_0235EE40:
 	.word 0x02375BE8	; 0235EE40
 pool_0235EE44:
 loc_0235EE44:
-	.word 0x023A4A94	; 0235EE44
+	.word P5_ReferencedData_023A4A94	; 0235EE44
 pool_0235EE48:
 loc_0235EE48:
 	.word 0xFFFFF000	; 0235EE48
@@ -13913,7 +13913,7 @@ loc_0235F49C:
 	.word 0x000003E8	; 0235F49C
 pool_0235F4A0:
 loc_0235F4A0:
-	.word 0x023C1178	; 0235F4A0
+	.word P5_ReferencedData_023C1178	; 0235F4A0
 pool_0235F4A4:
 loc_0235F4A4:
 	.word 0x023A4F1C	; 0235F4A4
@@ -13925,13 +13925,13 @@ loc_0235F4AC:
 	.word UiBootZeroStart + 0x1E4C	; 0235F4AC
 pool_0235F4B0:
 loc_0235F4B0:
-	.word 0x02375B90	; 0235F4B0
+	.word UiBootZeroStart + 0x1E50	; 0235F4B0
 pool_0235F4B4:
 loc_0235F4B4:
-	.word 0x02375BBC	; 0235F4B4
+	.word UiBootZeroStart + 0x1E7C	; 0235F4B4
 pool_0235F4B8:
 loc_0235F4B8:
-	.word 0x02375BE8	; 0235F4B8
+	.word UiBootZeroStart + 0x1EA8	; 0235F4B8
 
 ; ===== function loc_0235F4BC =====
 loc_0235F4BC:
@@ -13990,7 +13990,7 @@ loc_0235F514:
 	.word 0x02375C30	; 0235F514
 pool_0235F518:
 loc_0235F518:
-	.word 0x02375C14	; 0235F518
+	.word UiBootZeroStart + 0x1ED4	; 0235F518
 
 ; ===== function loc_0235F51C =====
 loc_0235F51C:
@@ -14097,7 +14097,7 @@ loc_0235F5CC:
 	.word UiBootZeroStart + 0x1ED4	; 0235F5CC
 pool_0235F5D0:
 loc_0235F5D0:
-	.word 0x02375C30	; 0235F5D0
+	.word UiBootZeroStart + 0x1EF0	; 0235F5D0
 
 ; ===== function loc_0235F5D4 =====
 loc_0235F5D4:
@@ -14381,7 +14381,7 @@ loc_0235F808:
 	.word P3_Data_023736A8	; 0235F808
 pool_0235F80C:
 loc_0235F80C:
-	.word 0x02375C30	; 0235F80C
+	.word UiBootZeroStart + 0x1EF0	; 0235F80C
 pool_0235F810:
 loc_0235F810:
 	.word REG_DISPCNT_B	; 0235F810
@@ -14396,7 +14396,7 @@ loc_0235F81C:
 	.word REG_BLDCNT_SUB	; 0235F81C
 pool_0235F820:
 loc_0235F820:
-	.word 0x02375C24	; 0235F820
+	.word UiBootZeroStart + 0x1EE4	; 0235F820
 pool_0235F824:
 loc_0235F824:
 	.word 0x02375C70	; 0235F824
@@ -14408,7 +14408,7 @@ loc_0235F82C:
 	.word 0x02375C9C	; 0235F82C
 pool_0235F830:
 loc_0235F830:
-	.word 0x023A4A54	; 0235F830
+	.word P5_ReferencedData_023A4A54	; 0235F830
 pool_0235F834:
 loc_0235F834:
 	.word 0xFFFFF000	; 0235F834
@@ -15121,7 +15121,7 @@ loc_0235FDC0:
 	.word UiBootZeroStart + 0x1ED4	; 0235FDC0
 pool_0235FDC4:
 loc_0235FDC4:
-	.word 0x023C1178	; 0235FDC4
+	.word P5_ReferencedData_023C1178	; 0235FDC4
 pool_0235FDC8:
 loc_0235FDC8:
 	.word 0x023A4E64	; 0235FDC8
@@ -15130,10 +15130,10 @@ loc_0235FDCC:
 	.word P3_Data_023736BC	; 0235FDCC
 pool_0235FDD0:
 loc_0235FDD0:
-	.word 0x02375C70	; 0235FDD0
+	.word UiBootZeroStart + 0x1F30	; 0235FDD0
 pool_0235FDD4:
 loc_0235FDD4:
-	.word 0x02375C9C	; 0235FDD4
+	.word UiBootZeroStart + 0x1F5C	; 0235FDD4
 
 ; ===== function loc_0235FDD8 =====
 loc_0235FDD8:
@@ -15566,7 +15566,7 @@ loc_023600E8:
 	.word UiBootZeroStart + 0x1F88	; 023600E8
 pool_023600EC:
 loc_023600EC:
-	.word 0x023A4A80	; 023600EC
+	.word P5_ReferencedData_023A4A80	; 023600EC
 pool_023600F0:
 loc_023600F0:
 	.word FirmwareBootSharedAddress + BootSharedSettingsInvalidOffset	; 023600F0
@@ -15738,25 +15738,25 @@ loc_02360240:
 	.word UiBootZeroStart + 0x1F88	; 02360240
 pool_02360244:
 loc_02360244:
-	.word 0x023C1178	; 02360244
+	.word P5_ReferencedData_023C1178	; 02360244
 pool_02360248:
 loc_02360248:
 	.word 0x023A4EEC	; 02360248
 pool_0236024C:
 loc_0236024C:
-	.word 0x02375CF0	; 0236024C
+	.word UiBootZeroStart + 0x1FB0	; 0236024C
 pool_02360250:
 loc_02360250:
-	.word 0x02375D1C	; 02360250
+	.word UiBootZeroStart + 0x1FDC	; 02360250
 pool_02360254:
 loc_02360254:
 	.word P3_Data_023736EC	; 02360254
 pool_02360258:
 loc_02360258:
-	.word 0x02375D48	; 02360258
+	.word UiBootZeroStart + 0x2008	; 02360258
 pool_0236025C:
 loc_0236025C:
-	.word 0x02375D74	; 0236025C
+	.word UiBootZeroStart + 0x2034	; 0236025C
 
 ; ===== function loc_02360260 =====
 loc_02360260:
@@ -16483,7 +16483,7 @@ loc_02360738:
 	.word P3_Data_023737E8	; 02360738
 pool_0236073C:
 loc_0236073C:
-	.word 0x023C1178	; 0236073C
+	.word P5_ReferencedData_023C1178	; 0236073C
 pool_02360740:
 loc_02360740:
 	.word 0x023A520C	; 02360740
@@ -16751,10 +16751,10 @@ loc_02360974:
 	.word UiBootZeroStart + 0x207C	; 02360974
 pool_02360978:
 loc_02360978:
-	.word 0x02375DE8	; 02360978
+	.word UiBootZeroStart + 0x20A8	; 02360978
 pool_0236097C:
 loc_0236097C:
-	.word 0x023C1178	; 0236097C
+	.word P5_ReferencedData_023C1178	; 0236097C
 pool_02360980:
 loc_02360980:
 	.word 0x023A520C	; 02360980
@@ -16890,16 +16890,16 @@ loc_02360AA8:
 	.word REG_BLDCNT	; 02360AA8
 pool_02360AAC:
 loc_02360AAC:
-	.word 0x023C1178	; 02360AAC
+	.word P5_ReferencedData_023C1178	; 02360AAC
 pool_02360AB0:
 loc_02360AB0:
 	.word 0x023A520C	; 02360AB0
 pool_02360AB4:
 loc_02360AB4:
-	.word 0x02375DBC	; 02360AB4
+	.word UiBootZeroStart + 0x207C	; 02360AB4
 pool_02360AB8:
 loc_02360AB8:
-	.word 0x02375DE8	; 02360AB8
+	.word UiBootZeroStart + 0x20A8	; 02360AB8
 
 ; ===== function loc_02360ABC =====
 loc_02360ABC:
@@ -17354,7 +17354,7 @@ loc_02360E00:
 	.word P5_Data_023B75C0	; 02360E00
 pool_02360E04:
 loc_02360E04:
-	.word 0x023C1178	; 02360E04
+	.word P5_ReferencedData_023C1178	; 02360E04
 pool_02360E08:
 loc_02360E08:
 	.word 0x0000062C	; 02360E08
@@ -17363,19 +17363,19 @@ loc_02360E0C:
 	.word 0x02375F34	; 02360E0C
 pool_02360E10:
 loc_02360E10:
-	.word 0x023A5ED0	; 02360E10
+	.word P5_ReferencedData_023A5ED0	; 02360E10
 pool_02360E14:
 loc_02360E14:
 	.word 0x02375E2C	; 02360E14
 pool_02360E18:
 loc_02360E18:
-	.word 0x023A5C94	; 02360E18
+	.word P5_ReferencedData_023A5C94	; 02360E18
 pool_02360E1C:
 loc_02360E1C:
 	.word P3_Data_023737E8	; 02360E1C
 pool_02360E20:
 loc_02360E20:
-	.word 0x023A5E44	; 02360E20
+	.word P5_ReferencedData_023A5E44	; 02360E20
 pool_02360E24:
 loc_02360E24:
 	.word UiBootZeroStart + 0x207C	; 02360E24
@@ -17384,7 +17384,7 @@ loc_02360E28:
 	.word 0x023A6174	; 02360E28
 pool_02360E2C:
 loc_02360E2C:
-	.word 0x02375DE8	; 02360E2C
+	.word UiBootZeroStart + 0x20A8	; 02360E2C
 pool_02360E30:
 loc_02360E30:
 	.word P3_Data_023737B8	; 02360E30
@@ -17820,7 +17820,7 @@ loc_02361338:
 	bx r3	; 02361362
 pool_02361364:
 loc_02361364:
-	.word 0x0237395C	; 02361364
+	.word P3_ReferencedData_0237395C	; 02361364
 
 ; ===== function loc_02361368 =====
 	push {lr}	; 02361368
@@ -18129,7 +18129,7 @@ loc_02361570:
 	.word UiBootZeroStart + 0x23D0	; 02361570
 pool_02361574:
 loc_02361574:
-	.word 0x0237612C	; 02361574
+	.word UiBootZeroStart + 0x23EC	; 02361574
 
 ; ===== function loc_02361578 =====
 loc_02361578:
@@ -18612,7 +18612,7 @@ loc_0236189C:
 	.word 0x00003000	; 0236189C
 pool_023618A0:
 loc_023618A0:
-	.word 0x02376124	; 023618A0
+	.word UiBootZeroStart + 0x23E4	; 023618A0
 
 ; ===== function loc_023618A4 =====
 loc_023618A4:
@@ -18649,7 +18649,7 @@ loc_023618E0:
 	.word 0x00003000	; 023618E0
 pool_023618E4:
 loc_023618E4:
-	.word 0x0237611C	; 023618E4
+	.word UiBootZeroStart + 0x23DC	; 023618E4
 
 ; ===== function loc_023618E8 =====
 loc_023618E8:
@@ -18702,7 +18702,7 @@ loc_02361948:
 	.word 0x00003000	; 02361948
 pool_0236194C:
 loc_0236194C:
-	.word 0x02376114	; 0236194C
+	.word UiBootZeroStart + 0x23D4	; 0236194C
 
 ; ===== function loc_02361950 =====
 loc_02361950:
@@ -19274,7 +19274,7 @@ loc_02361D98:
 	.word P3_Data_02373978	; 02361D98
 pool_02361D9C:
 loc_02361D9C:
-	.word 0x02376144	; 02361D9C
+	.word UiBootZeroStart + 0x2404	; 02361D9C
 loc_02361DA0:
 	strh r0,[r1,#0x22]	; 02361DA0
 	ldrh r0,[r1,#0x20]	; 02361DA2
@@ -19294,7 +19294,7 @@ loc_02361DB0:
 	.byte 0xC0, 0x46	; 02361DC0
 pool_02361DC0:
 loc_02361DC0:
-	.word 0x0237612C	; 02361DC0
+	.word UiBootZeroStart + 0x23EC	; 02361DC0
 
 ; ===== function loc_02361DC4 =====
 loc_02361DC4:
@@ -19346,7 +19346,7 @@ loc_02361E0E:
 	bx r3	; 02361E1A
 pool_02361E1C:
 loc_02361E1C:
-	.word 0x0237399C	; 02361E1C
+	.word P3_ReferencedData_0237399C	; 02361E1C
 pool_02361E20:
 loc_02361E20:
 	.word FirmwareUserSettingsSharedAddress + UserSettingsOptionsOffset	; 02361E20
@@ -19393,7 +19393,7 @@ loc_02361E56:
 	.byte 0xC0, 0x46	; 02361E70
 pool_02361E70:
 loc_02361E70:
-	.word 0x02373988	; 02361E70
+	.word P3_ReferencedData_02373988	; 02361E70
 pool_02361E74:
 loc_02361E74:
 	.word FirmwareUserSettingsSharedAddress + UserSettingsOptionsOffset	; 02361E74
@@ -19470,7 +19470,7 @@ loc_02361EF4:
 	.word UiBootZeroStart + 0x23EC	; 02361EF4
 pool_02361EF8:
 loc_02361EF8:
-	.word 0x02376144	; 02361EF8
+	.word UiBootZeroStart + 0x2404	; 02361EF8
 
 ; ===== function loc_02361EFC =====
 loc_02361EFC:
@@ -19687,13 +19687,13 @@ loc_02362080:
 	.word P3_Data_02373A04	; 02362080
 pool_02362084:
 loc_02362084:
-	.word 0x023B4B40	; 02362084
+	.word P5_ReferencedData_023B4B40	; 02362084
 pool_02362088:
 loc_02362088:
-	.word 0x02376164	; 02362088
+	.word UiBootZeroStart + 0x2424	; 02362088
 pool_0236208C:
 loc_0236208C:
-	.word 0x023B6DC0	; 0236208C
+	.word P5_ReferencedData_023B6DC0	; 0236208C
 pool_02362090:
 loc_02362090:
 	.word 0x000001B8	; 02362090
@@ -20524,7 +20524,7 @@ loc_023630B0:
 	.word 0x000001E0	; 023630B0
 pool_023630B4:
 loc_023630B4:
-	.word 0x023C1178	; 023630B4
+	.word P5_ReferencedData_023C1178	; 023630B4
 pool_023630B8:
 loc_023630B8:
 	.word 0x0000062C	; 023630B8
@@ -20533,22 +20533,22 @@ loc_023630BC:
 	.word 0x0237C8F4	; 023630BC
 pool_023630C0:
 loc_023630C0:
-	.word 0x023A62CC	; 023630C0
+	.word P5_ReferencedData_023A62CC	; 023630C0
 pool_023630C4:
 loc_023630C4:
-	.word 0x02373C04	; 023630C4
+	.word P3_ReferencedData_02373C04	; 023630C4
 pool_023630C8:
 loc_023630C8:
-	.word 0x02373C14	; 023630C8
+	.word P3_ReferencedData_02373C14	; 023630C8
 pool_023630CC:
 loc_023630CC:
-	.word 0x02373C24	; 023630CC
+	.word P3_ReferencedData_02373C24	; 023630CC
 pool_023630D0:
 loc_023630D0:
-	.word 0x02373BF4	; 023630D0
+	.word P3_ReferencedData_02373BF4	; 023630D0
 pool_023630D4:
 loc_023630D4:
-	.word 0x0237C950	; 023630D4
+	.word UiBootZeroStart + 0x8C10	; 023630D4
 pool_023630D8:
 loc_023630D8:
 	.word 0x00000190	; 023630D8
@@ -20560,7 +20560,7 @@ loc_023630E0:
 	.word UiBootZeroStart + 0x8BE0	; 023630E0
 pool_023630E4:
 loc_023630E4:
-	.word 0x0237C944	; 023630E4
+	.word UiBootZeroStart + 0x8C04	; 023630E4
 pool_023630E8:
 loc_023630E8:
 	.word 0x0237C93C	; 023630E8
@@ -22625,7 +22625,7 @@ P3_Entry_0236788C:
 pool_02367894:
 	.word UiBootZeroStart + 0x16B1C	; 02367894
 pool_02367898:
-	.word 0x02389A78	; 02367898
+	.word UiBootZeroStart + 0x15D38	; 02367898
 pool_0236789C:
 	.word UiBootZeroStart + 0x15D1C	; 0236789C
 pool_023678A0:
@@ -22987,7 +22987,7 @@ loc_02367F34:
 	.word 0x00000FFF	; 02367F34
 pool_02367F38:
 loc_02367F38:
-	.word 0x023A4BAC	; 02367F38
+	.word P5_ReferencedData_023A4BAC	; 02367F38
 pool_02367F3C:
 loc_02367F3C:
 	.word 0x000002D0	; 02367F3C
@@ -23199,7 +23199,7 @@ loc_023680B8:
 	.word 0x000002F0	; 023680B8
 pool_023680BC:
 loc_023680BC:
-	.word 0x023C1178	; 023680BC
+	.word P5_ReferencedData_023C1178	; 023680BC
 pool_023680C0:
 loc_023680C0:
 	.word 0x023A51C4	; 023680C0
@@ -23442,7 +23442,7 @@ loc_0236834C:
 	.word 0x00000528	; 0236834C
 pool_02368350:
 loc_02368350:
-	.word 0x023A5BF8	; 02368350
+	.word P5_ReferencedData_023A5BF8	; 02368350
 pool_02368354:
 loc_02368354:
 	.word P3_Data_02373708	; 02368354
@@ -23489,7 +23489,7 @@ loc_0236839C:
 	.word 0x000002DC	; 0236839C
 pool_023683A0:
 loc_023683A0:
-	.word 0x023A4BAC	; 023683A0
+	.word P5_ReferencedData_023A4BAC	; 023683A0
 pool_023683A4:
 loc_023683A4:
 	.word 0x000002CC	; 023683A4
@@ -24066,7 +24066,7 @@ loc_02368D00:
 	.word 0x0238A900	; 02368D00
 pool_02368D04:
 loc_02368D04:
-	.word 0x0238A914	; 02368D04
+	.word UiBootZeroStart + 0x16BD4	; 02368D04
 pool_02368D08:
 loc_02368D08:
 	.word 0x00000E60	; 02368D08
@@ -24418,7 +24418,7 @@ loc_02369728:
 	.word UiBootZeroStart + 0x16B1C	; 02369728
 pool_0236972C:
 loc_0236972C:
-	.word 0x0238A914	; 0236972C
+	.word UiBootZeroStart + 0x16BD4	; 0236972C
 
 ; ===== function loc_02369730 =====
 loc_02369730:
@@ -25349,7 +25349,7 @@ loc_02369E1C:
 	.word UiBootZeroStart + 0x1CD18	; 02369E1C
 pool_02369E20:
 loc_02369E20:
-	.word 0x02390A8C	; 02369E20
+	.word UiBootZeroStart + 0x1CD4C	; 02369E20
 pool_02369E24:
 loc_02369E24:
 	.word 0x000082EA	; 02369E24
@@ -25706,7 +25706,7 @@ loc_0236A09C:
 	.word UiBootZeroStart + 0x1CD00	; 0236A09C
 pool_0236A0A0:
 loc_0236A0A0:
-	.word 0x02390A60	; 0236A0A0
+	.word UiBootZeroStart + 0x1CD20	; 0236A0A0
 pool_0236A0A4:
 loc_0236A0A4:
 	.word 0x0003FEC4	; 0236A0A4
@@ -26234,10 +26234,10 @@ loc_0236A42C:
 	.word UiBootZeroStart + 0x1CD1C	; 0236A42C
 pool_0236A430:
 loc_0236A430:
-	.word 0x02390A60	; 0236A430
+	.word UiBootZeroStart + 0x1CD20	; 0236A430
 pool_0236A434:
 loc_0236A434:
-	.word 0x02390A8C	; 0236A434
+	.word UiBootZeroStart + 0x1CD4C	; 0236A434
 P3_Code_0236A438:
 	push {r4,lr}	; 0236A438
 	sub sp,#0x8	; 0236A43A
@@ -26283,7 +26283,7 @@ loc_0236A490:
 	.word UiBootZeroStart + 0x1CDCC	; 0236A490
 pool_0236A494:
 loc_0236A494:
-	.word 0x02390B50	; 0236A494
+	.word UiBootZeroStart + 0x1CE10	; 0236A494
 pool_0236A498:
 loc_0236A498:
 	.word 0x0027F3A9	; 0236A498
@@ -26377,7 +26377,7 @@ loc_0236A54C:
 	.word 0x00000320	; 0236A54C
 pool_0236A550:
 loc_0236A550:
-	.word 0x02390B50	; 0236A550
+	.word UiBootZeroStart + 0x1CE10	; 0236A550
 pool_0236A554:
 loc_0236A554:
 	.word 0x0027F3A9	; 0236A554
@@ -27292,7 +27292,7 @@ loc_0236ABB8:
 	bx r3	; 0236ABBE
 pool_0236ABC0:
 loc_0236ABC0:
-	.word 0x02390BDC	; 0236ABC0
+	.word UiBootZeroStart + 0x1CE9C	; 0236ABC0
 
 ; ===== function loc_0236ABC4 =====
 loc_0236ABC4:
@@ -27695,7 +27695,7 @@ loc_0236AE98:
 	.word UiBootZeroStart + 0x1CDD4	; 0236AE98
 pool_0236AE9C:
 loc_0236AE9C:
-	.word 0x02390B24	; 0236AE9C
+	.word UiBootZeroStart + 0x1CDE4	; 0236AE9C
 pool_0236AEA0:
 loc_0236AEA0:
 	.word 0x0007FD88	; 0236AEA0
@@ -27835,10 +27835,10 @@ loc_0236AF94:
 	.word UiBootZeroStart + 0x1CDCC	; 0236AF94
 pool_0236AF98:
 loc_0236AF98:
-	.word 0x02390B7C	; 0236AF98
+	.word UiBootZeroStart + 0x1CE3C	; 0236AF98
 pool_0236AF9C:
 loc_0236AF9C:
-	.word 0x02390BDC	; 0236AF9C
+	.word UiBootZeroStart + 0x1CE9C	; 0236AF9C
 
 ; ===== function loc_0236AFA0 =====
 loc_0236AFA0:
@@ -27904,10 +27904,10 @@ loc_0236B014:
 	.word UiBootZeroStart + 0x1CD84	; 0236B014
 pool_0236B018:
 loc_0236B018:
-	.word 0x02390B7C	; 0236B018
+	.word UiBootZeroStart + 0x1CE3C	; 0236B018
 pool_0236B01C:
 loc_0236B01C:
-	.word 0x02390BDC	; 0236B01C
+	.word UiBootZeroStart + 0x1CE9C	; 0236B01C
 pool_0236B020:
 loc_0236B020:
 	.word 0x0000FFFF	; 0236B020
@@ -27997,7 +27997,7 @@ loc_0236B0B8:
 	.word UiBootZeroStart + 0x1CDC0	; 0236B0B8
 pool_0236B0BC:
 loc_0236B0BC:
-	.word 0x02390BDC	; 0236B0BC
+	.word UiBootZeroStart + 0x1CE9C	; 0236B0BC
 pool_0236B0C0:
 loc_0236B0C0:
 	.word 0x0000FFFF	; 0236B0C0
@@ -28101,7 +28101,7 @@ loc_0236B16C:
 	.word UiBootZeroStart + 0x1CDC0	; 0236B16C
 pool_0236B170:
 loc_0236B170:
-	.word 0x02390BDC	; 0236B170
+	.word UiBootZeroStart + 0x1CE9C	; 0236B170
 pool_0236B174:
 loc_0236B174:
 	.word P3_Code_0236B0C4 + 1	; 0236B174
@@ -28162,7 +28162,7 @@ loc_0236B1D8:
 	.word UiBootZeroStart + 0x1CDC0	; 0236B1D8
 pool_0236B1DC:
 loc_0236B1DC:
-	.word 0x02390BDC	; 0236B1DC
+	.word UiBootZeroStart + 0x1CE9C	; 0236B1DC
 
 ; ===== function loc_0236B1E0 =====
 loc_0236B1E0:
@@ -28890,13 +28890,13 @@ loc_0236B7D8:
 	.word 0x00004000	; 0236B7D8
 pool_0236B7DC:
 loc_0236B7DC:
-	.word 0x02390B50	; 0236B7DC
+	.word UiBootZeroStart + 0x1CE10	; 0236B7DC
 pool_0236B7E0:
 loc_0236B7E0:
 	.word UiBootZeroStart + 0x1CDD4	; 0236B7E0
 pool_0236B7E4:
 loc_0236B7E4:
-	.word 0x02390B24	; 0236B7E4
+	.word UiBootZeroStart + 0x1CDE4	; 0236B7E4
 pool_0236B7E8:
 loc_0236B7E8:
 	.word UiBootZeroStart + 0x1CDAC	; 0236B7E8
@@ -30380,7 +30380,7 @@ loc_0236C2A4:
 	.word UiBootZeroStart + 0x1CF1C	; 0236C2A4
 pool_0236C2A8:
 loc_0236C2A8:
-	.word 0x02390C80	; 0236C2A8
+	.word UiBootZeroStart + 0x1CF40	; 0236C2A8
 
 ; ===== function loc_0236C2AC =====
 loc_0236C2AC:
@@ -30841,10 +30841,10 @@ loc_0236C5F0:
 	.word UiBootZeroStart + 0x1CF2C	; 0236C5F0
 pool_0236C5F4:
 loc_0236C5F4:
-	.word 0x02390C80	; 0236C5F4
+	.word UiBootZeroStart + 0x1CF40	; 0236C5F4
 pool_0236C5F8:
 loc_0236C5F8:
-	.word 0x02390C90	; 0236C5F8
+	.word UiBootZeroStart + 0x1CF50	; 0236C5F8
 pool_0236C5FC:
 loc_0236C5FC:
 	.word P3_Code_0236C3CC + 1	; 0236C5FC
@@ -30922,10 +30922,10 @@ loc_0236C704:
 	.byte 0xC0, 0x46	; 0236C70C
 pool_0236C70C:
 loc_0236C70C:
-	.word 0x02390C80	; 0236C70C
+	.word UiBootZeroStart + 0x1CF40	; 0236C70C
 pool_0236C710:
 loc_0236C710:
-	.word 0x02390C90	; 0236C710
+	.word UiBootZeroStart + 0x1CF50	; 0236C710
 pool_0236C714:
 loc_0236C714:
 	.word UiBootZeroStart + 0x1CCC4	; 0236C714
@@ -31056,10 +31056,10 @@ loc_0236C7EC:
 	.word UiBootZeroStart + 0x1CF04	; 0236C7EC
 pool_0236C7F0:
 loc_0236C7F0:
-	.word 0x02390C90	; 0236C7F0
+	.word UiBootZeroStart + 0x1CF50	; 0236C7F0
 pool_0236C7F4:
 loc_0236C7F4:
-	.word 0x02390C80	; 0236C7F4
+	.word UiBootZeroStart + 0x1CF40	; 0236C7F4
 pool_0236C7F8:
 loc_0236C7F8:
 	.word P3_Code_0236C3CC + 1	; 0236C7F8
@@ -39040,7 +39040,7 @@ loc_0237011C:
 	.byte 0xC0, 0x46	; 02370138
 pool_02370138:
 loc_02370138:
-	.word 0x02390CB4	; 02370138
+	.word UiBootZeroStart + 0x1CF74	; 02370138
 pool_0237013C:
 loc_0237013C:
 	.word 0x02398CB4	; 0237013C
@@ -39367,7 +39367,7 @@ loc_02370370:
 	.word 0x0000FFFF	; 02370370
 pool_02370374:
 loc_02370374:
-	.word 0x02398D0C	; 02370374
+	.word UiBootZeroStart + 0x24FCC	; 02370374
 
 ; ===== function loc_02370378 =====
 loc_02370378:
@@ -39782,7 +39782,7 @@ loc_02370660:
 	.word 0x0000013C	; 02370660
 pool_02370664:
 loc_02370664:
-	.word 0x02398CBC	; 02370664
+	.word UiBootZeroStart + 0x24F7C	; 02370664
 pool_02370668:
 loc_02370668:
 	.word 0x02398CD0	; 02370668
@@ -41003,7 +41003,7 @@ loc_02370F6A:
 	.byte 0xC0, 0x46	; 02370F74
 pool_02370F74:
 loc_02370F74:
-	.word 0x02399740	; 02370F74
+	.word UiBootZeroStart + 0x25A00	; 02370F74
 
 ; ===== function loc_02370F78 =====
 loc_02370F78:
@@ -43407,10 +43407,10 @@ loc_02371FF6:
 	bx lr	; 02372006
 pool_02372008:
 loc_02372008:
-	.word 0x0239F5FC	; 02372008
+	.word UiBootZeroStart + 0x2B8BC	; 02372008
 pool_0237200C:
 loc_0237200C:
-	.word 0x0239F130	; 0237200C
+	.word UiBootZeroStart + 0x2B3F0	; 0237200C
 pool_02372010:
 loc_02372010:
 	.word 0x00000592	; 02372010
@@ -44150,10 +44150,10 @@ loc_02372534:
 	.word UiBootZeroStart + 0x2B3F0	; 02372534
 pool_02372538:
 loc_02372538:
-	.word 0x023997E0	; 02372538
+	.word UiBootZeroStart + 0x25AA0	; 02372538
 pool_0237253C:
 loc_0237253C:
-	.word 0x02399830	; 0237253C
+	.word UiBootZeroStart + 0x25AF0	; 0237253C
 pool_02372540:
 loc_02372540:
 	.word UiBootZeroStart + 0x25A80	; 02372540
@@ -45743,7 +45743,9 @@ P3_Data_023733AC:
 	.byte 0x5C, 0x00, 0x00, 0x00, 0x4E, 0x00, 0x00, 0x00	; 023733AC
 P3_Data_023733B4:
 	.byte 0x65, 0x00, 0x00, 0x00	; 023733B4
-	.byte 0x64, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	; 023733B8
+	.byte 0x64, 0x00, 0x00, 0x00	; 023733B8
+P3_ReferencedData_023733BC:
+	.byte 0x00, 0x00, 0x00, 0x00	; 023733BC
 P3_Data_023733C0:
 	.byte 0x05, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00	; 023733C0
 	.byte 0x00, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00	; 023733D8
@@ -45869,8 +45871,12 @@ P3_Data_02373788:
 	.byte 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00	; 02373788
 P3_Data_02373794:
 	.byte 0xFF, 0xFF, 0xFF, 0xFF	; 02373794
-	.byte 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00	; 023737A8
-	.byte 0xE0, 0xFF, 0xFF, 0xFF, 0x10, 0x00, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00, 0xE0, 0xFF, 0xFF, 0xFF	; 023737B8
+	.byte 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	; 02373798
+P3_ReferencedData_023737A0:
+	.byte 0x10, 0x00, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00	; 023737A0
+	.byte 0xE0, 0xFF, 0xFF, 0xFF	; 023737A8
+P3_ReferencedData_023737AC:
+	.byte 0x10, 0x00, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00, 0xE0, 0xFF, 0xFF, 0xFF	; 023737AC
 P3_Data_023737B8:
 	.byte 0x00	; 023737B8
 P3_Data_023737B9:
@@ -45902,13 +45908,18 @@ P3_Data_023738D8:
 	.byte 0x01, 0x64, 0x00, 0x00, 0x00, 0x1A, 0x1B, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	; 02373938
 	.byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0A, 0x00, 0x00, 0x64	; 02373948
 	.byte 0x1B, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	; 02373958
-	.byte 0x00, 0x00, 0x00, 0x00, 0xA0, 0xB7, 0x3A, 0x02, 0xFC, 0xB7, 0x3A, 0x02, 0x44, 0xB7, 0x3A, 0x02	; 02373968
+	.byte 0x00, 0x00, 0x00, 0x00	; 02373958
+P3_ReferencedData_0237395C:
+	.byte 0xA0, 0xB7, 0x3A, 0x02, 0xFC, 0xB7, 0x3A, 0x02, 0x44, 0xB7, 0x3A, 0x02	; 0237395C
 P3_Data_02373968:
 	.byte 0x7C, 0x3B, 0x37, 0x02, 0x14, 0x3A, 0x37, 0x02, 0x8C, 0x3A, 0x37, 0x02, 0x04, 0x3B, 0x37, 0x02	; 02373968
 P3_Data_02373978:
 	.byte 0x68, 0x59, 0x5C, 0x0D, 0x00, 0x00, 0x00, 0x00, 0x04, 0x59, 0x5C, 0x0D, 0x00, 0x00, 0x00, 0x00	; 02373988
-	.byte 0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00	; 02373998
-	.byte 0x04, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00	; 023739A8
+P3_ReferencedData_02373988:
+	.byte 0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00	; 02373988
+	.byte 0x04, 0x00, 0x00, 0x00	; 02373998
+P3_ReferencedData_0237399C:
+	.byte 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00	; 0237399C
 	.byte 0x04, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00	; 023739B8
 	.byte 0x01, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	; 023739B8
 P3_Data_023739C4:
@@ -45949,10 +45960,18 @@ P3_Data_02373A04:
 	.byte 0xA4, 0x30, 0xA6, 0x30, 0xA8, 0x30, 0xAA, 0x30, 0xAB, 0x30, 0xAD, 0x30, 0xAF, 0x30, 0xB1, 0x30	; 02373BC8
 	.byte 0xB3, 0x30, 0xB5, 0x30, 0xB7, 0x30, 0xB9, 0x30, 0xBB, 0x30, 0xBD, 0x30, 0xBF, 0x30, 0xC1, 0x30	; 02373BD8
 	.byte 0xC4, 0x30, 0xC6, 0x30, 0xC8, 0x30, 0xCF, 0x30, 0xD2, 0x30, 0xD5, 0x30, 0xD8, 0x30, 0xDB, 0x30	; 02373BE8
-	.byte 0xE4, 0x30, 0xE6, 0x30, 0xE8, 0x30, 0xEF, 0x30, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00	; 02373BF8
-	.byte 0x03, 0x00, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00, 0x07, 0x00, 0x00, 0x00, 0x0B, 0x00, 0x00, 0x00	; 02373C08
-	.byte 0x0C, 0x00, 0x00, 0x00, 0x0D, 0x00, 0x00, 0x00, 0x0E, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00	; 02373C18
-	.byte 0x03, 0x00, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	; 02373C28
+	.byte 0xE4, 0x30, 0xE6, 0x30, 0xE8, 0x30, 0xEF, 0x30, 0x00, 0x00, 0x00, 0x00	; 02373BE8
+P3_ReferencedData_02373BF4:
+	.byte 0x01, 0x00, 0x00, 0x00	; 02373BF4
+	.byte 0x03, 0x00, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00, 0x07, 0x00, 0x00, 0x00	; 02373BF8
+P3_ReferencedData_02373C04:
+	.byte 0x0B, 0x00, 0x00, 0x00	; 02373C04
+	.byte 0x0C, 0x00, 0x00, 0x00, 0x0D, 0x00, 0x00, 0x00, 0x0E, 0x00, 0x00, 0x00	; 02373C08
+P3_ReferencedData_02373C14:
+	.byte 0x01, 0x00, 0x00, 0x00	; 02373C14
+	.byte 0x03, 0x00, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00, 0x07, 0x00, 0x00, 0x00	; 02373C18
+P3_ReferencedData_02373C24:
+	.byte 0x00, 0x00, 0x00, 0x00	; 02373C24
 	.byte 0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00, 0x2F, 0x00, 0x31, 0x00	; 02373C38
 	.byte 0x36, 0x00, 0x00, 0x00, 0x30, 0x00, 0x2F, 0x00, 0x31, 0x00, 0x36, 0x00, 0x00, 0x00, 0x00, 0x00	; 02373C48
 	.byte 0xFF, 0x03, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00, 0x11, 0x00, 0x00, 0x00, 0x12, 0x00, 0x00, 0x00	; 02373C58

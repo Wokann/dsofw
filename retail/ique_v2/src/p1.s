@@ -523,7 +523,7 @@ loc_02320428:
 	.word 0x02334354	; 02320428
 pool_0232042C:
 loc_0232042C:
-	.word 0x02334CBC	; 0232042C
+	.word P1_BssStart + 0xA9C	; 0232042C
 pool_02320430:
 loc_02320430:
 	.word P1_BssStart + 0x1400	; 02320430
@@ -1275,7 +1275,7 @@ loc_02320974:
 	.byte 0xC0, 0x46	; 02320980
 pool_02320980:
 loc_02320980:
-	.word 0x023343A0	; 02320980
+	.word P1_BssStart + 0x180	; 02320980
 pool_02320984:
 loc_02320984:
 	.word P1_BssStart + 0xB00	; 02320984
@@ -1446,7 +1446,7 @@ loc_02320AC8:
 	.word P1_BssStart + 0xB00	; 02320AC8
 pool_02320ACC:
 loc_02320ACC:
-	.word 0x023343A0	; 02320ACC
+	.word P1_BssStart + 0x180	; 02320ACC
 pool_02320AD0:
 loc_02320AD0:
 	.word P1_BssStart + 0x1400	; 02320AD0
@@ -1502,7 +1502,7 @@ loc_02320B24:
 	.word P1_BssStart + 0xB00	; 02320B24
 pool_02320B28:
 loc_02320B28:
-	.word 0x023343A0	; 02320B28
+	.word P1_BssStart + 0x180	; 02320B28
 pool_02320B2C:
 loc_02320B2C:
 	.word REG_BLDALPHA_SUB	; 02320B2C
@@ -1854,10 +1854,10 @@ loc_02320DCC:
 	.word P1_BssStart + 0xA80	; 02320DCC
 pool_02320DD0:
 loc_02320DD0:
-	.word 0x02334CF8	; 02320DD0
+	.word P1_BssStart + 0xAD8	; 02320DD0
 pool_02320DD4:
 loc_02320DD4:
-	.word 0x023BD8E8	; 02320DD4
+	.word P5_ReferencedData_023BD8E8	; 02320DD4
 pool_02320DD8:
 loc_02320DD8:
 	.word 0x0237C8CC	; 02320DD8
@@ -1875,7 +1875,7 @@ loc_02320DE8:
 	.word 0x023343A0	; 02320DE8
 pool_02320DEC:
 loc_02320DEC:
-	.word 0x02334364	; 02320DEC
+	.word P1_BssStart + 0x144	; 02320DEC
 pool_02320DF0:
 loc_02320DF0:
 	.word 0x00001000	; 02320DF0
@@ -1890,7 +1890,7 @@ loc_02320DFC:
 	.word P1_BssStart	; 02320DFC
 pool_02320E00:
 loc_02320E00:
-	.word 0x02334354	; 02320E00
+	.word P1_BssStart + 0x134	; 02320E00
 pool_02320E04:
 loc_02320E04:
 	.word 0x000001FF	; 02320E04
@@ -2358,10 +2358,10 @@ loc_023211EC:
 	.word 0x0000146C	; 023211EC
 pool_023211F0:
 loc_023211F0:
-	.word 0x02334354	; 023211F0
+	.word P1_BssStart + 0x134	; 023211F0
 pool_023211F4:
 loc_023211F4:
-	.word 0x023337A8	; 023211F4
+	.word P1_ReferencedData_023337A8	; 023211F4
 pool_023211F8:
 loc_023211F8:
 	.word P1_BssStart + 0x100	; 023211F8
@@ -2490,7 +2490,7 @@ loc_0232129C:
 	.word 0x00000800	; 0232129C
 pool_023212A0:
 loc_023212A0:
-	.word 0x023B3530	; 023212A0
+	.word P5_ReferencedData_023B3530	; 023212A0
 pool_023212A4:
 loc_023212A4:
 	.word VRAM_SUB_BG	; 023212A4
@@ -2499,22 +2499,22 @@ loc_023212A8:
 	.word P5_Data_023B3D30	; 023212A8
 pool_023212AC:
 loc_023212AC:
-	.word 0x023B6530	; 023212AC
+	.word P5_ReferencedData_023B6530	; 023212AC
 pool_023212B0:
 loc_023212B0:
 	.word VRAM_SUB_BG + 0x3000	; 023212B0
 pool_023212B4:
 loc_023212B4:
-	.word 0x023B6D30	; 023212B4
+	.word P5_ReferencedData_023B6D30	; 023212B4
 pool_023212B8:
 loc_023212B8:
-	.word 0x023B5D30	; 023212B8
+	.word P5_ReferencedData_023B5D30	; 023212B8
 pool_023212BC:
 loc_023212BC:
 	.word VRAM_SUB_BG + 0x3800	; 023212BC
 pool_023212C0:
 loc_023212C0:
-	.word 0x023B6530	; 023212C0
+	.word P5_ReferencedData_023B6530	; 023212C0
 pool_023212C4:
 loc_023212C4:
 	.word P5_Data_023B3D30	; 023212C4
@@ -2523,16 +2523,16 @@ loc_023212C8:
 	.word VRAM_SUB_BG + 0x4800	; 023212C8
 pool_023212CC:
 loc_023212CC:
-	.word 0x023B4530	; 023212CC
+	.word P5_ReferencedData_023B4530	; 023212CC
 pool_023212D0:
 loc_023212D0:
-	.word 0x023BD8E8	; 023212D0
+	.word P5_ReferencedData_023BD8E8	; 023212D0
 pool_023212D4:
 loc_023212D4:
-	.word 0x023D022C	; 023212D4
+	.word P5_ReferencedData_023D022C	; 023212D4
 pool_023212D8:
 loc_023212D8:
-	.word 0x023D0380	; 023212D8
+	.word P5_ReferencedData_023D0380	; 023212D8
 pool_023212DC:
 loc_023212DC:
 	.word 0x0237D32C	; 023212DC
@@ -2544,7 +2544,7 @@ loc_023212E4:
 	.word 0x00000102	; 023212E4
 pool_023212E8:
 loc_023212E8:
-	.word 0x02334D38	; 023212E8
+	.word P1_BssStart + 0xB18	; 023212E8
 pool_023212EC:
 loc_023212EC:
 	.word 0x02334D58	; 023212EC
@@ -2801,7 +2801,7 @@ loc_0232149C:
 	.word 0x023343A0	; 0232149C
 pool_023214A0:
 loc_023214A0:
-	.word 0x02334CBC	; 023214A0
+	.word P1_BssStart + 0xA9C	; 023214A0
 pool_023214A4:
 loc_023214A4:
 	.word P1_UiOnLidOpened + 1	; 023214A4
@@ -2932,22 +2932,22 @@ loc_02321574:
 	.word P1_BssStart + 0xB00	; 02321574
 pool_02321578:
 loc_02321578:
-	.word 0x02334D58	; 02321578
+	.word P1_BssStart + 0xB38	; 02321578
 pool_0232157C:
 loc_0232157C:
 	.word 0x00000220	; 0232157C
 pool_02321580:
 loc_02321580:
-	.word 0x02333750	; 02321580
+	.word P1_ReferencedData_02333750	; 02321580
 pool_02321584:
 loc_02321584:
-	.word 0x02333760	; 02321584
+	.word P1_ReferencedData_02333760	; 02321584
 pool_02321588:
 loc_02321588:
-	.word 0x02333740	; 02321588
+	.word P1_ReferencedData_02333740	; 02321588
 pool_0232158C:
 loc_0232158C:
-	.word 0x02333730	; 0232158C
+	.word P1_ReferencedData_02333730	; 0232158C
 pool_02321590:
 loc_02321590:
 	.word P1_BssStart	; 02321590
@@ -3751,7 +3751,7 @@ loc_02321B34:
 	.word P1_Data_02333780	; 02321B34
 pool_02321B38:
 loc_02321B38:
-	.word 0x023D0380	; 02321B38
+	.word P5_ReferencedData_023D0380	; 02321B38
 pool_02321B3C:
 loc_02321B3C:
 	.word 0x0237CFDC	; 02321B3C
@@ -3869,7 +3869,7 @@ loc_02321C1C:
 	.word 0x0237CFDC	; 02321C1C
 pool_02321C20:
 loc_02321C20:
-	.word 0x023D0380	; 02321C20
+	.word P5_ReferencedData_023D0380	; 02321C20
 pool_02321C24:
 loc_02321C24:
 	.word 0x000001FF	; 02321C24
@@ -4361,10 +4361,10 @@ loc_02321F88:
 	.word 0x00000298	; 02321F88
 pool_02321F8C:
 loc_02321F8C:
-	.word 0x0233579C	; 02321F8C
+	.word P1_BssStart + 0x157C	; 02321F8C
 pool_02321F90:
 loc_02321F90:
-	.word 0x02335820	; 02321F90
+	.word P1_BssStart + 0x1600	; 02321F90
 pool_02321F94:
 loc_02321F94:
 	.word 0x0001EE00	; 02321F94
@@ -4622,7 +4622,7 @@ loc_02322168:
 	.word P5_Data_023B3D30	; 02322168
 pool_0232216C:
 loc_0232216C:
-	.word 0x023BD8E8	; 0232216C
+	.word P5_ReferencedData_023BD8E8	; 0232216C
 pool_02322170:
 loc_02322170:
 	.word 0x0000062C	; 02322170
@@ -5030,10 +5030,10 @@ loc_02322450:
 	.word 0x023357F4	; 02322450
 pool_02322454:
 loc_02322454:
-	.word 0x0237C408	; 02322454
+	.word P5_ReferencedData_0237C408	; 02322454
 pool_02322458:
 loc_02322458:
-	.word 0x023BD8E8	; 02322458
+	.word P5_ReferencedData_023BD8E8	; 02322458
 pool_0232245C:
 loc_0232245C:
 	.word 0x0237CAAC	; 0232245C
@@ -5540,7 +5540,7 @@ loc_02322810:
 	.word FirmwareUserSettingsSharedAddress + UserSettingsAlarmHourOffset	; 02322810
 pool_02322814:
 loc_02322814:
-	.word 0x023BD8E8	; 02322814
+	.word P5_ReferencedData_023BD8E8	; 02322814
 pool_02322818:
 loc_02322818:
 	.word 0x0237D0C4	; 02322818
@@ -5752,7 +5752,7 @@ loc_023229A0:
 	.word REG_BG3HOFS	; 023229A0
 pool_023229A4:
 loc_023229A4:
-	.word 0x023356A8	; 023229A4
+	.word P1_BssStart + 0x1488	; 023229A4
 
 ; ===== function loc_023229A8 =====
 P1_Entry_023229A8:
@@ -5830,7 +5830,7 @@ loc_02322A38:
 	.word REG_BLDCNT	; 02322A38
 pool_02322A3C:
 loc_02322A3C:
-	.word 0x023356A8	; 02322A3C
+	.word P1_BssStart + 0x1488	; 02322A3C
 
 ; ===== function loc_02322A40 =====
 loc_02322A40:
@@ -6139,7 +6139,7 @@ loc_02322CC0:
 	.word P1_BssStart + 0x1658	; 02322CC0
 pool_02322CC4:
 loc_02322CC4:
-	.word 0x023BD8E8	; 02322CC4
+	.word P5_ReferencedData_023BD8E8	; 02322CC4
 pool_02322CC8:
 loc_02322CC8:
 	.word 0x0237D04C	; 02322CC8
@@ -6301,7 +6301,7 @@ loc_02322DC2:
 	.byte 0xC0, 0x46	; 02322DF0
 pool_02322DF0:
 loc_02322DF0:
-	.word 0x023BD8E8	; 02322DF0
+	.word P5_ReferencedData_023BD8E8	; 02322DF0
 pool_02322DF4:
 loc_02322DF4:
 	.word 0x0237D04C	; 02322DF4
@@ -6673,10 +6673,10 @@ loc_023230D2:
 	.byte 0xC0, 0x46	; 023230DC
 pool_023230DC:
 loc_023230DC:
-	.word 0x02333D30	; 023230DC
+	.word P1_ReferencedData_02333D30	; 023230DC
 pool_023230E0:
 loc_023230E0:
-	.word 0x02333D4C	; 023230E0
+	.word P1_ReferencedData_02333D4C	; 023230E0
 pool_023230E4:
 loc_023230E4:
 	.word 0x00006000	; 023230E4
@@ -6688,16 +6688,16 @@ loc_023230EC:
 	.word P1_BssStart + 0x25958	; 023230EC
 pool_023230F0:
 loc_023230F0:
-	.word 0x02333D68	; 023230F0
+	.word P1_ReferencedData_02333D68	; 023230F0
 pool_023230F4:
 loc_023230F4:
-	.word 0x02333D78	; 023230F4
+	.word P1_ReferencedData_02333D78	; 023230F4
 pool_023230F8:
 loc_023230F8:
-	.word 0x02333D88	; 023230F8
+	.word P1_ReferencedData_02333D88	; 023230F8
 pool_023230FC:
 loc_023230FC:
-	.word 0x0237DC3C	; 023230FC
+	.word P5_ReferencedData_0237DC3C	; 023230FC
 pool_02323100:
 loc_02323100:
 	.word 0x000007D0	; 02323100
@@ -6979,16 +6979,16 @@ loc_02323304:
 	.word P1_BssStart + 0x1678	; 02323304
 pool_02323308:
 loc_02323308:
-	.word 0x0233589C	; 02323308
+	.word P1_BssStart + 0x167C	; 02323308
 pool_0232330C:
 loc_0232330C:
-	.word 0x023358C8	; 0232330C
+	.word P1_BssStart + 0x16A8	; 0232330C
 pool_02323310:
 loc_02323310:
-	.word 0x023358F4	; 02323310
+	.word P1_BssStart + 0x16D4	; 02323310
 pool_02323314:
 loc_02323314:
-	.word 0x023BD8E8	; 02323314
+	.word P5_ReferencedData_023BD8E8	; 02323314
 pool_02323318:
 loc_02323318:
 	.word 0x0237D04C	; 02323318
@@ -7067,7 +7067,7 @@ loc_02323384:
 	.byte 0xC0, 0x46	; 0232339C
 pool_0232339C:
 loc_0232339C:
-	.word 0x023358F4	; 0232339C
+	.word P1_BssStart + 0x16D4	; 0232339C
 
 ; ===== function loc_023233A0 =====
 loc_023233A0:
@@ -7183,7 +7183,7 @@ loc_02323460:
 	.word 0x02335934	; 02323460
 pool_02323464:
 loc_02323464:
-	.word 0x0237D994	; 02323464
+	.word P5_ReferencedData_0237D994	; 02323464
 pool_02323468:
 loc_02323468:
 	.word 0x023B9130	; 02323468
@@ -7331,7 +7331,7 @@ loc_02323570:
 	.word P1_BssStart + 0x1708	; 02323570
 pool_02323574:
 loc_02323574:
-	.word 0x02333D9C	; 02323574
+	.word P1_ReferencedData_02333D9C	; 02323574
 pool_02323578:
 loc_02323578:
 	.word 0x02335934	; 02323578
@@ -7340,7 +7340,7 @@ loc_0232357C:
 	.word P1_BssStart + 0x1988	; 0232357C
 pool_02323580:
 loc_02323580:
-	.word 0x023BD8E8	; 02323580
+	.word P5_ReferencedData_023BD8E8	; 02323580
 pool_02323584:
 loc_02323584:
 	.word 0x0237CAAC	; 02323584
@@ -7672,13 +7672,13 @@ loc_023237B0:
 	.word 0x00001000	; 023237B0
 pool_023237B4:
 loc_023237B4:
-	.word 0x02335BD8	; 023237B4
+	.word P1_BssStart + 0x19B8	; 023237B4
 pool_023237B8:
 loc_023237B8:
-	.word 0x023A81E8	; 023237B8
+	.word P5_NitroSoundArchive	; 023237B8
 pool_023237BC:
 loc_023237BC:
-	.word 0x02335BCC	; 023237BC
+	.word P1_BssStart + 0x19AC	; 023237BC
 
 ; ===== function loc_023237C0 =====
 loc_023237C0:
@@ -8652,7 +8652,7 @@ loc_02323EBC:
 	bx lr	; 02323EBE
 pool_02323EC0:
 loc_02323EC0:
-	.word 0x02337290	; 02323EC0
+	.word P1_BssStart + 0x3070	; 02323EC0
 
 ; ===== function loc_02323EC4 =====
 loc_02323EC4:
@@ -8660,7 +8660,7 @@ loc_02323EC4:
 	bx lr	; 02323EC6
 pool_02323EC8:
 loc_02323EC8:
-	.word 0x02336C60	; 02323EC8
+	.word P1_BssStart + 0x2A40	; 02323EC8
 
 ; ===== function loc_02323ECC =====
 loc_02323ECC:
@@ -8791,13 +8791,13 @@ loc_02323FB4:
 	.word P1_BssStart + 0x3040	; 02323FB4
 pool_02323FB8:
 loc_02323FB8:
-	.word 0x02336C60	; 02323FB8
+	.word P1_BssStart + 0x2A40	; 02323FB8
 pool_02323FBC:
 loc_02323FBC:
 	.word P1_BssStart + 0x3640	; 02323FBC
 pool_02323FC0:
 loc_02323FC0:
-	.word 0x02337290	; 02323FC0
+	.word P1_BssStart + 0x3070	; 02323FC0
 pool_02323FC4:
 loc_02323FC4:
 	.word 0x00000A3C	; 02323FC4
@@ -9680,7 +9680,7 @@ loc_023245DC:
 	bx lr	; 023245DE
 pool_023245E0:
 loc_023245E0:
-	.word 0x023378EC	; 023245E0
+	.word P1_BssStart + 0x36CC	; 023245E0
 
 ; ===== function loc_023245E4 =====
 loc_023245E4:
@@ -10666,12 +10666,12 @@ loc_02324CD8:
 	bx lr	; 02324CDA
 pool_02324CDC:
 loc_02324CDC:
-	.word 0x02357F3C	; 02324CDC
+	.word P1_BssStart + 0x23D1C	; 02324CDC
 P1_Entry_02324CE0:
 	ldr r0,[pool_02324CE4]	; 02324CE0
 	bx lr	; 02324CE2
 pool_02324CE4:
-	.word 0x02357F1C	; 02324CE4
+	.word P1_BssStart + 0x23CFC	; 02324CE4
 
 ; ===== function loc_02324CE8 =====
 loc_02324CE8:
@@ -10718,43 +10718,43 @@ loc_02324D2E:
 	bx r3	; 02324D36
 pool_02324D38:
 loc_02324D38:
-	.word 0x02357F1C	; 02324D38
+	.word P1_BssStart + 0x23CFC	; 02324D38
 pool_02324D3C:
 loc_02324D3C:
 	.word P5_FontResource2	; 02324D3C
 pool_02324D40:
 loc_02324D40:
-	.word 0x0237ECF8	; 02324D40
+	.word P5_ReferencedData_0237ECF8	; 02324D40
 pool_02324D44:
 loc_02324D44:
-	.word 0x02357F3C	; 02324D44
+	.word P1_BssStart + 0x23D1C	; 02324D44
 pool_02324D48:
 loc_02324D48:
 	.word P5_FontResource3	; 02324D48
 pool_02324D4C:
 loc_02324D4C:
-	.word 0x02381B88	; 02324D4C
+	.word P5_ReferencedData_02381B88	; 02324D4C
 pool_02324D50:
 loc_02324D50:
-	.word 0x02357F5C	; 02324D50
+	.word P1_BssStart + 0x23D3C	; 02324D50
 pool_02324D54:
 loc_02324D54:
 	.word P5_FontResource1	; 02324D54
 pool_02324D58:
 loc_02324D58:
-	.word 0x0237ECAC	; 02324D58
+	.word P5_ReferencedData_0237ECAC	; 02324D58
 pool_02324D5C:
 loc_02324D5C:
-	.word 0x02357F7C	; 02324D5C
+	.word P1_BssStart + 0x23D5C	; 02324D5C
 pool_02324D60:
 loc_02324D60:
 	.word P5_FontResource0	; 02324D60
 pool_02324D64:
 loc_02324D64:
-	.word 0x0237EC38	; 02324D64
+	.word P5_ReferencedData_0237EC38	; 02324D64
 pool_02324D68:
 loc_02324D68:
-	.word 0x02333DAC	; 02324D68
+	.word P1_ReferencedData_02333DAC	; 02324D68
 loc_02324D6C:
 	push {r4,r5,r6,r7,lr}	; 02324D6C
 	sub sp,#0x4	; 02324D6E
@@ -10846,7 +10846,7 @@ loc_02324E08:
 	.word 0x0000FFFF	; 02324E08
 pool_02324E0C:
 loc_02324E0C:
-	.word 0x02357FD8	; 02324E0C
+	.word P1_BssStart + 0x23DB8	; 02324E0C
 
 ; ===== function loc_02324E10 =====
 loc_02324E10:
@@ -10918,10 +10918,10 @@ loc_02324E56:
 	bx r3	; 02324E76
 pool_02324E78:
 loc_02324E78:
-	.word 0x02333DB0	; 02324E78
+	.word P1_ReferencedData_02333DB0	; 02324E78
 pool_02324E7C:
 loc_02324E7C:
-	.word 0x02357FA0	; 02324E7C
+	.word P1_BssStart + 0x23D80	; 02324E7C
 pool_02324E80:
 loc_02324E80:
 	.word P1_BssStart + 0x25958	; 02324E80
@@ -11079,7 +11079,7 @@ P1_Entry_02324F9E:
 pool_02324FA8:
 	.word P1_BssStart + 0x241B8	; 02324FA8
 pool_02324FAC:
-	.word 0x02358400	; 02324FAC
+	.word P1_BssStart + 0x241E0	; 02324FAC
 pool_02324FB0:
 	.word 0x0237C35C	; 02324FB0
 
@@ -11252,7 +11252,7 @@ loc_023250C4:
 	.byte 0xC0, 0x46	; 023250DC
 pool_023250DC:
 loc_023250DC:
-	.word 0x0235840C	; 023250DC
+	.word P1_BssStart + 0x241EC	; 023250DC
 
 ; ===== function loc_023250E0 =====
 loc_023250E0:
@@ -11413,22 +11413,22 @@ loc_0232521C:
 	.word P1_BssStart + 0x241B8	; 0232521C
 pool_02325220:
 loc_02325220:
-	.word 0x023BD8E8	; 02325220
+	.word P5_ReferencedData_023BD8E8	; 02325220
 pool_02325224:
 loc_02325224:
 	.word 0x0237C89C	; 02325224
 pool_02325228:
 loc_02325228:
-	.word 0x02358438	; 02325228
+	.word P1_BssStart + 0x24218	; 02325228
 pool_0232522C:
 loc_0232522C:
-	.word 0x02358464	; 0232522C
+	.word P1_BssStart + 0x24244	; 0232522C
 pool_02325230:
 loc_02325230:
-	.word 0x02358400	; 02325230
+	.word P1_BssStart + 0x241E0	; 02325230
 pool_02325234:
 loc_02325234:
-	.word 0x0235840C	; 02325234
+	.word P1_BssStart + 0x241EC	; 02325234
 
 ; ===== function loc_02325238 =====
 loc_02325238:
@@ -11464,7 +11464,7 @@ loc_02325278:
 	.word 0x0235840C	; 02325278
 pool_0232527C:
 loc_0232527C:
-	.word 0x0237D3C4	; 0232527C
+	.word P5_ReferencedData_0237D3C4	; 0232527C
 pool_02325280:
 loc_02325280:
 	.word 0x02358438	; 02325280
@@ -11775,7 +11775,7 @@ loc_02325490:
 	.word P1_BssStart + 0x24270	; 02325490
 pool_02325494:
 loc_02325494:
-	.word 0x0235849C	; 02325494
+	.word P1_BssStart + 0x2427C	; 02325494
 pool_02325498:
 loc_02325498:
 	.word P1_Data_02333A1C	; 02325498
@@ -11897,7 +11897,7 @@ loc_02325564:
 	.word P1_BssStart + 0x24270	; 02325564
 pool_02325568:
 loc_02325568:
-	.word 0x023584A8	; 02325568
+	.word P1_BssStart + 0x24288	; 02325568
 pool_0232556C:
 loc_0232556C:
 	.word P1_Data_02333A10	; 0232556C
@@ -11999,19 +11999,19 @@ loc_023255EE:
 	bx r3	; 02325626
 pool_02325628:
 loc_02325628:
-	.word 0x023584A8	; 02325628
+	.word P1_BssStart + 0x24288	; 02325628
 pool_0232562C:
 loc_0232562C:
 	.word P1_BssStart + 0x24270	; 0232562C
 pool_02325630:
 loc_02325630:
-	.word 0x0235849C	; 02325630
+	.word P1_BssStart + 0x2427C	; 02325630
 pool_02325634:
 loc_02325634:
 	.word P1_Data_02333A18	; 02325634
 pool_02325638:
 loc_02325638:
-	.word 0x023BD8E8	; 02325638
+	.word P5_ReferencedData_023BD8E8	; 02325638
 pool_0232563C:
 loc_0232563C:
 	.word 0x0237C7FC	; 0232563C
@@ -12123,7 +12123,7 @@ loc_023256E8:
 	bx r3	; 023256FA
 pool_023256FC:
 loc_023256FC:
-	.word 0x023584A8	; 023256FC
+	.word P1_BssStart + 0x24288	; 023256FC
 pool_02325700:
 loc_02325700:
 	.word P1_Data_02333A10	; 02325700
@@ -12132,7 +12132,7 @@ loc_02325704:
 	.word P1_BssStart + 0x24270	; 02325704
 pool_02325708:
 loc_02325708:
-	.word 0x0235849C	; 02325708
+	.word P1_BssStart + 0x2427C	; 02325708
 
 ; ===== function loc_0232570C =====
 loc_0232570C:
@@ -12220,7 +12220,7 @@ loc_023257A8:
 	.word 0x00000300	; 023257A8
 pool_023257AC:
 loc_023257AC:
-	.word 0x02358528	; 023257AC
+	.word P1_BssStart + 0x24308	; 023257AC
 pool_023257B0:
 loc_023257B0:
 	.word 0x00000100	; 023257B0
@@ -12234,7 +12234,7 @@ loc_023257B4:
 .endfunc
 pool_023257B8:
 loc_023257B8:
-	.word 0x02358538	; 023257B8
+	.word P1_BssStart + 0x24318	; 023257B8
 
 ; Initializes the first known fields of the shared firmware UI/boot context.
 ; 初始化固件 UI/启动共享上下文中已确认的首批字段。
@@ -13770,13 +13770,13 @@ loc_023262F4:
 	.word P1_BssStart + 0x25958	; 023262F4
 pool_023262F8:
 loc_023262F8:
-	.word 0x02333F14	; 023262F8
+	.word P1_ReferencedData_02333F14	; 023262F8
 pool_023262FC:
 loc_023262FC:
-	.word 0x02333F20	; 023262FC
+	.word P1_ReferencedData_02333F20	; 023262FC
 pool_02326300:
 loc_02326300:
-	.word 0x02333F30	; 02326300
+	.word P1_ReferencedData_02333F30	; 02326300
 
 ; ===== function loc_02326304 =====
 P1_Entry_02326304:
@@ -13830,16 +13830,16 @@ loc_02326350:
 	.word P1_BssStart + 0x25958	; 02326350
 pool_02326354:
 loc_02326354:
-	.word 0x02333F3C	; 02326354
+	.word P1_ReferencedData_02333F3C	; 02326354
 pool_02326358:
 loc_02326358:
-	.word 0x02333F54	; 02326358
+	.word P1_ReferencedData_02333F54	; 02326358
 pool_0232635C:
 loc_0232635C:
-	.word 0x02333F6C	; 0232635C
+	.word P1_ReferencedData_02333F6C	; 0232635C
 pool_02326360:
 loc_02326360:
-	.word 0x02333F84	; 02326360
+	.word P1_ReferencedData_02333F84	; 02326360
 
 ; ===== function loc_02326364 =====
 loc_02326364:
@@ -14071,7 +14071,7 @@ loc_02326532:
 	.byte 0xC0, 0x46	; 0232654C
 pool_0232654C:
 loc_0232654C:
-	.word 0x02358590	; 0232654C
+	.word P1_BssStart + 0x24370	; 0232654C
 pool_02326550:
 loc_02326550:
 	.word 0x00000AA0	; 02326550
@@ -14857,7 +14857,7 @@ loc_02326A88:
 	bx r3	; 02326A9E
 pool_02326AA0:
 loc_02326AA0:
-	.word 0x02359124	; 02326AA0
+	.word P1_BssStart + 0x24F04	; 02326AA0
 
 ; ===== function loc_02326AA4 =====
 loc_02326AA4:
@@ -14874,7 +14874,7 @@ loc_02326AA4:
 	bx r3	; 02326ABA
 pool_02326ABC:
 loc_02326ABC:
-	.word 0x0235913C	; 02326ABC
+	.word P1_BssStart + 0x24F1C	; 02326ABC
 
 ; ===== function loc_02326AC0 =====
 loc_02326AC0:
@@ -14891,7 +14891,7 @@ loc_02326AC0:
 	bx r3	; 02326AD6
 pool_02326AD8:
 loc_02326AD8:
-	.word 0x02359130	; 02326AD8
+	.word P1_BssStart + 0x24F10	; 02326AD8
 
 ; ===== function loc_02326ADC =====
 loc_02326ADC:
@@ -16066,7 +16066,7 @@ loc_023272C0:
 	.word P1_BssStart + 0x24F2C	; 023272C0
 pool_023272C4:
 loc_023272C4:
-	.word 0x02359220	; 023272C4
+	.word P1_BssStart + 0x25000	; 023272C4
 pool_023272C8:
 loc_023272C8:
 	.word 0x00000940	; 023272C8
@@ -17992,7 +17992,7 @@ loc_0232803E:
 .endfunc
 pool_02328060:
 loc_02328060:
-	.word 0x02359C20	; 02328060
+	.word P1_BssStart + 0x25A00	; 02328060
 P1_PxiCallback_02328064:
 	push {r4}	; 02328064
 	sub sp,#0x4	; 02328066
@@ -18845,7 +18845,7 @@ loc_0232864E:
 	.byte 0xC0, 0x46	; 02328658
 pool_02328658:
 loc_02328658:
-	.word 0x02359C20	; 02328658
+	.word P1_BssStart + 0x25A00	; 02328658
 pool_0232865C:
 loc_0232865C:
 	.word P1_Data_02333FB4	; 0232865C
@@ -18973,7 +18973,7 @@ loc_0232872C:
 	.word P1_Data_02333FB4	; 0232872C
 pool_02328730:
 loc_02328730:
-	.word 0x02359B78	; 02328730
+	.word P1_BssStart + 0x25958	; 02328730
 
 ; ===== function loc_02328734 =====
 loc_02328734:
@@ -19160,7 +19160,7 @@ loc_02328848:
 	bx r3	; 0232886A
 pool_0232886C:
 loc_0232886C:
-	.word 0x02359E20	; 0232886C
+	.word P1_BssStart + 0x25C00	; 0232886C
 
 ; ===== function loc_02328870 =====
 loc_02328870:
@@ -19195,10 +19195,10 @@ loc_02328870:
 	.byte 0xC0, 0x46	; 023288B4
 pool_023288B4:
 loc_023288B4:
-	.word 0x02333A64	; 023288B4
+	.word P1_ReferencedData_02333A64	; 023288B4
 pool_023288B8:
 loc_023288B8:
-	.word 0x02333A50	; 023288B8
+	.word P1_ReferencedData_02333A50	; 023288B8
 pool_023288BC:
 loc_023288BC:
 	.word 0x0000D082	; 023288BC
@@ -20896,7 +20896,7 @@ loc_02329614:
 .endfunc
 pool_02329634:
 loc_02329634:
-	.word 0x02359F08	; 02329634
+	.word P1_BssStart + 0x25CE8	; 02329634
 pool_02329638:
 loc_02329638:
 	.word P1_DualBufferCallbackContext	; 02329638
@@ -28562,7 +28562,7 @@ loc_0232CCFC:
 	.byte 0xC0, 0x46	; 0232CD18
 pool_0232CD18:
 loc_0232CD18:
-	.word 0x02359FC8	; 0232CD18
+	.word P1_BssStart + 0x25DA8	; 0232CD18
 pool_0232CD1C:
 loc_0232CD1C:
 	.word 0x02361FC8	; 0232CD1C
@@ -28901,7 +28901,7 @@ loc_0232CF4C:
 	.word P1_BssStart + 0x2DDA8	; 0232CF4C
 pool_0232CF50:
 loc_0232CF50:
-	.word 0x02361FCC	; 0232CF50
+	.word P1_BssStart + 0x2DDAC	; 0232CF50
 
 ; ===== function loc_0232CF54 =====
 loc_0232CF54:
@@ -28921,7 +28921,7 @@ loc_0232CF68:
 	bx r3	; 0232CF6E
 pool_0232CF70:
 loc_0232CF70:
-	.word 0x02361FCC	; 0232CF70
+	.word P1_BssStart + 0x2DDAC	; 0232CF70
 
 ; ===== function loc_0232CF74 =====
 loc_0232CF74:
@@ -29966,7 +29966,7 @@ loc_0232D6EA:
 	.byte 0xC0, 0x46	; 0232D6F8
 pool_0232D6F8:
 loc_0232D6F8:
-	.word 0x02361FF4	; 0232D6F8
+	.word P1_BssStart + 0x2DDD4	; 0232D6F8
 
 ; ===== function loc_0232D6FC =====
 P1_Code_0232D6FC:
@@ -30046,10 +30046,10 @@ loc_0232D76E:
 	bx r3	; 0232D78A
 pool_0232D78C:
 loc_0232D78C:
-	.word 0x02361FF4	; 0232D78C
+	.word P1_BssStart + 0x2DDD4	; 0232D78C
 pool_0232D790:
 loc_0232D790:
-	.word 0x02361FE8	; 0232D790
+	.word P1_BssStart + 0x2DDC8	; 0232D790
 
 ; ===== function loc_0232D794 =====
 loc_0232D794:
@@ -30094,10 +30094,10 @@ loc_0232D7CA:
 	bx r3	; 0232D7E6
 pool_0232D7E8:
 loc_0232D7E8:
-	.word 0x02361FE8	; 0232D7E8
+	.word P1_BssStart + 0x2DDC8	; 0232D7E8
 pool_0232D7EC:
 loc_0232D7EC:
-	.word 0x02361FF4	; 0232D7EC
+	.word P1_BssStart + 0x2DDD4	; 0232D7EC
 
 ; ===== function loc_0232D7F0 =====
 loc_0232D7F0:
@@ -30149,7 +30149,7 @@ loc_0232D83A:
 	.byte 0xC0, 0x46	; 0232D84C
 pool_0232D84C:
 loc_0232D84C:
-	.word 0x02361FF4	; 0232D84C
+	.word P1_BssStart + 0x2DDD4	; 0232D84C
 
 ; ===== function loc_0232D850 =====
 loc_0232D850:
@@ -30661,7 +30661,7 @@ loc_0232DBDC:
 	bx r3	; 0232DBE2
 pool_0232DBE4:
 loc_0232DBE4:
-	.word 0x02361FF4	; 0232DBE4
+	.word P1_BssStart + 0x2DDD4	; 0232DBE4
 pool_0232DBE8:
 loc_0232DBE8:
 	.word 0x02333B28	; 0232DBE8
@@ -30720,16 +30720,16 @@ loc_0232DC30:
 	bx r3	; 0232DC52
 pool_0232DC54:
 loc_0232DC54:
-	.word 0x02361FF4	; 0232DC54
+	.word P1_BssStart + 0x2DDD4	; 0232DC54
 pool_0232DC58:
 loc_0232DC58:
-	.word 0x02361FE8	; 0232DC58
+	.word P1_BssStart + 0x2DDC8	; 0232DC58
 pool_0232DC5C:
 loc_0232DC5C:
 	.word P1_BssStart + 0x2E160	; 0232DC5C
 pool_0232DC60:
 loc_0232DC60:
-	.word 0x02362000	; 0232DC60
+	.word P1_BssStart + 0x2DDE0	; 0232DC60
 
 ; ===== function loc_0232DC64 =====
 ; 调度当前双缓冲区块；正常路径将两段缓冲区、块长度、用户值和上下文传给回调。
@@ -36687,7 +36687,7 @@ loc_02330A08:
 	.byte 0xC0, 0x46	; 02330A10
 pool_02330A10:
 loc_02330A10:
-	.word 0x02333C28	; 02330A10
+	.word P1_ReferencedData_02333C28	; 02330A10
 
 ; ===== function loc_02330A14 =====
 loc_02330A14:
@@ -36695,7 +36695,7 @@ loc_02330A14:
 	bx lr	; 02330A16
 pool_02330A18:
 loc_02330A18:
-	.word 0x02362C50	; 02330A18
+	.word P1_BssStart + 0x2EA30	; 02330A18
 
 ; ===== function loc_02330A1C =====
 loc_02330A1C:
@@ -36703,7 +36703,7 @@ loc_02330A1C:
 	bx lr	; 02330A1E
 pool_02330A20:
 loc_02330A20:
-	.word 0x02362C54	; 02330A20
+	.word P1_BssStart + 0x2EA34	; 02330A20
 
 ; ===== function loc_02330A24 =====
 loc_02330A24:
@@ -39691,7 +39691,7 @@ loc_02331E20:
 	.word P1_BssStart + 0x2EA74	; 02331E20
 pool_02331E24:
 loc_02331E24:
-	.word 0x02362CE0	; 02331E24
+	.word P1_BssStart + 0x2EAC0	; 02331E24
 pool_02331E28:
 loc_02331E28:
 	.word P1_BssStart + 0x305A0	; 02331E28
@@ -41982,7 +41982,7 @@ loc_02332DA8:
 	.word P1_BssStart + 0x30698	; 02332DA8
 pool_02332DAC:
 loc_02332DAC:
-	.word 0x023648A4	; 02332DAC
+	.word P1_BssStart + 0x30684	; 02332DAC
 pool_02332DB0:
 loc_02332DB0:
 	.word FirmwareBootInfoAddress + BootInfoVBlankCountOffset	; 02332DB0
@@ -43342,10 +43342,18 @@ loc_02333700:
 P1_Data_0233371C:
 	.byte 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00	; 0233371C
 P1_Data_02333724:
-	.byte 0x02, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x01, 0x00, 0x03, 0x00	; 02333724
-	.byte 0x02, 0x00, 0x05, 0x00, 0x04, 0x00, 0x00, 0x00, 0x06, 0x00, 0x00, 0x00, 0x06, 0x00, 0x01, 0x00	; 02333744
-	.byte 0x03, 0x00, 0x02, 0x00, 0x05, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00	; 02333754
-	.byte 0x03, 0x00, 0x02, 0x00, 0x05, 0x00, 0x04, 0x00, 0x06, 0x00, 0x00, 0x00, 0x01, 0x00, 0x02, 0x00	; 02333764
+	.byte 0x02, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00	; 02333724
+P1_ReferencedData_02333730:
+	.byte 0x01, 0x00, 0x03, 0x00	; 02333730
+	.byte 0x02, 0x00, 0x05, 0x00, 0x04, 0x00, 0x00, 0x00, 0x06, 0x00, 0x00, 0x00	; 02333734
+P1_ReferencedData_02333740:
+	.byte 0x06, 0x00, 0x01, 0x00	; 02333740
+	.byte 0x03, 0x00, 0x02, 0x00, 0x05, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00	; 02333744
+P1_ReferencedData_02333750:
+	.byte 0x00, 0x00, 0x01, 0x00	; 02333750
+	.byte 0x03, 0x00, 0x02, 0x00, 0x05, 0x00, 0x04, 0x00, 0x06, 0x00, 0x00, 0x00	; 02333754
+P1_ReferencedData_02333760:
+	.byte 0x01, 0x00, 0x02, 0x00	; 02333760
 	.byte 0x05, 0x00, 0x03, 0x00, 0x04, 0x00, 0x00, 0x00, 0x06, 0x00, 0x00, 0x00	; 02333764
 P1_Data_02333770:
 	.byte 0x09, 0x00, 0x00, 0x00	; 02333770
@@ -43354,7 +43362,9 @@ P1_Data_02333780:
 	.byte 0x05, 0x00, 0x01, 0x00	; 02333780
 	.byte 0x02, 0x00, 0x03, 0x00, 0x04, 0x00, 0x00, 0x00, 0x06, 0x00, 0x07, 0x00, 0x08, 0x00, 0x09, 0x00	; 02333794
 	.byte 0x0A, 0x00, 0x0B, 0x00, 0x0C, 0x00, 0x0C, 0x00, 0x0C, 0x00, 0x0C, 0x00, 0x0C, 0x00, 0x0C, 0x00	; 023337A4
-	.byte 0x0C, 0x00, 0x0C, 0x00, 0x00, 0x00, 0x54, 0x00, 0x06, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF	; 023337B4
+	.byte 0x0C, 0x00, 0x0C, 0x00	; 023337A4
+P1_ReferencedData_023337A8:
+	.byte 0x00, 0x00, 0x54, 0x00, 0x06, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF	; 023337A8
 	.byte 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x30, 0x00, 0x02, 0x00, 0x00, 0x00, 0x32, 0x00, 0x00, 0x00	; 023337C4
 	.byte 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x34, 0x00, 0x00, 0x00	; 023337D4
 	.byte 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x2C, 0x00, 0x00, 0x00	; 023337E4
@@ -43417,9 +43427,12 @@ P1_Data_02333A28:
 	.byte 0x36, 0x00, 0x37, 0x00, 0x38, 0x00, 0x39, 0x00, 0x00, 0x00, 0x00, 0x00	; 02333A34
 P1_Data_02333A40:
 	.byte 0x03, 0x03, 0x00, 0x00	; 02333A40
-	.byte 0x07, 0x00, 0x00, 0x00, 0xFF, 0x0F, 0xFF, 0x0F, 0xC7, 0x01, 0x00, 0x00, 0xD5, 0x88, 0x32, 0x02	; 02333A54
+	.byte 0x07, 0x00, 0x00, 0x00, 0xFF, 0x0F, 0xFF, 0x0F, 0xC7, 0x01, 0x00, 0x00	; 02333A44
+P1_ReferencedData_02333A50:
+	.byte 0xD5, 0x88, 0x32, 0x02	; 02333A50
 	.byte 0xD1, 0x88, 0x32, 0x02, 0xCD, 0x88, 0x32, 0x02, 0x00, 0x00, 0x00, 0x00, 0xC9, 0x88, 0x32, 0x02	; 02333A64
-	.byte 0x24, 0xD4, 0x00, 0x00, 0x0F, 0x40, 0x00, 0x00, 0x00, 0x01, 0x81, 0x82, 0x82, 0x83, 0x0F, 0x83	; 02333A74
+P1_ReferencedData_02333A64:
+	.byte 0x24, 0xD4, 0x00, 0x00, 0x0F, 0x40, 0x00, 0x00, 0x00, 0x01, 0x81, 0x82, 0x82, 0x83, 0x0F, 0x83	; 02333A64
 	.byte 0x0C, 0xC3, 0x03, 0x83, 0x01, 0x83, 0x04, 0xC3, 0x08, 0x0E, 0x02, 0xC2, 0x0D, 0xC2, 0x07, 0x0B	; 02333A84
 	.byte 0x06, 0x0A, 0x05, 0x09
 ; ASCII VIB build identifier with the embedded build date. / 含内嵌构建日期的 ASCII VIB 构建标识。
@@ -43459,6 +43472,7 @@ P1_CrtDataInitTable:
 	.byte 0xEF, 0xFF, 0xEF, 0xFF, 0xF0, 0xFF, 0xF1, 0xFF, 0xF2, 0xFF, 0xF3, 0xFF, 0xF4, 0xFF, 0xF4, 0xFF	; 02333BF8
 	.byte 0xF5, 0xFF, 0xF6, 0xFF, 0xF7, 0xFF, 0xF7, 0xFF, 0xF8, 0xFF, 0xF9, 0xFF, 0xFA, 0xFF, 0xFA, 0xFF	; 02333C08
 	.byte 0xFB, 0xFF, 0xFC, 0xFF, 0xFD, 0xFF, 0xFD, 0xFF, 0xFE, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00	; 02333C18
+P1_ReferencedData_02333C28:
 	.byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	; 02333C28
 	.byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	; 02333C38
 P1_Data_02333C40:
@@ -43478,17 +43492,30 @@ P1_Data_02333CB8:
 	.byte 0x59, 0xF0, 0xC7, 0xF0, 0x5F, 0xF1, 0x21, 0xF2, 0x0C, 0xF3, 0x18, 0xF4, 0x46, 0xF5, 0x91, 0xF6	; 02333CF8
 	.byte 0xFC, 0xF7, 0x79, 0xF9, 0x07, 0xFB, 0xA3, 0xFC, 0x4F, 0xFE, 0xFA, 0xFF, 0xA4, 0x01, 0x4A, 0x03	; 02333D08
 	.byte 0xED, 0x04, 0x7C, 0x06, 0xF9, 0x07, 0x5F, 0x09, 0xB1, 0x0A, 0xDF, 0x0B, 0xED, 0x0C, 0xD6, 0x0D	; 02333D18
-	.byte 0x9B, 0x0E, 0x35, 0x0F, 0xA5, 0x0F, 0xE8, 0x0F, 0x83, 0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x00	; 02333D28
+	.byte 0x9B, 0x0E, 0x35, 0x0F, 0xA5, 0x0F, 0xE8, 0x0F	; 02333D28
+P1_ReferencedData_02333D30:
+	.byte 0x83, 0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x00	; 02333D30
 	.byte 0x96, 0x00, 0x00, 0x00, 0x97, 0x00, 0x00, 0x00, 0x84, 0x00, 0x00, 0x00, 0x6E, 0x00, 0x00, 0x00	; 02333D38
-	.byte 0x82, 0x00, 0x00, 0x00, 0x0D, 0x00, 0x00, 0x00, 0x0E, 0x00, 0x00, 0x00, 0x0E, 0x00, 0x00, 0x00	; 02333D48
+	.byte 0x82, 0x00, 0x00, 0x00	; 02333D48
+P1_ReferencedData_02333D4C:
+	.byte 0x0D, 0x00, 0x00, 0x00, 0x0E, 0x00, 0x00, 0x00, 0x0E, 0x00, 0x00, 0x00	; 02333D4C
 	.byte 0x0E, 0x00, 0x00, 0x00, 0x0E, 0x00, 0x00, 0x00, 0x0E, 0x00, 0x00, 0x00, 0x0C, 0x00, 0x00, 0x00	; 02333D58
+P1_ReferencedData_02333D68:
 	.byte 0x32, 0x00, 0x30, 0x00, 0x59, 0x00, 0x59, 0x00, 0x2F, 0x00, 0x4D, 0x00, 0x4D, 0x00, 0x00, 0x00	; 02333D68
+P1_ReferencedData_02333D78:
 	.byte 0x4D, 0x00, 0x4D, 0x00, 0x2E, 0x00, 0x32, 0x00, 0x30, 0x00, 0x59, 0x00, 0x59, 0x00, 0x00, 0x00	; 02333D78
+P1_ReferencedData_02333D88:
 	.byte 0x4D, 0x00, 0x4D, 0x00, 0x2F, 0x00, 0x32, 0x00, 0x30, 0x00, 0x59, 0x00, 0x59, 0x00, 0x00, 0x00	; 02333D88
 P1_Data_02333D98:
-	.byte 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x54, 0x00, 0x00, 0x00, 0xA9, 0x00, 0x00, 0x00	; 02333D98
+	.byte 0x01, 0x00, 0x00, 0x00	; 02333D98
+P1_ReferencedData_02333D9C:
+	.byte 0x00, 0x00, 0x00, 0x00, 0x54, 0x00, 0x00, 0x00, 0xA9, 0x00, 0x00, 0x00	; 02333D9C
 P1_Data_02333DA8:
-	.byte 0x58, 0x00, 0x00, 0x00, 0x40, 0x00, 0x00, 0x00, 0x20, 0x2D, 0x3D, 0x02, 0xE0, 0x3F, 0x3D, 0x02	; 02333DA8
+	.byte 0x58, 0x00, 0x00, 0x00	; 02333DA8
+P1_ReferencedData_02333DAC:
+	.byte 0x40, 0x00, 0x00, 0x00	; 02333DAC
+P1_ReferencedData_02333DB0:
+	.byte 0x20, 0x2D, 0x3D, 0x02, 0xE0, 0x3F, 0x3D, 0x02	; 02333DB0
 	.byte 0x20, 0x54, 0x3D, 0x02, 0x60, 0x6A, 0x3D, 0x02, 0x60, 0x80, 0x3D, 0x02, 0x40, 0x96, 0x3D, 0x02	; 02333DB8
 	.byte 0x20, 0x2D, 0x3D, 0x02	; 02333DC8
 P1_Data_02333DCC:
@@ -43512,14 +43539,28 @@ P1_Data_02333DCC:
 	.byte 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00	; 02333ED8
 	.byte 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00	; 02333EE8
 	.byte 0x03, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0x00, 0x02, 0x00, 0x02, 0x00	; 02333EF8
-	.byte 0x02, 0x00, 0x01, 0x00, 0x01, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x4D, 0x00, 0x4D, 0x00	; 02333F08
-	.byte 0x2F, 0x00, 0x44, 0x00, 0x44, 0x00, 0x00, 0x00, 0x44, 0x00, 0x44, 0x00, 0x2E, 0x00, 0x4D, 0x00	; 02333F18
-	.byte 0x4D, 0x00, 0x2E, 0x00, 0x00, 0x00, 0x00, 0x00, 0x44, 0x00, 0x44, 0x00, 0x2F, 0x00, 0x4D, 0x00	; 02333F28
-	.byte 0x4D, 0x00, 0x00, 0x00, 0x32, 0x00, 0x30, 0x00, 0x59, 0x00, 0x59, 0x00, 0x2F, 0x00, 0x4D, 0x00	; 02333F38
-	.byte 0x4D, 0x00, 0x2F, 0x00, 0x44, 0x00, 0x44, 0x00, 0x00, 0x00, 0x00, 0x00, 0x4D, 0x00, 0x4D, 0x00	; 02333F48
+	.byte 0x02, 0x00, 0x01, 0x00, 0x01, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00	; 02333F08
+P1_ReferencedData_02333F14:
+	.byte 0x4D, 0x00, 0x4D, 0x00	; 02333F14
+	.byte 0x2F, 0x00, 0x44, 0x00, 0x44, 0x00, 0x00, 0x00	; 02333F18
+P1_ReferencedData_02333F20:
+	.byte 0x44, 0x00, 0x44, 0x00, 0x2E, 0x00, 0x4D, 0x00	; 02333F20
+	.byte 0x4D, 0x00, 0x2E, 0x00, 0x00, 0x00, 0x00, 0x00	; 02333F28
+P1_ReferencedData_02333F30:
+	.byte 0x44, 0x00, 0x44, 0x00, 0x2F, 0x00, 0x4D, 0x00	; 02333F30
+	.byte 0x4D, 0x00, 0x00, 0x00	; 02333F38
+P1_ReferencedData_02333F3C:
+	.byte 0x32, 0x00, 0x30, 0x00, 0x59, 0x00, 0x59, 0x00, 0x2F, 0x00, 0x4D, 0x00	; 02333F3C
+	.byte 0x4D, 0x00, 0x2F, 0x00, 0x44, 0x00, 0x44, 0x00, 0x00, 0x00, 0x00, 0x00	; 02333F48
+P1_ReferencedData_02333F54:
+	.byte 0x4D, 0x00, 0x4D, 0x00	; 02333F54
 	.byte 0x2F, 0x00, 0x44, 0x00, 0x44, 0x00, 0x2F, 0x00, 0x32, 0x00, 0x30, 0x00, 0x59, 0x00, 0x59, 0x00	; 02333F58
-	.byte 0x00, 0x00, 0x00, 0x00, 0x44, 0x00, 0x44, 0x00, 0x2E, 0x00, 0x4D, 0x00, 0x4D, 0x00, 0x2E, 0x00	; 02333F68
-	.byte 0x32, 0x00, 0x30, 0x00, 0x59, 0x00, 0x59, 0x00, 0x00, 0x00, 0x00, 0x00, 0x44, 0x00, 0x44, 0x00	; 02333F78
+	.byte 0x00, 0x00, 0x00, 0x00	; 02333F68
+P1_ReferencedData_02333F6C:
+	.byte 0x44, 0x00, 0x44, 0x00, 0x2E, 0x00, 0x4D, 0x00, 0x4D, 0x00, 0x2E, 0x00	; 02333F6C
+	.byte 0x32, 0x00, 0x30, 0x00, 0x59, 0x00, 0x59, 0x00, 0x00, 0x00, 0x00, 0x00	; 02333F78
+P1_ReferencedData_02333F84:
+	.byte 0x44, 0x00, 0x44, 0x00	; 02333F84
 	.byte 0x2F, 0x00, 0x4D, 0x00, 0x4D, 0x00, 0x2F, 0x00, 0x32, 0x00, 0x30, 0x00, 0x59, 0x00, 0x59, 0x00	; 02333F88
 	.byte 0x00, 0x00, 0x00, 0x00	; 02333F98
 P1_Data_02333F9C:
